@@ -159,6 +159,7 @@ def test_supersedes_allows_deleting_only_that_test(repo: Path) -> None:
 
 def test_supersedes_accepts_backticked_line(repo: Path) -> None:
     write(repo, "tests/regressions/test_a.py", WITHOUT_ONE)
+    write(repo, "tests/regressions/test_a_v2.py", "def test_one_v2() -> None:\n    pass\n")
     commit(repo, "supersede")
     body = "Supersedes: `tests/regressions/test_a.py::test_one`\n"
     assert run_check(repo, issue_body=body).returncode == 0
@@ -171,6 +172,7 @@ def test_supersedes_ignores_comment_only_differences(repo: Path) -> None:
         "tests/regressions/test_a.py",
         "import math\n\n\ndef test_two() -> None:\n    assert math.e > 2\n",
     )
+    write(repo, "tests/regressions/test_a_v2.py", "def test_one_v2() -> None:\n    pass\n")
     commit(repo, "supersede")
     assert run_check(repo, issue_body=SUPERSEDES_ONE).returncode == 0
 

@@ -6,6 +6,10 @@ One exception lets a spec change: the PR's Issue (number from the `agent/<n>-`
 branch name) may carry `Supersedes: PATH::TEST` lines. Each named top-level
 test may be deleted from its file, and that file may lose only that test,
 compared at the AST level. Renames and whole-file deletions are never allowed.
+Each deleted test needs a replacement: the PR's new files under
+tests/regressions/ must add at least one new top-level test per superseded
+test. Whether a replacement is at least as strict is left to the reviewer.
+Paths are read NUL-delimited (`-z`), so names Git would quote are still caught.
 
 Usage:
     regressions_append_only.py --base REF --head REF --branch NAME [--issue-body FILE] [--repo DIR]
@@ -15,6 +19,7 @@ Without --issue-body, the Issue body is fetched with `gh issue view <n>`.
 
 import argparse
 import ast
+import contextlib
 import re
 import subprocess
 import sys
@@ -64,13 +69,20 @@ def test_name(node: ast.stmt) -> str | None:
     return None
 
 
-def check_superseded(path: str, old: str, new: str, tests: set[str]) -> list[str]:
-    """The new file must equal the old one minus exactly the named top-level tests."""
+def top_level_tests(source: str) -> list[str]:
+    return [name for node in ast.parse(source).body if (name := test_name(node))]
+
+
+def check_superseded(path: str, old: str, new: str, tests: set[str]) -> tuple[list[str], int]:
+    """The new file must equal the old one minus exactly the named top-level tests.
+
+    Returns the errors and how many superseded tests the file actually lost.
+    """
     try:
         old_body = ast.parse(old).body
         new_body = ast.parse(new).body
     except SyntaxError as err:
-        return [f"{path}: cannot parse ({err})"]
+        return [f"{path}: cannot parse ({err})"], 0
     errors: list[str] = []
     found = {name for node in old_body if (name := test_name(node))}
     for test in sorted(tests - found):
@@ -81,36 +93,79 @@ def check_superseded(path: str, old: str, new: str, tests: set[str]) -> list[str
             f"{path}: may only lose the superseded tests ({', '.join(sorted(tests))}); "
             "any other change is not allowed"
         )
-    return errors
+    return errors, len(old_body) - len(kept)
+
+
+def name_status(repo: Path, merge_base: str, head: str) -> list[tuple[str, list[str]]]:
+    """`git diff --name-status -z` as (status, paths), so no path is ever quoted."""
+    raw = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "diff",
+            "--name-status",
+            "-z",
+            "-M",
+            "--no-ext-diff",
+            merge_base,
+            head,
+        ],
+        check=True,
+        capture_output=True,
+    ).stdout
+    fields = raw.decode("utf-8", "surrogateescape").split("\0")
+    if fields and fields[-1] == "":
+        fields.pop()
+    entries: list[tuple[str, list[str]]] = []
+    i = 0
+    while i < len(fields):
+        status = fields[i]
+        count = 2 if status[0] in "RC" else 1
+        entries.append((status, fields[i + 1 : i + 1 + count]))
+        i += 1 + count
+    return entries
 
 
 def check(repo: Path, base: str, head: str, supersedes: dict[str, set[str]]) -> list[str]:
     merge_base = git(repo, "merge-base", base, head).strip()
-    diff = git(repo, "diff", "--name-status", "-M", "--no-ext-diff", merge_base, head)
     errors: list[str] = []
-    for line in diff.splitlines():
-        status, *paths = line.split("\t")
+    superseded = 0
+    new_tests = 0
+    for status, paths in name_status(repo, merge_base, head):
         kind = status[0]
         old_path = paths[0]
-        if kind in "AC":
-            continue
-        if not old_path.startswith(REGRESSIONS):
+        new_path = paths[-1]
+        added_here = kind in "AC" or (kind == "R" and not old_path.startswith(REGRESSIONS))
+        if added_here and new_path.startswith(REGRESSIONS):
+            # An unparsable new file adds no replacement tests.
+            with contextlib.suppress(SyntaxError):
+                new_tests += len(top_level_tests(git(repo, "show", f"{head}:{new_path}")))
+        if kind in "AC" or not old_path.startswith(REGRESSIONS):
             continue
         if kind == "R":
             errors.append(
-                f"{old_path}: renamed to {paths[1]}; files under {REGRESSIONS} are append-only"
+                f"{old_path!r}: renamed to {new_path!r}; files under {REGRESSIONS} are append-only"
             )
         elif kind == "D":
-            errors.append(f"{old_path}: deleted; files under {REGRESSIONS} are append-only")
+            errors.append(f"{old_path!r}: deleted; files under {REGRESSIONS} are append-only")
         elif kind == "M" and old_path in supersedes:
             old = git(repo, "show", f"{merge_base}:{old_path}")
             new = git(repo, "show", f"{head}:{old_path}")
-            errors.extend(check_superseded(old_path, old, new, supersedes[old_path]))
+            file_errors, lost = check_superseded(old_path, old, new, supersedes[old_path])
+            errors.extend(file_errors)
+            superseded += lost
         else:
             errors.append(
-                f"{old_path}: modified; files under {REGRESSIONS} are append-only "
+                f"{old_path!r}: modified; files under {REGRESSIONS} are append-only "
                 "(put new tests in a new file, or name the superseded test on the Issue)"
             )
+    if new_tests < superseded:
+        errors.append(
+            f"{superseded} superseded test(s) deleted but only {new_tests} new top-level "
+            f"test(s) added in new files under {REGRESSIONS}; each superseded test needs a "
+            "replacement in a new file"
+        )
     return errors
 
 
