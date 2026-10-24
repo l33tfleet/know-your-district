@@ -1,0 +1,46 @@
+.PHONY: help sync check lint format typecheck imports test evals run smoke
+
+BASE_URL ?= http://127.0.0.1:8000
+HOST ?= 127.0.0.1
+PORT ?= 8000
+UV ?= uv
+
+help:
+	@echo "make sync                     install pinned dependencies (uv sync --locked)"
+	@echo "make check                    ruff, pyright strict, import-linter, pytest, evals"
+	@echo "make run                      serve the app on http://$(HOST):$(PORT)"
+	@echo "make smoke BASE_URL=<url>     check a running app (GET /healthz -> 200)"
+	@echo "make format                   apply ruff fixes and formatting"
+
+sync:
+	$(UV) sync --locked
+
+check: lint typecheck imports test evals
+
+lint:
+	$(UV) run ruff check .
+	$(UV) run ruff format --check .
+
+format:
+	$(UV) run ruff check --fix .
+	$(UV) run ruff format .
+
+typecheck:
+	$(UV) run pyright
+
+imports:
+	$(UV) run lint-imports --no-cache
+
+test:
+	$(UV) run pytest tests --ignore=tests/evals
+
+# Evals live in tests/evals/. An empty suite passes (pytest exit 5 = no tests collected).
+evals:
+	@$(UV) run pytest tests/evals; rc=$$?; \
+	if [ $$rc -eq 5 ]; then echo "evals: no eval cases yet"; exit 0; fi; exit $$rc
+
+run:
+	$(UV) run uvicorn app.main:app --host $(HOST) --port $(PORT)
+
+smoke:
+	$(UV) run python scripts/smoke.py $(BASE_URL)

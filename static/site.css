@@ -1,0 +1,44 @@
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.site-header,
+main,
+.site-footer {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.site-header {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  border-bottom: 1px solid #ccc;
+}
+
+.site-name {
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-tagline,
+.site-footer {
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.status {
+  font-style: italic;
+}
+
+@media print {
+  .site-header,
+  .site-footer {
+    border: 0;
+  }
+}

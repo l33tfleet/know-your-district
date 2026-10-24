@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.import_linter_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Data caches: raw API downloads. The built SQLite fact table is not ignored;
+# it ships with the repo so a clean clone runs without installing a database.
+data/cache/
+data/raw/
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# Secrets: never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials*.json
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+.tmp/
