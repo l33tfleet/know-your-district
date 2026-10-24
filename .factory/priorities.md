@@ -1,52 +1,46 @@
 # Priorities
+Know Your District (KevinPlusAgents, DBEDT). Cites: S=Scoring, R=Rules, U=Use case PDF+page.
 
-What to weigh when judging whether a change or a piece of feedback serves Know Your District (team KevinPlusAgents, DBEDT challenge). Cites: Scoring, Rules, Use case = the official PDFs listed under Sources, with page.
-
-## Phase, by date
-- **Until 2026-11-16 09:00 HST: foundation.** Judges score what is live then and may not rescore later changes (Scoring p1, p4). A deployed, reliable app, a README and a reachable dependency list beat any polish (Scoring p2; Rules p4).
-- **After that: demo and presentation.** 4 minutes of pitch and live demo, then 2 of Q&A, hard stop (Scoring p5). Work that makes the demo land or covers a presentation category wins. Tech check Nov 20, judging Nov 21 (Scoring p4).
+## Phases
+- Until 2026-11-16 09:00 HST: a deployed, reliable app, README and reachable dependency list beat polish; judges score what is live then (S1-2, S4).
+- After: demo and presentation. 4 min pitch+demo, 2 min Q&A, hard stop; tech check Nov 20, judging Nov 21 (S4-5).
 
 ## Kevin's direction
-1. Audience: "sort by how often you see the role described in the news media, attention getters win here". So legislators first, then their staff, then officials doing outreach or policy (users: Use case p2). The higher role wins a conflict.
-2. Truth: "verifiable data should ground everything". No figure without a source a judge can check.
-3. Scope: "anything that won't make judges go "wow" is out of scope, but there is a baseline "the ground level execution of the foundaitonal work" that is necessary to wow". Deployed, reliable and sourced is that baseline, so it is always in scope.
+1. "sort by how often you see the role described in the news media, attention getters win here": legislators, then staff, then officials (U2); higher role wins.
+2. "verifiable data should ground everything"
+3. "anything that won't make judges go "wow" is out of scope, but there is a baseline "the ground level execution of the foundaitonal work" that is necessary to wow": deployed, reliable, sourced is always in scope.
 
 ## Tests
-- Will it make a judge say "wow", or does the wow depend on it? Neither: not now.
-- Does the live app still work for a judge who does no setup (Scoring p2)?
-- Does every figure shown cite source, year and geography, and flag estimates (Use case p3)?
+- Wow, or the wow needs it? Else not now.
+- Works live, no judge setup (S2)?
+- Every figure checkable?
 
-## Technical review (Scoring p3; Rules p7)
-Two judges, 6 categories x 5 points each. 60% of the total makes the team eligible to present, not certain (Scoring p4).
-- Technical Implementation: tools used well to meet user needs
-- Functional Evaluation Video: shows what it does; max 10 min / 50 MB (Scoring p2)
-- Working Prototype: deployed, and works as the repo and form describe
-- Innovation and Excellence: new or inventive use of existing tech
-- User Experience: intuitive, easy
-- Security/Privacy: specific to this app, max 300 words, on the form
+## Use case must-haves
+- Web chat agent; summaries for all 51 House, 25 Senate districts (U1, U3)
+- Figures cite source, year, geography; flag estimated/apportioned; say missing/old/uncertain; show error margins (U2-4)
+- Crosswalk to official boundaries, method explained (U2)
+- ESRI/ArcGIS map of districts and indicators (U3-4)
+- District vs county vs state; likely eligible vs uptake (U4)
+- Programs link official source; agency decides eligibility; kept current (U2-3)
+- Exportable sourced one-pager (U4)
+- Public aggregate data; populations not individuals; nonpartisan; data licences checked (U2-3)
+- WCAG 2.1 AA, plain language, ʻokina and kahakō (U3)
+- Documented tests proving mapping and eligibility accuracy (U3)
+- Security/privacy note, solution-specific, max 300 words (S3, R5)
+- One population+program pair where outreach could raise uptake (U5)
 
-## Presentation (Scoring p5; Rules p7)
-4 categories x 5 per judge: Requirements, Originality & Design, Utility & Impact, Presentation & Delivery. A category the pitch skips scores 0. Final score = mean of the technical and presentation percentages.
+## Scoring
+Tech (S3, R7): 2 judges x 6 categories x 5: Technical Implementation, Functional Evaluation Video (max 10 min/50 MB, S2), Working Prototype, Innovation and Excellence, User Experience, Security/Privacy. 60% to be eligible to present, not certain (S4).
+Presentation (S5, R7): 4 x 5: Requirements, Originality & Design, Utility & Impact, Presentation & Delivery; a skipped category scores 0. Final = mean of both percentages.
 
 ## Submission rules
-- Judges set nothing up: no databases, sign-ups or debugging startup (Scoring p2). They need not test it and may score from description, images, demo and video alone (Rules p8).
-- README: how to access or run it, dependencies, configuration, known limits (Scoring p2).
-- Every third-party API, AI model, dataset or hosted service is listed and reachable during review (Scoring p2).
-- No secrets in GitHub or the form; give judges access directly (Scoring p1).
-- Public repo, open source license (Rules p5). Only work made after kickoff counts (Rules p3).
-
-## Use case requirements (Use case)
-- Chat agent with summaries for all 51 House and 25 Senate districts (p1, p3).
-- Each figure: source, year, geography, and whether estimated or apportioned to the district. Say when data is missing, old or uncertain; no false precision (p2-3).
-- Crosswalk tract, ZIP or county data to official boundaries and explain how (p2).
-- Public, aggregated data only; describe populations, never individuals; nonpartisan (p2-3).
-- Programs are informational and link to the official source; the agency decides eligibility; program data kept current (p2-3).
-- WCAG 2.1 AA, plain language, correct ʻokina and kahakō (p3).
-- A test protocol showing mapping and eligibility results are accurate (p3).
-- Outputs: district vs county vs state, likely eligible vs current uptake, map, exportable sourced one-pager (p4).
-- Success: a sourced profile in minutes; experts confirm sampled figures; at least one population and program pair where outreach could raise uptake (p5).
+- Judges do no setup: no databases, sign-ups, startup debugging (S2); may score from description, images, demo, video alone (R8).
+- README: access/run steps, dependencies, config, known limits (S2).
+- Third-party APIs, models, datasets, hosted services listed and reachable during review (S2).
+- No secrets in GitHub or the form; give judges access directly (S1).
+- Public repo, open source license (R5); only post-kickoff work counts (R3).
 
 ## Sources (not committed)
-- Scoring: `HAIC-2026-Scoring-Criteria.pdf`, also https://HAIC.hawaii.gov/HAIC-judging-criteria/
-- Rules: `HAIC-2026-Official-Rules-and-Guidelines.pdf`
-- Use case: `HAIC_Use_Case_Know_Your_District_AI_Agent_2026.pdf`
+- S: `HAIC-2026-Scoring-Criteria.pdf`, also https://HAIC.hawaii.gov/HAIC-judging-criteria/
+- R: `HAIC-2026-Official-Rules-and-Guidelines.pdf`
+- U: `HAIC_Use_Case_Know_Your_District_AI_Agent_2026.pdf`
