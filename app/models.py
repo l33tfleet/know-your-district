@@ -23,6 +23,8 @@ class Fact(BaseModel):
     method: Text
     endpoint: Text
     label: Text
+    estimate_annotation: str | None = None
+    moe_annotation: str | None = None
 
     @model_validator(mode="after")
     def uncertainty(self) -> Self:
