@@ -1,5 +1,6 @@
 """Offline boundary input contract; shared district keys for the WO-3 ETL."""
 
+import re
 from datetime import date
 from typing import Annotated, Literal, Self
 
@@ -47,6 +48,15 @@ class Provenance(BaseModel):
     vintage: str = Field(min_length=1)
     plan_year: Literal[2022]
     method: str = Field(min_length=1)
+
+    @field_validator("retrieved_on", mode="before")
+    @classmethod
+    def validate_retrieval_date(cls, value: object) -> date:
+        if type(value) is date:
+            return value
+        if isinstance(value, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+            return date.fromisoformat(value)
+        raise ValueError("retrieved_on must be an ISO calendar date (YYYY-MM-DD)")
 
 
 Longitude = Annotated[float, Field(ge=-180, le=180, allow_inf_nan=False, strict=True)]
