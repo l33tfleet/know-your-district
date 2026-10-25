@@ -12,6 +12,8 @@ CREATE TABLE facts (
     method TEXT NOT NULL CHECK (length(trim(method)) > 0),
     endpoint TEXT NOT NULL CHECK (length(trim(endpoint)) > 0),
     label TEXT NOT NULL CHECK (length(trim(label)) > 0),
+    estimate_annotation TEXT,
+    moe_annotation TEXT,
     PRIMARY KEY (variable, geography, vintage),
     CHECK (
         ((value IS NULL OR value = 0 OR moe IS NULL) AND cv IS NULL)
