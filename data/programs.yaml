@@ -1,0 +1,55 @@
+# Agency pages reviewed 2026-10-25. No individual eligibility determination.
+- name: Supplemental Nutrition Assistance Program (SNAP)
+  agency: Hawaiʻi Department of Human Services, Benefit, Employment & Support Services Division
+  level: federal
+  purpose: SNAP may help households pay for food.
+  official_url: https://humanservices.hawaii.gov/bessd/snap/
+  last_verified: 2026-10-25
+  guidance: The agency decides eligibility; contact Aloha United Way 211 for help finding services.
+  referral_url: https://www.auw211.org/
+  agency_guideline:
+    threshold: 2.0
+    poverty_line: Hawaiʻi HHS poverty guidelines
+    effective_date: 2026-10-01
+    source_url: https://humanservices.hawaii.gov/bessd/snap/
+    description: DHS SNAP gross monthly income chart, BBCE column; other agency rules also apply.
+  eligibility_proxy:
+    status: available
+    acs_fields: [C17002_002E, C17002_003E, C17002_004E, C17002_005E, C17002_006E, C17002_007E]
+    threshold: 2.0
+    poverty_line: national Census poverty thresholds
+    source_url: https://api.census.gov/data/2024/acs/acs5/groups/C17002.json
+    vintage: 2020–2024
+    geography: Hawaiʻi legislative districts, 2022 plan
+    method: >-
+      Population below 2.00 times the national Census poverty threshold, derived by
+      summing complete C17002 brackets without interpolation; sum margins of error
+      in quadrature. This is a lower bound: national thresholds understate the
+      population below the higher Hawaiʻi HHS guidelines. This population proxy
+      does not determine program eligibility or count households.
+- name: General Assistance (GA)
+  agency: Hawaiʻi Department of Human Services, Benefit, Employment & Support Services Division
+  level: state
+  purpose: General Assistance may help temporarily disabled adults pay for basic needs.
+  official_url: https://humanservices.hawaii.gov/bessd/ga/
+  last_verified: 2026-10-25
+  guidance: The agency decides eligibility; contact Aloha United Way 211 for help finding services.
+  referral_url: https://www.auw211.org/
+  agency_guideline:
+    threshold: null
+    poverty_line: not applicable
+    effective_date: null
+    source_url: https://humanservices.hawaii.gov/bessd/ga/
+    description: DHS requires medical-board certification and income, asset and household conditions.
+  eligibility_proxy:
+    status: unavailable
+    acs_fields: []
+    threshold: null
+    poverty_line: null
+    source_url: https://humanservices.hawaii.gov/bessd/ga/
+    vintage: null
+    geography: Hawaiʻi legislative districts, 2022 plan
+    method: >-
+      No ACS proxy is available: published district tables cannot identify DHS
+      medical-board certification, temporary inability to work, asset limits and
+      exclusion from other assistance categories together.
