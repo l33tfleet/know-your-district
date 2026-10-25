@@ -17,12 +17,15 @@ Later work orders cite this file instead of repeating it. Product rules are in
 
 ## Data licences
 
-The current scaffold loads and distributes no datasets:
-[`etl/__init__.py`](../etl/__init__.py) is a placeholder and
-[`data/`](../data/) contains only its README. The table records the
-terms for all ACS products specified above, not a claim that they are loaded.
+The ETL ([`etl/census.py`](../etl/census.py)), configured by
+[`config.toml`](../config.toml), fetches ACS 2020–2024 5-year Detailed,
+Data Profile and Subject tables from the Census API. It returns fetched rows
+in memory; [`data/`](../data/) holds `README.md` and `schema.sql`, and
+no built database is committed. The table records the terms for these ACS
+products.
 No State dataset, district boundary file or program dataset is currently used;
-the district-plan description below is not a separately loaded dataset.
+the fetcher requests Census geographies, and the district-plan description
+below is not a separately loaded dataset.
 The repository's MIT software licence does not license third-party data.
 
 | Dataset | Publisher | Licence or terms | Attribution line |
