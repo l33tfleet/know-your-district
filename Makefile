@@ -44,3 +44,8 @@ run:
 
 smoke:
 	$(UV) run python scripts/smoke.py $(BASE_URL)
+
+# Offline validation of the normalized boundary input profile (WO-47).
+.PHONY: boundaries
+boundaries:
+	$(UV) run python -m etl.boundaries "$(BOUNDARIES_FILE)"

@@ -123,3 +123,35 @@ CV = (MOE / 1.645) / estimate
    figures; map each to "not available" (or "controlled") before anything
    computes with it. Medians can also be top- or bottom-coded (e.g. rent or
    income at the table's limit); say so when that happens.
+
+## Boundary identity and validation (WO-47)
+
+`etl.boundaries.DistrictId` defines the shared district key contract proposed
+for WO-3's fact table: `house-01` through `house-51` and `senate-01` through
+`senate-25`. Chamber is always required; a district number alone is not a key.
+One to three ASCII digits (or an integer) normalize to the same district.
+`census_code` returns the three-digit code (e.g. `001`); pair it with the
+lower/upper chamber geography above and state `15` when reading ACS. County
+and state keys are outside this district-only contract.
+
+The local boundary input profile is a GeoJSON FeatureCollection with required
+`provenance` metadata: `source_url` (HTTP/S), `retrieved_on` (ISO date), `vintage`
+(nonblank source release), `plan_year` (2022), and `method` (nonblank processing
+notes). Each Feature has `properties` containing only `chamber` and `district`.
+Source-specific attribute mapping must happen before validation. Geometry must
+be a nonempty Polygon or MultiPolygon with finite longitude/latitude pairs,
+closed rings and at least three distinct vertices per ring. Duplicate keys
+fail after normalization. These structural checks do not prove topology,
+coverage, projection correctness, or correspondence to an official district.
+
+Run `make boundaries BOUNDARIES_FILE=<local.geojson>` to validate offline and
+print canonical keys. The small fixture in
+`tests/regressions/fixtures/wo47_boundaries.geojson` is synthetic, not a map of
+actual districts. Partial collections are allowed at this step; production
+loads must additionally enforce the district counts stated above.
+
+**Prerequisite: WO-3 must deliver the real fact table and adopt or explicitly
+reconcile this district key contract before final real-database join proof.**
+No database or join proof exists in this step. That proof must check exact key
+set equality for all House and Senate districts, including missing and extra
+keys in either direction, rather than relying on row counts alone.
