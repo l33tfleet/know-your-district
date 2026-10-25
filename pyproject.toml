@@ -1,0 +1,58 @@
+[project]
+name = "know-your-district"
+version = "0.1.0"
+description = "Cited, printable briefs of Hawaiʻi State House and Senate districts for legislators and staff."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "jinja2>=3.1",
+    "pydantic>=2.9",
+    "uvicorn>=0.32",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.16.0",
+    "import-linter>=2.1",
+    "pyright[nodejs]>=1.1.390",
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["static"]
+
+[tool.ruff.lint]
+# PGH003/PGH004 make blanket `# type: ignore` and bare `# noqa` fail.
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF", "PGH003", "PGH004"]
+# Line length is the formatter's job.
+ignore = ["E501"]
+# The ʻokina (U+02BB) is correct Hawaiian spelling, not a confusable quote;
+# the en dash marks ranges such as "2020–2024".
+allowed-confusables = ["ʻ", "–"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.12"
+include = ["app", "etl", "scripts", "tests", ".github/scripts"]
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-ra --import-mode=importlib"
+
+[tool.importlinter]
+root_packages = ["app"]
+
+[[tool.importlinter.contracts]]
+name = "Page sections are independent: they may import app core, never each other"
+type = "independence"
+modules = ["app.sections.*"]

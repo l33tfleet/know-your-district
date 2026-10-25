@@ -1,0 +1,16 @@
+# Guard rails and the rules every agent reads first. Changes here wait for the
+# Code Owner's review instead of auto-merging.
+#
+# /tests/regressions/ is left unowned on purpose: agents add new regression
+# files there freely; the `regressions-append-only` CI job keeps existing ones
+# from being edited, renamed or deleted.
+
+/fixtures/                @k7lim
+/scripts/independent_*    @k7lim
+conftest.py               @k7lim
+pyproject.toml            @k7lim
+/.github/                 @k7lim
+/Makefile                 @k7lim
+/AGENTS.md                @k7lim
+/CLAUDE.md                @k7lim
+/.factory/                @k7lim

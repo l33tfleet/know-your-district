@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install pinned dependencies
+        run: uv sync --locked
+      - name: make check
+        run: make check
+      - name: Smoke test a running app
+        run: |
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          for _ in $(seq 1 50); do
+            curl -fsS http://127.0.0.1:8000/healthz >/dev/null 2>&1 && break
+            sleep 0.2
+          done
+          make smoke BASE_URL=http://127.0.0.1:8000
+
+  regressions-append-only:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check that existing regression tests are unchanged
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          # Run the checker as it exists on the base branch, so a PR cannot loosen it.
+          checker=.github/scripts/regressions_append_only.py
+          if git cat-file -e "$BASE_SHA:$checker" 2>/dev/null; then
+            git show "$BASE_SHA:$checker" > "$RUNNER_TEMP/regressions_append_only.py"
+          else
+            cp "$checker" "$RUNNER_TEMP/regressions_append_only.py"
+          fi
+          python "$RUNNER_TEMP/regressions_append_only.py" \
+            --base "$BASE_SHA" --head "$HEAD_SHA" --branch "$BRANCH"
