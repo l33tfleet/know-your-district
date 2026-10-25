@@ -14,7 +14,8 @@ Paths are read NUL-delimited (`-z`), so names Git would quote are still caught.
 Usage:
     regressions_append_only.py --base REF --head REF --branch NAME [--issue-body FILE] [--repo DIR]
 
-Without --issue-body, the Issue body is fetched with `gh issue view <n>`.
+Without --issue-body, the Issue body is fetched with `gh issue view <n>`. If that
+fails, the Issue counts as having no Supersedes lines (the strict rule).
 """
 
 import argparse
@@ -52,12 +53,19 @@ def parse_supersedes(body: str) -> dict[str, set[str]]:
 
 
 def fetch_issue_body(number: int) -> str:
-    return subprocess.run(
-        ["gh", "issue", "view", str(number), "--json", "body", "--jq", ".body"],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
+    """The Issue body, or "" (no Supersedes lines: the strict rule) if gh cannot read it."""
+    try:
+        return subprocess.run(
+            ["gh", "issue", "view", str(number), "--json", "body", "--jq", ".body"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        print(
+            f"notice: cannot read Issue #{number}; applying the strict rule (no Supersedes lines)"
+        )
+        return ""
 
 
 def test_name(node: ast.stmt) -> str | None:
