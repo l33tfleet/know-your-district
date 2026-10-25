@@ -1,0 +1,16 @@
+{
+  "type": "FeatureCollection",
+  "provenance": {
+    "source_url": "https://example.org/wo47-synthetic-boundaries",
+    "retrieved_on": "2026-10-25",
+    "vintage": "synthetic WO-47 fixture",
+    "plan_year": 2022,
+    "method": "synthetic test geometry; not official boundaries"
+  },
+  "features": [
+    {"type": "Feature", "properties": {"chamber": "house", "district": "001"},
+     "geometry": {"type": "Polygon", "coordinates": [[[-156, 20], [-155, 20], [-155, 21], [-156, 20]]]}},
+    {"type": "Feature", "properties": {"chamber": "senate", "district": 1},
+     "geometry": {"type": "MultiPolygon", "coordinates": [[[[-156, 20], [-155, 20], [-155, 21], [-156, 20]]]]}}
+  ]
+}
