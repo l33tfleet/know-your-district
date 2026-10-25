@@ -14,8 +14,8 @@ def main() -> None:
     args = parser.parse_args()
     path: Path = args.path
     try:
-        collection = BoundaryCollection.model_validate_json(path.read_text())
-    except (OSError, ValidationError) as exc:
+        collection = BoundaryCollection.model_validate_json(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValidationError) as exc:
         parser.exit(1, f"Boundary validation failed: {exc}\n")
     for feature in collection.features:
         print(feature.properties.key)
