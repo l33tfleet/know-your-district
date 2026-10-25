@@ -10,7 +10,9 @@ from etl.indicators import Indicator
 
 HOUSE = "state legislative district (lower chamber)"
 SENATE = "state legislative district (upper chamber)"
-SENTINELS = {Decimal(v) for v in (-666666666, -999999999, -888888888, -555555555, -222222222)}
+SENTINELS = {
+    Decimal(v) for v in (-666666666, -999999999, -888888888, -555555555, -222222222, -333333333)
+}
 
 
 def _number(raw: str | None) -> Decimal | None:
@@ -99,6 +101,8 @@ def facts_from_batch(indicator: Indicator, batch: CensusBatch, geography: str) -
             ):
                 if number is None:
                     status = "controlled" if raw == "-555555555" else "not available"
+                    if raw == "-333333333":
+                        status = "not available: median in open-ended interval (top/bottom-coded)"
                     method += f"; {name} {status}"
                 if annotation:
                     method += f"; {name} annotation: {annotation}"
