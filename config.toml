@@ -1,0 +1,40 @@
+[acs]
+year = 2024
+vintage = "2020–2024"
+base_url = "https://api.census.gov/data/{year}/acs/acs5"
+state = "15"
+district_plan = 2022
+county_codes = ["001", "003", "007", "009"]
+
+[acs.vintages]
+2023 = "2019–2023"
+2024 = "2020–2024"
+
+# Exact Census estimate labels; only the inflation-adjustment year is substituted.
+# Metadata source: api.census.gov/data/{year}/acs/acs5[/profile|/subject]/variables/...
+[acs.labels]
+B01003_001E = "Estimate!!Total"
+DP05_0024PE = "Percent!!SEX AND AGE!!Total population!!65 years and over"
+B19013_001E = "Estimate!!Median household income in the past 12 months (in {year} inflation-adjusted dollars)"
+S1701_C03_001E = "Estimate!!Percent below poverty level!!Population for whom poverty status is determined"
+S1701_C03_010E = "Estimate!!Percent below poverty level!!Population for whom poverty status is determined!!AGE!!65 years and over"
+S2301_C04_001E = "Estimate!!Unemployment rate!!Population 16 years and over"
+B22010_002E = "Estimate!!Total:!!Household received Food Stamps/SNAP in the past 12 months:"
+S2201_C04_001E = "Estimate!!Percent households receiving food stamps/SNAP!!Households"
+B19055_002E = "Estimate!!Total:!!With Social Security income"
+B19059_002E = "Estimate!!Total:!!With retirement income"
+DP04_0141PE = "Percent!!GROSS RENT AS A PERCENTAGE OF HOUSEHOLD INCOME (GRAPI)!!Occupied units paying rent (excluding units where GRAPI cannot be computed)!!30.0 to 34.9 percent"
+DP04_0142PE = "Percent!!GROSS RENT AS A PERCENTAGE OF HOUSEHOLD INCOME (GRAPI)!!Occupied units paying rent (excluding units where GRAPI cannot be computed)!!35.0 percent or more"
+B25064_001E = "Estimate!!Median gross rent"
+S2701_C05_001E = "Estimate!!Percent Uninsured!!Civilian noninstitutionalized population"
+S1810_C03_001E = "Estimate!!Percent with a disability!!Total civilian noninstitutionalized population"
+S1602_C04_001E = "Estimate!!Percent limited English-speaking households!!All households"
+B08201_002E = "Estimate!!Total:!!No vehicle available"
+C17002_001E = "Estimate!!Total:"
+C17002_002E = "Estimate!!Total:!!Under .50"
+C17002_003E = "Estimate!!Total:!!.50 to .99"
+C17002_004E = "Estimate!!Total:!!1.00 to 1.24"
+C17002_005E = "Estimate!!Total:!!1.25 to 1.49"
+C17002_006E = "Estimate!!Total:!!1.50 to 1.84"
+C17002_007E = "Estimate!!Total:!!1.85 to 1.99"
+C17002_008E = "Estimate!!Total:!!2.00 and over"

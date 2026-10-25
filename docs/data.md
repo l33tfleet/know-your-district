@@ -144,3 +144,34 @@ CV = (MOE / 1.645) / estimate
    figures; map each to "not available" (or "controlled") before anything
    computes with it. Medians can also be top- or bottom-coded (e.g. rent or
    income at the table's limit); say so when that happens.
+
+## WO59 fact contract: reconciliation of #23 and #24
+
+The 17 logical indicators above are groups, not 17 scalar database rows.
+This contract replaces #24's literal 81 × 17 row target while preserving its
+exclusion of derived figures: 15 single-cell indicators + eight C17002 cells
+(including the total) + two rent components = 25 published scalar rows per
+geography, or 2,025 rows across 81 geographies for one vintage. No poverty
+bracket is discarded, combined or interpolated to meet a row count.
+
+The rent entry above names a logical output, not the meaning of 0142 alone:
+DP04_0141PE/PM is 30.0–34.9%; DP04_0142PE/PM is 35.0% or more. Store each
+published pair separately. Both use occupied units paying rent excluding units
+where GRAPI cannot be computed. The 30%+ sum is deferred to WO-6, with method
+explicitly derived and MOE sqrt(MOE₁² + MOE₂²); it is never a published fact.
+The independent WO42 metadata review confirms these two component meanings.
+
+The fact/golden join key is (variable, geography, vintage), not a display label
+or group ordinal. Each oracle scalar maps directly to one fact with its MOE;
+C17002 maps to eight separate comparisons and rent to two. A logical golden
+case containing several cells expands to these same keys. A derived rent case
+cannot be compared to 0142 alone and belongs in WO-6's derived checks.
+The "about 300" golden sample size is not a fact-table cardinality requirement.
+Geography keys are qualified: house:15:001:2022, senate:15:001:2022,
+county:15:001 and state:15, preserving leading zeros and district plan.
+
+Scope of this step: config.toml, etl/indicators.py, app/models.py,
+data/schema.sql, this contract, and new regression tests. Fetching, metadata
+validation, database building, golden generation and UI rendering are later
+steps; the oracle stays independent. Config pins the ACS year and vintage;
+endpoint URLs use the year placeholder. No database or observations ship here.
