@@ -44,3 +44,7 @@ run:
 
 smoke:
 	$(UV) run python scripts/smoke.py $(BASE_URL)
+
+.PHONY: boundaries
+boundaries:
+	$(UV) run python -m etl.boundaries "$(BOUNDARIES_FILE)"

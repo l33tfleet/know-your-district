@@ -178,3 +178,11 @@ data/schema.sql, this contract, and new regression tests. Fetching, metadata
 validation, database building, golden generation and UI rendering are later
 steps; the oracle stays independent. Config pins the ACS year and vintage;
 endpoint URLs use the year placeholder. No database or observations ship here.
+
+## Boundary identity and validation (WO-66, from WO-47)
+
+`etl.boundaries.DistrictId` requires a chamber and normalizes one to three ASCII digits or integers to `house-01`…`house-51` or `senate-01`…`senate-25`; `census_code` preserves three digits. State and county keys are outside this contract. Boundary keys map explicitly to WO59 fact keys: `house-01` → `house:15:001:2022`, likewise for Senate; these are distinct representations, not interchangeable join strings.
+The local GeoJSON FeatureCollection requires provenance: HTTP/S `source_url`, ISO calendar `retrieved_on` (YYYY-MM-DD), nonblank `vintage` and `method`, and `plan_year` 2022. Features have only `chamber` and `district` properties. Map source attributes before validation.
+Geometry must be a nonempty Polygon or MultiPolygon with finite longitude/latitude pairs, closed rings and three distinct vertices per ring. Duplicate normalized keys fail. Structural validation does not prove topology, coverage, projection correctness or official district correspondence.
+Run `make boundaries BOUNDARIES_FILE=<local.geojson>` offline to validate and print canonical keys. `tests/regressions/fixtures/wo47_boundaries.geojson` is synthetic. Partial collections are allowed here; production loads must enforce the district counts above.
+**WO-3 (#24) is a prerequisite for the real-database join proof.** That work must deliver the real fact table and reconcile boundary keys with the qualified fact geography keys before proving exact House and Senate key-set equality, detecting missing and extra keys in either direction. This step provides no real-database join proof.
