@@ -15,6 +15,30 @@ Later work orders cite this file instead of repeating it. Product rules are in
 - Each estimate `…E` (or percent `…PE`) has a margin of error `…M` (or `…PM`)
   at the **90% confidence level**. Always fetch both.
 
+## Data licences
+
+The ETL ([`etl/census.py`](../etl/census.py)), configured by
+[`config.toml`](../config.toml), fetches ACS 2020–2024 5-year Detailed,
+Data Profile and Subject tables from the Census API. It returns fetched rows
+in memory; [`data/`](../data/) holds `README.md` and `schema.sql`, and
+no built database is committed. The table records the terms for these ACS
+products.
+No State dataset, district boundary file or program dataset is currently used;
+the fetcher requests Census geographies, and the district-plan description
+below is not a separately loaded dataset.
+The repository's MIT software licence does not license third-party data.
+
+| Dataset | Publisher | Licence or terms | Attribution line |
+|---|---|---|---|
+| ACS 2020–2024 5-year Detailed Tables (B and C tables listed below) | U.S. Census Bureau | U.S. public domain, federal government work ([17 U.S.C. § 105](https://www.govinfo.gov/content/pkg/USCODE-2022-title17/html/USCODE-2022-title17-chap1.htm#sec105)); [Census citation guidance](https://www.census.gov/about/policies/citation.html) | Source: U.S. Census Bureau, 2020–2024 ACS 5-Year Estimates, Detailed Tables, [table ID and title], [geography], https://api.census.gov/data/2024/acs/acs5, accessed [date]. |
+| ACS 2020–2024 5-year Data Profiles (DP04, DP05) | U.S. Census Bureau | U.S. public domain, federal government work ([17 U.S.C. § 105](https://www.govinfo.gov/content/pkg/USCODE-2022-title17/html/USCODE-2022-title17-chap1.htm#sec105)); [Census citation guidance](https://www.census.gov/about/policies/citation.html) | Source: U.S. Census Bureau, 2020–2024 ACS 5-Year Estimates, Data Profiles, [table ID and title], [geography], https://api.census.gov/data/2024/acs/acs5/profile, accessed [date]. |
+| ACS 2020–2024 5-year Subject Tables (S tables listed below) | U.S. Census Bureau | U.S. public domain, federal government work ([17 U.S.C. § 105](https://www.govinfo.gov/content/pkg/USCODE-2022-title17/html/USCODE-2022-title17-chap1.htm#sec105)); [Census citation guidance](https://www.census.gov/about/policies/citation.html) | Source: U.S. Census Bureau, 2020–2024 ACS 5-Year Estimates, Subject Tables, [table ID and title], [geography], https://api.census.gov/data/2024/acs/acs5/subject, accessed [date]. |
+
+Attribution lines are templates: replace bracketed fields with the actual table,
+geography and access date. For derived figures, identify Census as the source of
+the original data and state the app's derivation method separately; analysis
+conclusions are the performing party's responsibility, per the Census guidance.
+
 ## Geographies (81 in all)
 
 Districts are the **2022 plan** (the Hawaiʻi Reapportionment Commission's 2022

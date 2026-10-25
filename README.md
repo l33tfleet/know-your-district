@@ -37,6 +37,9 @@ make smoke BASE_URL=http://127.0.0.1:8000   # against a running app: GET /health
 
 ## For contributors and agents
 
+Read the [security and privacy note](docs/security-privacy.md) and the
+[data licences and attribution table](docs/data.md#data-licences).
+
 Read [`AGENTS.md`](AGENTS.md) first: product rules, stack pins, layout and
 where tests go. Data sources, indicators and reliability rules are in
 [`docs/data.md`](docs/data.md). The reviewer rubric is
