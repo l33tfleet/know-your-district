@@ -1,4 +1,4 @@
-.PHONY: help sync check lint format typecheck imports test evals run smoke
+.PHONY: help sync check lint format typecheck imports test evals run smoke golden
 
 BASE_URL ?= http://127.0.0.1:8000
 HOST ?= 127.0.0.1
@@ -11,6 +11,7 @@ help:
 	@echo "make run                      serve the app on http://$(HOST):$(PORT)"
 	@echo "make smoke BASE_URL=<url>     check a running app (GET /healthz -> 200)"
 	@echo "make format                   apply ruff fixes and formatting"
+	@echo "make golden                   fetch and atomically generate 300 independent ACS cases"
 
 sync:
 	$(UV) sync --locked
@@ -44,6 +45,9 @@ run:
 
 smoke:
 	$(UV) run python scripts/smoke.py $(BASE_URL)
+
+golden:
+	$(UV) run python -m scripts.generate_golden
 
 .PHONY: boundaries
 boundaries:

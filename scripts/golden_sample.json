@@ -1,0 +1,14 @@
+[
+  {"geography": "state legislative district (lower chamber)", "code": "001"},
+  {"geography": "state legislative district (lower chamber)", "code": "013"},
+  {"geography": "state legislative district (lower chamber)", "code": "039"},
+  {"geography": "state legislative district (lower chamber)", "code": "047"},
+  {"geography": "state legislative district (upper chamber)", "code": "001"},
+  {"geography": "state legislative district (upper chamber)", "code": "007"},
+  {"geography": "state legislative district (upper chamber)", "code": "025"},
+  {"geography": "county", "code": "001"},
+  {"geography": "county", "code": "003"},
+  {"geography": "county", "code": "007"},
+  {"geography": "county", "code": "009"},
+  {"geography": "state", "code": "15"}
+]
