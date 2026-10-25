@@ -1,0 +1,7 @@
+[acs]
+year = 2024
+vintage = "2020–2024"
+base_url = "https://api.census.gov/data/{year}/acs/acs5"
+state = "15"
+district_plan = 2022
+county_codes = ["001", "003", "007", "009"]
