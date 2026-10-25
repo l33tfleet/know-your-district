@@ -21,6 +21,9 @@ jobs:
       - name: Smoke test a running app
         run: |
           uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          server_pid=$!
+          # Stop the server however the step ends, so it stops holding uv's cache lock.
+          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
           for _ in $(seq 1 50); do
             curl -fsS http://127.0.0.1:8000/healthz >/dev/null 2>&1 && break
             sleep 0.2
