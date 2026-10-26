@@ -23,3 +23,4 @@ from `AGENTS.md`; data facts from `docs/data.md`.
 - [ ] **G5 Stack pins:** htmx 2.0.x syntax only (no htmx 4 attributes or APIs); Leaflet 1.9.x with the SVG renderer; no CDN scripts; SQLite opened read-only; no transaction held open across a model call; figures are Pydantic models.
 - [ ] **G6 Data traps:** poverty multiples use the nearest named C17002 bracket, never interpolated, and are called a lower bound; benefit counts note the survey undercount; DP/S variable labels are asserted for the pinned vintage.
 - [ ] **G7 Done:** `make check` passes.
+- Every validation or failure branch the change adds or touches has its own negative test, and each test triggers exactly one check (input that only that check rejects, asserting its specific error), so no branch goes untested and no test passes because a different check fired.
