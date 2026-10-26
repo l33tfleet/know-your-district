@@ -24,3 +24,4 @@ from `AGENTS.md`; data facts from `docs/data.md`.
 - [ ] **G6 Data traps:** poverty multiples use the nearest named C17002 bracket, never interpolated, and are called a lower bound; benefit counts note the survey undercount; DP/S variable labels are asserted for the pinned vintage.
 - [ ] **G7 Done:** `make check` passes.
 - Every validation or failure branch the change adds or touches has its own negative test, and each test triggers exactly one check (input that only that check rejects, asserting its specific error), so no branch goes untested and no test passes because a different check fired.
+- Any prose the change adds or leaves in place that describes the current state of the repo or the run (docs preambles, README claims, commit messages about test or check results) matches the merged code and the supplied `make check` output; stale or contradicted statements fail.
