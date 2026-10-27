@@ -1,8 +1,10 @@
 """Published fact row with citation and explicit uncertainty; no derived figures."""
 
-from typing import Annotated, Literal, Self
+from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+
+from app.analysis.reliability import MODERATE_MAX, RELIABLE_MAX, Reliability
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 Nonnegative = Annotated[float, Field(ge=0, allow_inf_nan=False)]
@@ -17,7 +19,7 @@ class Fact(BaseModel):
     value: Nonnegative | None
     moe: Nonnegative | None
     cv: Nonnegative | None
-    reliability: Literal["reliable", "moderate", "caution", "unavailable"]
+    reliability: Reliability
     source: Text
     table_id: Text
     method: Text
@@ -36,7 +38,11 @@ class Fact(BaseModel):
             if self.cv is None:
                 raise ValueError("Positive sampled estimates require a CV")
             expected = (
-                "reliable" if self.cv <= 0.15 else "moderate" if self.cv <= 0.30 else "caution"
+                "reliable"
+                if self.cv <= float(RELIABLE_MAX)
+                else "moderate"
+                if self.cv <= float(MODERATE_MAX)
+                else "caution"
             )
         if (self.value is None or self.value == 0 or self.moe is None) and self.cv is not None:
             raise ValueError("Unavailable, zero or missing-MOE estimates have no CV")

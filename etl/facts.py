@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 
 from pydantic import ValidationError
 
+from app.analysis.reliability import classify
 from app.models import Fact
 from etl.boundaries import all_districts
 from etl.census import CensusBatch, CensusError
@@ -85,21 +86,7 @@ def facts_from_batch(indicator: Indicator, batch: CensusBatch, geography: str) -
                 label = batch.labels[variable]
             except KeyError:
                 raise CensusError("Missing Census cell, annotation or label") from None
-            cv = None
-            if value is None:
-                reliability = "unavailable"
-            elif value == 0 or moe is None:
-                reliability = "caution"
-            else:
-                # Decimal arithmetic keeps exact published threshold boundaries exact.
-                cv = moe / Decimal("1.645") / value
-                reliability = (
-                    "reliable"
-                    if cv <= Decimal(".15")
-                    else "moderate"
-                    if cv <= Decimal(".30")
-                    else "caution"
-                )
+            cv, reliability = classify(value, moe)
             method = "published estimate and 90% margin of error"
             for name, raw, number, annotation in (
                 ("estimate", row[variable], value, estimate_annotation),
