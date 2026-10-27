@@ -17,6 +17,15 @@ FLAG_WORDS: dict[Reliability, str] = {
 }
 
 
+def flag_for_cv(cv: Decimal) -> Reliability:
+    """Classify a coefficient of variation using the shared Decimal thresholds."""
+    if cv <= RELIABLE_MAX:
+        return "reliable"
+    if cv <= MODERATE_MAX:
+        return "moderate"
+    return "caution"
+
+
 def classify(value: Decimal | None, moe: Decimal | None) -> tuple[Decimal | None, Reliability]:
     """Classify normalized, nonnegative estimates; missing estimates take precedence.
 
@@ -28,8 +37,4 @@ def classify(value: Decimal | None, moe: Decimal | None) -> tuple[Decimal | None
     if value == 0 or moe is None:
         return None, "caution"
     cv = moe / Z90 / value
-    if cv <= RELIABLE_MAX:
-        return cv, "reliable"
-    if cv <= MODERATE_MAX:
-        return cv, "moderate"
-    return cv, "caution"
+    return cv, flag_for_cv(cv)
