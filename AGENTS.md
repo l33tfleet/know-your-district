@@ -4,7 +4,7 @@ Read this file in full before changing anything. It holds the product rules, the
 stack pins, the layout and the test rules for every work order. `CLAUDE.md`
 points here; the reviewer rubric in `.factory/review.md` checks the same rules
 line by line, and `docs/data.md` holds the data facts (indicators, vintage,
-reliability thresholds, known traps). If these files ever disagree, stop and
+reliability thresholds, known traps). `docs/engineering.md` holds the engineering principles (facades for external APIs, flat modules, validating at the edges, single-goal changes); follow them as strictly as the product rules. If these files ever disagree, stop and
 say so in the PR instead of guessing.
 
 ## What this is

@@ -10,7 +10,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from etl.boundaries import DISTRICT_COUNTS, BoundaryCollection, all_districts
+from etl.boundaries import BoundaryCollection, expected_fact_keys
 
 
 def compare_fact_keys(facts_db: Path, boundary_keys: set[str]) -> None:
@@ -49,9 +49,7 @@ def export_boundaries(
     Credit is supplied by the operator from the source's attribution terms.
     """
     collection = BoundaryCollection.model_validate(collection.model_dump(mode="json"))
-    expected = {
-        district.fact_key for chamber in DISTRICT_COUNTS for district in all_districts(chamber)
-    }
+    expected = expected_fact_keys()
     actual = {feature.properties.fact_key for feature in collection.features}
     if actual != expected:
         raise ValueError(

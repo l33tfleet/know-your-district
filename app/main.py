@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 ROOT = Path(__file__).resolve().parent.parent
 HTMX_VERSION = "2.0.11"
@@ -15,6 +16,16 @@ SITE_URL = "https://district.hawaiitechmentors.org"
 app = FastAPI(title="Know Your District", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 templates = Jinja2Templates(directory=ROOT / "templates")
+
+
+def page_context() -> dict[str, str]:
+    return {"htmx_src": f"/static/vendor/htmx-{HTMX_VERSION}.min.js", "site_url": SITE_URL}
+
+
+@app.exception_handler(404)
+def not_found(request: Request, exc: StarletteHTTPException) -> HTMLResponse:
+    """Unknown paths, and any route raising HTTPException(404), get an HTML page, not JSON."""
+    return templates.TemplateResponse(request, "not_found.html", page_context(), status_code=404)
 
 
 class Health(BaseModel):
@@ -28,8 +39,4 @@ def healthz() -> Health:
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "home.html",
-        {"htmx_src": f"/static/vendor/htmx-{HTMX_VERSION}.min.js", "site_url": SITE_URL},
-    )
+    return templates.TemplateResponse(request, "home.html", page_context())
