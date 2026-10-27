@@ -1,6 +1,7 @@
 """Offline production coverage, qualified joins and export provenance (WO-77)."""
 
 import json
+import re
 import sqlite3
 import tomllib
 from pathlib import Path
@@ -56,8 +57,16 @@ def test_export_qualified_ids_and_sidecars(tmp_path: Path) -> None:
     assert db.read_bytes() == before
 
 
-@pytest.mark.parametrize("problem", ["missing", "extra", "duplicate", "wrong-chamber"])
-def test_reject_boundary_identity_errors(tmp_path: Path, problem: str) -> None:
+@pytest.mark.parametrize(
+    ("problem", "message"),
+    [
+        ("missing", "boundary key mismatch: missing=['senate:15:025:2022'], extra=[]"),
+        ("extra", "district must be in 1..51 for its chamber"),
+        ("duplicate", "duplicate district: house-01"),
+        ("wrong-chamber", "district must be in 1..25 for its chamber"),
+    ],
+)
+def test_reject_boundary_identity_errors(tmp_path: Path, problem: str, message: str) -> None:
     data = collection()
     if problem == "missing":
         data["features"].pop()
@@ -68,10 +77,15 @@ def test_reject_boundary_identity_errors(tmp_path: Path, problem: str) -> None:
     elif problem == "duplicate":
         data["features"].append(data["features"][0])
     else:
-        data["features"][0]["properties"]["chamber"] = "senate"
+        data["features"][25]["properties"]["chamber"] = "senate"
     output = tmp_path / "districts.geojson"
-    with pytest.raises(ValueError):
-        export_boundaries(BoundaryCollection.model_validate(data), output, credit="Synthetic")
+    if problem == "missing":
+        source = BoundaryCollection.model_validate(data)
+        with pytest.raises(ValueError, match=re.escape(message)):
+            export_boundaries(source, output, credit="Synthetic")
+    else:
+        with pytest.raises(ValueError, match=re.escape(message)):
+            BoundaryCollection.model_validate(data)
     assert not output.exists()
 
 
@@ -93,10 +107,14 @@ def test_reject_fact_key_mismatch(tmp_path: Path, problem: str) -> None:
         )
     db, output = tmp_path / "facts.sqlite", tmp_path / "districts.geojson"
     database(db, fact_keys)
-    with pytest.raises(ValueError, match="key"):
-        export_boundaries(
-            BoundaryCollection.model_validate(collection()), output, facts_db=db, credit="Synthetic"
-        )
+    source = BoundaryCollection.model_validate(collection())
+    expected = set(keys())
+    message = (
+        f"fact key mismatch: missing={sorted(expected - set(fact_keys))}, "
+        f"extra={sorted(set(fact_keys) - expected)}"
+    )
+    with pytest.raises(ValueError, match=re.escape(message)):
+        export_boundaries(source, output, facts_db=db, credit="Synthetic")
     assert not output.exists()
 
 
