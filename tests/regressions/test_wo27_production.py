@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -136,3 +137,51 @@ def test_fact_comparison_connection_is_read_only(
     assert len(connections) == 1
     with pytest.raises(sqlite3.ProgrammingError, match="closed"):
         connections[0].execute("SELECT 1")
+
+
+def test_gis_dependencies_declared() -> None:
+    project = tomllib.loads(Path("pyproject.toml").read_text())
+    dependencies = project["project"]["dependencies"]
+    assert any(item.startswith("pyshp>=") for item in dependencies)
+    assert any(item.startswith("pyproj>=") for item in dependencies)
+
+
+def test_blank_credit_rejected_before_writing(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="source credit must not be blank"):
+        export_boundaries(
+            BoundaryCollection.model_validate(collection()),
+            tmp_path / "out.geojson",
+            credit=" \n",
+        )
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("suffix", [".provenance.json", ".credit.txt"])
+def test_colliding_sidecar_rejected(tmp_path: Path, suffix: str) -> None:
+    output = tmp_path / "out.geojson"
+    sidecar = output.with_suffix(suffix)
+    sidecar.symlink_to(output)
+    with pytest.raises(ValueError, match="export paths must be distinct"):
+        export_boundaries(
+            BoundaryCollection.model_validate(collection()),
+            output,
+            credit="Synthetic",
+        )
+    assert not output.exists()
+    assert list(tmp_path.iterdir()) == [sidecar]
+
+
+@pytest.mark.parametrize("suffix", [".geojson", ".provenance.json", ".credit.txt"])
+def test_database_destination_rejected(tmp_path: Path, suffix: str) -> None:
+    db = tmp_path / ("out" + suffix)
+    database(db, keys())
+    before = db.read_bytes()
+    with pytest.raises(ValueError, match="export paths must be distinct"):
+        export_boundaries(
+            BoundaryCollection.model_validate(collection()),
+            tmp_path / "out.geojson",
+            facts_db=db,
+            credit="Synthetic",
+        )
+    assert db.read_bytes() == before
+    assert list(tmp_path.iterdir()) == [db]
