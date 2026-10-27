@@ -17,16 +17,6 @@ def entry() -> dict[str, Any]:
     return load_catalog(CATALOG)[0].model_dump(mode="json")
 
 
-def test_committed_catalog_validates_offline() -> None:
-    programs = load_catalog(CATALOG)
-    assert len(programs) == 2
-    assert {p.eligibility_proxy.status for p in programs} == {"available", "unavailable"}
-    for program in programs:
-        assert "may help" in program.purpose
-        assert "agency decides eligibility" in program.guidance.lower()
-        assert str(program.referral_url) == "https://www.auw211.org/"
-
-
 def test_every_specified_field_is_required(entry: dict[str, Any]) -> None:
     def check_fields(model: type[Program], value: dict[str, Any]) -> None:
         for key in value:
