@@ -51,6 +51,7 @@ class MediaType(str, Enum):
     TV = "tv"
     PODCAST = "podcast"
 
+
 # inside: just use the value
 def create_entry(user_id: str, title: str, media_type: MediaType):
     store.insert({"user_id": user_id, "title": title, "type": media_type})
