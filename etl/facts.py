@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from pydantic import ValidationError
 
 from app.models import Fact
+from etl.boundaries import all_districts
 from etl.census import CensusBatch, CensusError
 from etl.indicators import Indicator
 
@@ -32,6 +33,7 @@ def _number(raw: str | None) -> Decimal | None:
 
 
 def _geographies(batch: CensusBatch, request: str) -> list[tuple[str, dict[str, str | None]]]:
+    district_keys: dict[str, str] = {}
     if request == "state:15":
         column, prefix, expected = "state", "state", {"15"}
     elif request == "county:*":
@@ -39,7 +41,10 @@ def _geographies(batch: CensusBatch, request: str) -> list[tuple[str, dict[str, 
     elif request in (HOUSE + ":*", SENATE + ":*"):
         column = request[:-2]
         prefix = "house" if column == HOUSE else "senate"
-        expected = {f"{i:03}" for i in range(1, 52 if column == HOUSE else 26)}
+        district_keys = {
+            district.census_code: district.fact_key for district in all_districts(prefix)
+        }
+        expected = set(district_keys)
     else:
         raise CensusError("Unsupported Census geography request")
     seen: set[str] = set()
@@ -53,9 +58,10 @@ def _geographies(batch: CensusBatch, request: str) -> list[tuple[str, dict[str, 
             continue
         if code not in expected:
             raise CensusError("Unexpected Census geography identity")
-        key = "state:15" if prefix == "state" else f"{prefix}:15:{code}"
-        if prefix in ("house", "senate"):
-            key += ":2022"
+        if district_keys:
+            key = district_keys[code]
+        else:
+            key = "state:15" if prefix == "state" else f"{prefix}:15:{code}"
         rows.append((key, row))
     if seen - ({"005"} if column == "county" else set()) != expected:
         raise CensusError("Incomplete Census geography set")

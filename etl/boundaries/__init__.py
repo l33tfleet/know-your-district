@@ -7,12 +7,15 @@ from typing import Annotated, Literal, Self
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, HttpUrl, ValidationInfo
 from pydantic.functional_validators import field_validator, model_validator
 
+Chamber = Literal["house", "senate"]
+DISTRICT_COUNTS: dict[Chamber, int] = {"house": 51, "senate": 25}
+
 
 class DistrictId(BaseModel):
     """Normalize a chamber and an ASCII district code without losing chamber identity."""
 
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
-    chamber: Literal["house", "senate"]
+    chamber: Chamber
     district: int | str
 
     @field_validator("district")
@@ -21,7 +24,9 @@ class DistrictId(BaseModel):
         if isinstance(value, str) and not re.fullmatch(r"[0-9]{1,3}", value):
             raise ValueError("district must be one to three ASCII digits")
         number = int(value)
-        limit = 51 if info.data.get("chamber") == "house" else 25
+        # An invalid chamber is reported by its own field validator.
+        chamber: Chamber = info.data.get("chamber", "senate")
+        limit = DISTRICT_COUNTS[chamber]
         if not 1 <= number <= limit:
             raise ValueError(f"district must be in 1..{limit} for its chamber")
         return number
@@ -33,6 +38,18 @@ class DistrictId(BaseModel):
     @property
     def census_code(self) -> str:
         return f"{int(self.district):03d}"
+
+    @property
+    def fact_key(self) -> str:
+        return f"{self.chamber}:15:{self.census_code}:2022"
+
+
+def all_districts(chamber: Chamber) -> list[DistrictId]:
+    """Return every district in the chamber in numeric order."""
+    return [
+        DistrictId(chamber=chamber, district=number)
+        for number in range(1, DISTRICT_COUNTS[chamber] + 1)
+    ]
 
 
 class Provenance(BaseModel):
