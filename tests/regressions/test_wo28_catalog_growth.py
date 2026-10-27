@@ -7,6 +7,7 @@ from shutil import copyfile
 
 import pytest
 import yaml
+from pydantic import ValidationError
 
 from etl.programs import load_catalog
 
@@ -69,8 +70,19 @@ def test_catalog_growth_preserves_offline_regressions(
     )
     assert result.returncode == 0, result.stdout + result.stderr
 
-    # A malformed last entry must fail too: validation cannot stop at SNAP and GA.
+
+@pytest.mark.parametrize("additional_entries", [1, 23])
+def test_catalog_growth_rejects_invalid_appended_entry(
+    tmp_path: Path, additional_entries: int
+) -> None:
+    entries = [program.model_dump(mode="json") for program in load_catalog(CATALOG)]
+    entries.extend(dict(entries[0]) for _ in range(additional_entries))
+    # Only the missing official URL is invalid, beyond the original two entries.
     del entries[-1]["official_url"]
+    catalog = tmp_path / "programs.yaml"
     catalog.write_text(yaml.safe_dump(entries), encoding="utf-8")
-    with pytest.raises(ValueError, match="official_url"):
+    with pytest.raises(ValidationError) as exc:
         load_catalog(catalog)
+    assert [(error["loc"], error["type"]) for error in exc.value.errors()] == [
+        ((len(entries) - 1, "official_url"), "missing")
+    ]
