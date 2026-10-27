@@ -38,7 +38,6 @@ from pyproj.exceptions import ProjError
 from etl.boundaries import DistrictId, Provenance
 from etl.boundaries import MultiPolygon as InputMultiPolygon
 from etl.boundaries import Polygon as InputPolygon
-from etl.boundaries.production import fact_key
 
 # pyshp has no py.typed marker; isolate its dynamic shapefile API here.
 shapefile: Any = import_module("shapefile")
@@ -307,7 +306,7 @@ def load_tiger_archive(path: Path, chamber: Chamber) -> dict[str, Geometry]:
                 )
                 if attributes.get("GEOID") != "15" + district.census_code:
                     raise ValueError("TIGER GEOID mismatch")
-                key = fact_key(district)
+                key = district.fact_key
                 if key in result:
                     raise ValueError(f"duplicate district: {key}")
                 result[key] = _geometry(_shapefile_geometry(record.shape), transformer)
@@ -356,7 +355,7 @@ def compare_export(
     projected: dict[str, Geometry] = {}
     for key, feature in features.items():
         district = DistrictId.model_validate(feature["properties"])
-        if feature.get("type") != "Feature" or fact_key(district) != key:
+        if feature.get("type") != "Feature" or district.fact_key != key:
             raise ValueError(f"export identity mismatch: {key}")
         # Validate WGS84 structural/range constraints before projecting.
         try:
