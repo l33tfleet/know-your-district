@@ -1,0 +1,16 @@
+{
+  "house": {
+    "type": "FeatureCollection",
+    "features": [
+      {"type": "Feature", "id": 900, "properties": {"house_id": "001", "house_name": "Synthetic"}, "geometry": {"type": "Polygon", "coordinates": [[[-158,21],[-157,21],[-157,22],[-158,21]]]}}
+    ]
+  },
+  "senate": {
+    "type": "FeatureCollection",
+    "features": [
+      {"type": "Feature", "properties": {"senate_id": 1}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-158,21],[-157,21],[-157,22],[-158,21]]]]}}
+    ]
+  },
+  "service_error": {"error": {"code": 400, "message": "Synthetic service failure"}},
+  "truncated": {"type": "FeatureCollection", "exceededTransferLimit": true, "features": []}
+}
