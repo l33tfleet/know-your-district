@@ -52,6 +52,15 @@ def all_districts(chamber: Chamber) -> list[DistrictId]:
     ]
 
 
+def expected_fact_keys(*chambers: Chamber) -> set[str]:
+    """Return district fact keys for the requested chambers, or both by default."""
+    return {
+        district.fact_key
+        for chamber in (chambers or tuple(DISTRICT_COUNTS))
+        for district in all_districts(chamber)
+    }
+
+
 class Provenance(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     source_url: HttpUrl

@@ -35,7 +35,7 @@ from pydantic import BaseModel, Field, FiniteFloat, TypeAdapter, ValidationError
 from pyproj import CRS, Transformer
 from pyproj.exceptions import ProjError
 
-from etl.boundaries import DistrictId, Provenance
+from etl.boundaries import Chamber, DistrictId, Provenance, expected_fact_keys
 from etl.boundaries import MultiPolygon as InputMultiPolygon
 from etl.boundaries import Polygon as InputPolygon
 
@@ -43,7 +43,6 @@ from etl.boundaries import Polygon as InputPolygon
 shapefile: Any = import_module("shapefile")
 
 EQUAL_AREA_CRS = "EPSG:6933"
-Chamber = Literal["house", "senate"]
 Point = tuple[float, float]
 Segment = tuple[Point, Point]
 Ring = list[Point]
@@ -246,10 +245,6 @@ def agreement(left: object, right: object) -> float:
     return _agreement(_geometry(left), _geometry(right))
 
 
-def _expected(chamber: Chamber) -> set[str]:
-    return {f"{chamber}:15:{i:03}:2022" for i in range(1, (51 if chamber == "house" else 25) + 1)}
-
-
 def _shapefile_geometry(shape: Any) -> dict[str, object]:
     """Preserve shapefile ring roles; never promote an orphan hole to a shell."""
     if shape.shapeType != 5:
@@ -310,9 +305,10 @@ def load_tiger_archive(path: Path, chamber: Chamber) -> dict[str, Geometry]:
                 if key in result:
                     raise ValueError(f"duplicate district: {key}")
                 result[key] = _geometry(_shapefile_geometry(record.shape), transformer)
-    if set(result) != _expected(chamber):
+    expected = expected_fact_keys(chamber)
+    if set(result) != expected:
         raise ValueError(
-            f"district set mismatch: missing={sorted(_expected(chamber) - result.keys())}, extra={sorted(result.keys() - _expected(chamber))}"
+            f"district set mismatch: missing={sorted(expected - result.keys())}, extra={sorted(result.keys() - expected)}"
         )
     return result
 
@@ -346,7 +342,7 @@ def compare_export(
         if key in features:
             raise ValueError(f"duplicate export district: {key}")
         features[key] = feature
-    expected = _expected("house") | _expected("senate")
+    expected = expected_fact_keys()
     if features.keys() != expected:
         raise ValueError(
             f"export district set mismatch: missing={sorted(expected - features.keys())}, extra={sorted(features.keys() - expected)}"
