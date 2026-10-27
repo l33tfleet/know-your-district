@@ -25,3 +25,19 @@ from `AGENTS.md`; data facts from `docs/data.md`.
 - [ ] **G7 Done:** `make check` passes.
 - Every validation or failure branch the change adds or touches has its own negative test, and each test triggers exactly one check (input that only that check rejects, asserting its specific error), so no branch goes untested and no test passes because a different check fired.
 - Any prose the change adds or leaves in place that describes the current state of the repo or the run (docs preambles, README claims, commit messages about test or check results) matches the merged code and the supplied `make check` output; stale or contradicted statements fail.
+
+## Engineering (docs/engineering.md)
+
+- [ ] **E4 Facade externals:** wrap upstream APIs and platform bindings behind a facade that hides their shapes, measures call latency and contains upstream surprises.
+- [ ] **E6 Flat modules:** use few files per domain, no inheritance or shared base classes, small interfaces hiding real complexity, sibling comments on copies and shared-pattern extraction after three domains.
+- [ ] **E7 Validate edges, trust core:** validate enums and untrusted strings at boundaries, reject unknown options loudly with valid choices and avoid re-validation inside the core.
+- [ ] **E8 Privacy in schema:** put visibility, consent and hide-flags in the data model so new views cannot bypass privacy.
+- [ ] **E12 Secrets never in source:** keep credentials in environment variables or a secret store with rotation independent of code changes or redeployment, and document CLI environment variables and required skill auth without secrets.
+- [ ] **E13 Characterize before you change:** write characterization tests capturing actual behavior before modifying external dependencies, upstream code or an unfamiliar codebase.
+- [ ] **E16 Input hardening:** treat agent and user inputs as untrusted, canonicalize and sandbox paths, reject control characters, reject `?` and `#` in identifiers and reject `%` in resource names at CLI/API boundaries.
+- [ ] **E17 Safety rails:** provide validated previews for mutating commands, explicit destructive intent, actions modeled as data with one executor, plan review before multi-step or production changes, shared-state soft deletion and rollback documentation, and structural defenses against untrusted content.
+- [ ] **E18 Single-goal edits:** make each commit or patch exactly one independently verifiable and reversible behavioral change.
+- [ ] **E19 Edit-test cadence:** run the full test suite after each behavioral change to existing code and document expected test counts at each stage.
+- [ ] **E21 Staged deployment:** deploy shared multi-tenant changes to the operator's own tenant first, verify and gate rollout to other tenants.
+- [ ] **E23 API boundary discipline:** implement within existing boundaries without bypasses or escape hatches, and a change to a public interface states `Interface change:` in the PR's first line with what changes and who uses it instead of waiting for approval.
+- [ ] **E25 Move files by reference:** pass file paths, upload handles or URLs instead of model-relayed bytes, return size and hash for verification, and write large outputs to a file with its path and summary.
