@@ -10,12 +10,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from etl.boundaries import BoundaryCollection, DistrictId
-
-
-def fact_key(district: DistrictId) -> str:
-    """Translate boundary identity to the WO59 fact geography representation."""
-    return f"{district.chamber}:15:{district.census_code}:2022"
+from etl.boundaries import DISTRICT_COUNTS, BoundaryCollection, all_districts
 
 
 def compare_fact_keys(facts_db: Path, boundary_keys: set[str]) -> None:
@@ -55,11 +50,9 @@ def export_boundaries(
     """
     collection = BoundaryCollection.model_validate(collection.model_dump(mode="json"))
     expected = {
-        f"{chamber}:15:{number:03}:2022"
-        for chamber, limit in (("house", 51), ("senate", 25))
-        for number in range(1, limit + 1)
+        district.fact_key for chamber in DISTRICT_COUNTS for district in all_districts(chamber)
     }
-    actual = {fact_key(feature.properties) for feature in collection.features}
+    actual = {feature.properties.fact_key for feature in collection.features}
     if actual != expected:
         raise ValueError(
             f"boundary key mismatch: missing={sorted(expected - actual)}, "
@@ -75,8 +68,8 @@ def export_boundaries(
     if facts_db is not None:
         compare_fact_keys(facts_db, actual)
     features = [
-        {**feature.model_dump(mode="json"), "id": fact_key(feature.properties)}
-        for feature in sorted(collection.features, key=lambda feature: fact_key(feature.properties))
+        {**feature.model_dump(mode="json"), "id": feature.properties.fact_key}
+        for feature in sorted(collection.features, key=lambda feature: feature.properties.fact_key)
     ]
     output.write_text(
         json.dumps({"type": "FeatureCollection", "features": features}, ensure_ascii=False) + "\n",
