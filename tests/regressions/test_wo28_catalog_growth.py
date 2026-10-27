@@ -25,11 +25,15 @@ def test_committed_catalog_validates_offline() -> None:
         assert str(program.referral_url) == "https://www.auw211.org/"
 
 
-def test_catalog_growth_preserves_offline_regressions(tmp_path: Path) -> None:
+@pytest.mark.parametrize("additional_entries", [1, 23])
+def test_catalog_growth_preserves_offline_regressions(
+    tmp_path: Path, additional_entries: int
+) -> None:
     programs = load_catalog(CATALOG)
     entries = [program.model_dump(mode="json") for program in programs]
     entries.extend(
-        dict(entries[0], name=f"Synthetic catalog growth fixture {index}") for index in range(23)
+        dict(entries[0], name=f"Synthetic catalog growth fixture {index}")
+        for index in range(additional_entries)
     )
     data_dir = tmp_path / "data"
     data_dir.mkdir()
