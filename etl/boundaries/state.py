@@ -15,14 +15,13 @@ from urllib.request import urlopen
 
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
-from etl.boundaries import BoundaryCollection
+from etl.boundaries import BoundaryCollection, Chamber, all_districts
 
-Chamber = Literal["house", "senate"]
 BASE_URL = "https://geodata.hawaii.gov/arcgis/rest/services/AdminBnd/MapServer"
 # Verbatim copyrightText from each layer's ?f=pjson metadata; the wording differs.
-LAYERS: dict[Chamber, tuple[int, int, str]] = {
-    "house": (33, 51, "State of Hawaii Office of Elections; Hawaii Statewide GIS Program"),
-    "senate": (34, 25, "Hawaii State Office of Elections; Hawaii Statewide GIS Program"),
+LAYERS: dict[Chamber, tuple[int, str]] = {
+    "house": (33, "State of Hawaii Office of Elections; Hawaii Statewide GIS Program"),
+    "senate": (34, "Hawaii State Office of Elections; Hawaii Statewide GIS Program"),
 }
 METHOD = (
     "ArcGIS server generalization: maxAllowableOffset=0.0005 degrees; outSR=4326; "
@@ -67,7 +66,7 @@ def fetch_state_boundary(
     same normalization, coverage and serialized-size validation as production.
     HTTP/JSON decoding failures propagate from the transport to the operator.
     """
-    layer, count, credit = LAYERS[chamber]
+    layer, credit = LAYERS[chamber]
     field = f"{chamber}_id"
     url = f"{BASE_URL}/{layer}/query?" + urlencode(
         {
@@ -118,7 +117,7 @@ def fetch_state_boundary(
             "features": features,
         }
     )
-    expected = {f"{chamber}-{number:02}" for number in range(1, count + 1)}
+    expected = {district.key for district in all_districts(chamber)}
     actual = {feature.properties.key for feature in collection.features}
     if actual != expected:
         raise ValueError(
