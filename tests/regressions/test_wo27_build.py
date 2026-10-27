@@ -17,11 +17,13 @@ from etl.boundaries.state import BASE_URL, LAYERS
 
 shapefile: Any = import_module("shapefile")
 ROOT = Path(__file__).resolve().parents[2]
+COUNTS = {"house": 51, "senate": 25}
 
 
 def sources(path: Path, *, mismatch: bool = False) -> None:
     path.mkdir()
-    for chamber, (layer, count, _) in LAYERS.items():
+    for chamber, (layer, _) in LAYERS.items():
+        count = COUNTS[chamber]
         ring = [[-158, 20], [-158, 21], [-157, 21], [-157, 20], [-158, 20]]
         features: list[dict[str, Any]] = [
             {
@@ -57,7 +59,7 @@ def sources(path: Path, *, mismatch: bool = False) -> None:
 def facts(path: Path, *, missing: bool = False, extra: bool = False) -> None:
     keys = [
         f"{chamber}:15:{number:03}:2022"
-        for chamber, (_, count, _) in LAYERS.items()
+        for chamber, count in COUNTS.items()
         for number in range(1, count + 1)
     ]
     if missing:
@@ -129,7 +131,8 @@ def test_offline_build_rebuilds_both_shapes_and_publishes_evidence(
     for _ in range(2):
         result = build(source, output, database)
         assert result.returncode == 0, result.stderr
-        for chamber, (layer, count, credit) in LAYERS.items():
+        for chamber, (layer, credit) in LAYERS.items():
+            count = COUNTS[chamber]
             path = output / f"{chamber}.geojson"
             document = json.loads(path.read_text())
             assert len(document["features"]) == count
@@ -272,7 +275,8 @@ def test_published_state_shapes_and_every_unaccepted_overlay_have_evidence() -> 
     output = ROOT / "data/geo"
     overlay = (output / "overlay.md").read_text()
     mismatch = (output / "mismatch.md").read_text()
-    for chamber, (layer, count, credit) in LAYERS.items():
+    for chamber, (layer, credit) in LAYERS.items():
+        count = COUNTS[chamber]
         path = output / f"{chamber}.geojson"
         document = json.loads(path.read_text())
         assert {feature["id"] for feature in document["features"]} == {

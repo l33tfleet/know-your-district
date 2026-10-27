@@ -25,7 +25,7 @@ from etl.boundaries.overlay import (
     load_tiger_archive,
     shapefile,
 )
-from etl.boundaries.production import compare_fact_keys, export_boundaries, fact_key
+from etl.boundaries.production import compare_fact_keys, export_boundaries
 from etl.boundaries.state import LAYERS, Chamber, StateBoundary, fetch_state_boundary
 
 
@@ -104,7 +104,7 @@ def build_boundaries(output_dir: Path, facts_db: Path, source_dir: Path | None =
             code = "sldl" if chamber == "house" else "sldu"
             source = f"https://www2.census.gov/geo/tiger/TIGER2022/{code.upper()}/{archive.name}"
             for feature in boundary.collection.features:
-                key = fact_key(feature.properties)
+                key = feature.properties.fact_key
                 polygons = (
                     [feature.geometry.coordinates]
                     if isinstance(feature.geometry, Polygon)
@@ -158,7 +158,7 @@ def build_boundaries(output_dir: Path, facts_db: Path, source_dir: Path | None =
         failure: str | None = None
         try:
             compare_fact_keys(
-                facts_db, {fact_key(feature.properties) for feature in collection.features}
+                facts_db, {feature.properties.fact_key for feature in collection.features}
             )
         except (OSError, sqlite3.Error, ValueError) as exc:
             failure = f"Join unavailable or failed; #24 must deliver the real fact database: {exc}"
