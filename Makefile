@@ -11,6 +11,7 @@ help:
 	@echo "make run                      serve the app on http://$(HOST):$(PORT)"
 	@echo "make smoke BASE_URL=<url>     check a running app (GET /healthz -> 200)"
 	@echo "make format                   apply ruff fixes and formatting"
+	@echo "make boundaries               rebuild State shapes, TIGER evidence and real fact-key proof"
 	@echo "make golden                   fetch and atomically generate 300 independent ACS cases"
 
 sync:
@@ -50,5 +51,10 @@ golden:
 	$(UV) run python -m scripts.generate_golden
 
 .PHONY: boundaries
+# A supplied local collection retains the offline structural validator.
 boundaries:
+ifneq ($(strip $(BOUNDARIES_FILE)),)
 	$(UV) run python -m etl.boundaries "$(BOUNDARIES_FILE)"
+else
+	$(UV) run python -m etl.boundaries.build $(BOUNDARIES_ARGS)
+endif

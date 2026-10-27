@@ -23,9 +23,10 @@ Data Profile and Subject tables from the Census API. It returns fetched rows
 in memory; [`data/`](../data/) holds `README.md` and `schema.sql`, and
 no built database is committed. The table records the terms for these ACS
 products.
-No State dataset, district boundary file or program dataset is currently used;
-the fetcher requests Census geographies, and the district-plan description
-below is not a separately loaded dataset.
+The boundary build also fetches the State's 2022 House and Senate district
+layers and compares them with Census TIGER/Line 2022. The published State
+geometry and evidence are in [`data/geo/`](../data/geo/); these shapes are not
+ACS observations. Program reference data is in `data/programs.yaml`.
 The repository's MIT software licence does not license third-party data.
 
 | Dataset | Publisher | Licence or terms | Attribution line |
@@ -33,6 +34,13 @@ The repository's MIT software licence does not license third-party data.
 | ACS 2020–2024 5-year Detailed Tables (B and C tables listed below) | U.S. Census Bureau | U.S. public domain, federal government work ([17 U.S.C. § 105](https://www.govinfo.gov/content/pkg/USCODE-2022-title17/html/USCODE-2022-title17-chap1.htm#sec105)); [Census citation guidance](https://www.census.gov/about/policies/citation.html) | Source: U.S. Census Bureau, 2020–2024 ACS 5-Year Estimates, Detailed Tables, [table ID and title], [geography], https://api.census.gov/data/2024/acs/acs5, accessed [date]. |
 | ACS 2020–2024 5-year Data Profiles (DP04, DP05) | U.S. Census Bureau | U.S. public domain, federal government work ([17 U.S.C. § 105](https://www.govinfo.gov/content/pkg/USCODE-2022-title17/html/USCODE-2022-title17-chap1.htm#sec105)); [Census citation guidance](https://www.census.gov/about/policies/citation.html) | Source: U.S. Census Bureau, 2020–2024 ACS 5-Year Estimates, Data Profiles, [table ID and title], [geography], https://api.census.gov/data/2024/acs/acs5/profile, accessed [date]. |
 | ACS 2020–2024 5-year Subject Tables (S tables listed below) | U.S. Census Bureau | U.S. public domain, federal government work ([17 U.S.C. § 105](https://www.govinfo.gov/content/pkg/USCODE-2022-title17/html/USCODE-2022-title17-chap1.htm#sec105)); [Census citation guidance](https://www.census.gov/about/policies/citation.html) | Source: U.S. Census Bureau, 2020–2024 ACS 5-Year Estimates, Subject Tables, [table ID and title], [geography], https://api.census.gov/data/2024/acs/acs5/subject, accessed [date]. |
+
+Boundary source attribution is separate from the ACS figure citations:
+
+| Dataset | Publisher | Terms and credit |
+|---|---|---|
+| 2022 State House and Senate district layers, ArcGIS layers 33 and 34 | State of Hawaiʻi Office of Elections / Hawaiʻi Statewide GIS Program | [Source service](https://geodata.hawaii.gov/arcgis/rest/services/AdminBnd/MapServer). Preserve each layer's verbatim credit in `house.credit.txt` and `senate.credit.txt`; the repository software licence does not grant data rights. Exact query, retrieval date, plan and server generalization method are in each chamber's `.provenance.json`. |
+| TIGER/Line 2022 Hawaiʻi SLDL and SLDU | U.S. Census Bureau | Comparison inputs, not the displayed shapes; [TIGER/Line documentation and use limitations](https://www.census.gov/programs-surveys/geography/technical-documentation/complete-technical-documentation/tiger-geo-line.html). Exact archive URLs accompany each overlay result. |
 
 Attribution lines are templates: replace bracketed fields with the actual table,
 geography and access date. For derived figures, identify Census as the source of
@@ -185,4 +193,60 @@ endpoint URLs use the year placeholder. No database or observations ship here.
 The local GeoJSON FeatureCollection requires provenance: HTTP/S `source_url`, ISO calendar `retrieved_on` (YYYY-MM-DD), nonblank `vintage` and `method`, and `plan_year` 2022. Features have only `chamber` and `district` properties. Map source attributes before validation.
 Geometry must be a nonempty Polygon or MultiPolygon with finite longitude/latitude pairs, closed rings and three distinct vertices per ring. Duplicate normalized keys fail. Structural validation does not prove topology, coverage, projection correctness or official district correspondence.
 Run `make boundaries BOUNDARIES_FILE=<local.geojson>` offline to validate and print canonical keys. `tests/regressions/fixtures/wo47_boundaries.geojson` is synthetic. Partial collections are allowed here; production loads must enforce the district counts above.
-**WO-3 (#24) is a prerequisite for the real-database join proof.** That work must deliver the real fact table and reconcile boundary keys with the qualified fact geography keys before proving exact House and Senate key-set equality, detecting missing and extra keys in either direction. This step provides no real-database join proof.
+**WO-3 (#24) is a prerequisite for the real-database join proof.** That work must deliver the real fact table and reconcile boundary keys with the qualified fact geography keys before proving exact House and Senate key-set equality, detecting missing and extra keys in either direction. The current checkout has no real fact database, so the published `fact-keys.md`
+records the unavailable prerequisite rather than a successful join.
+
+
+## Production boundary build (WO-80, final step of #27)
+
+`make boundaries` fetches both State layers through `etl.boundaries.state`,
+validates and exports qualified identities through `etl.boundaries.production`,
+and uses `etl.boundaries.overlay` for the TIGER archive validation and equal-area
+comparison. It rebuilds `data/geo/house.geojson` and `senate.geojson`, each below
+one megabyte, with separate provenance and verbatim credit sidecars. The
+**displayed source is the State**, with its server generalization preserved;
+TIGER never replaces a State shape. The build uses no ACS values or model calls.
+The app currently serves its landing page; this work does not add a map UI.
+
+`overlay.md` reports every district, its source query, retrieval date, plan,
+method and TIGER archive URL. Agreement is intersection / union in EPSG:6933,
+using the prepared overlay engine without snapping, buffering or repairs.
+Every result below the 99% threshold appears in `mismatch.md` with its computed
+shortfall in percentage points. Invalid topology and computation failures are
+listed as **UNVERIFIED**, with their errors and no invented agreement or
+shortfall. They are exceptions requiring review, not successful overlays.
+Invalid TIGER archives fail the build before publishing new artifacts.
+
+The published run has five districts at or above the threshold, 55 below it,
+and 16 unverified; the per-district evidence, rather than this summary, is the
+record of the comparison. The State's generalized geometry has topology errors
+in some districts; the prepared overlay also encounters interval computation
+failures. No geometry has been silently repaired to improve agreement.
+
+A successful build additionally requires exact equality with distinct district
+geography keys read from the **actual** SQLite `facts` table in read-only mode.
+`fact-keys.md` records the database path, checksum on success, and missing/extra
+key evidence on failure. State/county keys are excluded; both chambers and both
+set differences are checked. This is a geography-key proof, not proof of fact
+row completeness or geographic correspondence. **#24 must supply the real
+database**: no database is generated from the boundary IDs as a substitute.
+The current default run publishes shapes and overlay evidence but exits
+nonzero with an unavailable-join report until that prerequisite is delivered.
+
+Operator commands:
+
+```sh
+make boundaries
+make boundaries BOUNDARIES_ARGS='--facts-db /path/to/real/facts.sqlite'
+make boundaries BOUNDARIES_FILE=/path/to/normalized.geojson
+# Offline replay of downloaded inputs (not synthetic production data):
+make boundaries BOUNDARIES_ARGS='--source-dir /path/to/downloads --facts-db /path/to/real/facts.sqlite'
+```
+
+`--source-dir` contains unchanged `state-house.json`, `state-senate.json`,
+`tl_2022_15_sldl.zip` and `tl_2022_15_sldu.zip`. `--output-dir` selects an
+alternative artifact directory. An explicitly supplied `BOUNDARIES_FILE`
+retains the earlier offline structural validation and canonical key output,
+including support for partial collections, with no network or database access.
+Offline regression builds use synthetic State responses, actual shapefile ZIP
+encoding and temporary SQL tables; their join passes are test evidence only.
