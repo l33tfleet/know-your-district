@@ -27,7 +27,27 @@ jobs:
           uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
           server_pid=$!
           # Stop the server however the step ends, so it stops holding uv's cache lock.
-          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true; rm -f "$KYD_FACTS_DB"' EXIT
+          cleanup() {
+            step_status=$?
+            trap - EXIT
+            if kill -0 "$server_pid" 2>/dev/null; then
+              kill "$server_pid"
+            fi
+            if wait "$server_pid"; then
+              server_status=0
+            else
+              server_status=$?
+            fi
+            rm -f "$KYD_FACTS_DB"
+            if [ "$step_status" -ne 0 ]; then
+              exit "$step_status"
+            fi
+            # SIGTERM is expected when cleanup stops the background server.
+            if [ "$server_status" -ne 0 ] && [ "$server_status" -ne 143 ]; then
+              exit "$server_status"
+            fi
+          }
+          trap cleanup EXIT
           for _ in $(seq 1 50); do
             curl -fsS http://127.0.0.1:8000/healthz >/dev/null 2>&1 && break
             sleep 0.2
