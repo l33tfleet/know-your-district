@@ -5,14 +5,17 @@
   {% if r.found %}
   <data class="value" value="{{ raw(r.value) }}">{{ r.value_text }}</data>
   <span class="moe"><data value="{{ raw(r.moe) }}">{{ r.moe_text }}</data></span>
+  <span class="reliability" data-reliability="{{ r.reliability }}">{{ r.word }}</span>
   {% else %}
-  <span class="missing">{{ r.value_text }}</span>
+  <span class="missing {{ 'county-unavailable' if county else 'reliability' }}" data-reliability="{{ r.reliability }}">{{ r.word }}</span>
   {% endif %}
-  <span class="{{ 'county-unavailable' if county and not r.found else 'reliability' }}" data-reliability="{{ r.reliability }}">{{ r.word }}</span>
 </p>
 {% endmacro %}
 <section class="figures">
   <h2>{{ copy.heading }}</h2>
+  {% if section.not_loaded %}
+  <p class="figures-not-loaded">{{ section.not_loaded }}</p>
+  {% endif %}
   {% if section.multi_county %}
   <p>{{ copy.multi_county }}</p>
   <ul>

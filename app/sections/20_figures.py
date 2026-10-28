@@ -28,7 +28,6 @@ def reading(
             "found": False,
             "word": copy["reliability"]["unavailable"],
             "reliability": "unavailable",
-            "value_text": copy["no_row"],
         }
     return {
         "geography": geography,
@@ -88,4 +87,5 @@ def context(state: PageState) -> dict[str, object]:
             for s in shares
         ],
         "mapping": shares[0],
+        "not_loaded": None if facts else copy["not_loaded"].format(vintage=vintage),
     }
