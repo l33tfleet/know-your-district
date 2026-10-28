@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Page not found · Know Your District{% endblock %}
+{% block title %}{{ copy.not_found.title }} · {{ copy.site.name }}{% endblock %}
 {% block content %}
 <section class="intro">
-  <h1>Page not found</h1>
-  <p>This page doesn't exist. The address may be mistyped, or the page may have moved.</p>
-  <p><a href="/">Go to the home page to pick a Hawaiʻi House or Senate district</a></p>
+  <h1>{{ copy.not_found.heading }}</h1>
+  <p>{{ copy.not_found.body }}</p>
+  <p><a href="/">{{ copy.not_found.home_link }}</a></p>
 </section>
 {% endblock %}

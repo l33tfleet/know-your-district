@@ -1,10 +1,24 @@
 {% extends "base.html" %}
 {% block content %}
+{% set picker = copy.home.picker %}
 <section class="intro">
-  <h1>Know Your District</h1>
-  <p>Pick a Hawaiʻi State House or Senate district and get a one-page, printable,
-    cited brief: who lives there, how sure the numbers are, and which public
-    programs may help.</p>
-  <p class="status">District briefs are coming soon.</p>
+  <h1>{{ copy.home.heading }}</h1>
+  <p>{{ copy.home.intro }}</p>
 </section>
+<form class="picker" action="/brief" method="get">
+  <fieldset>
+    <legend>{{ picker.legend }}</legend>
+    <label for="chamber">{{ picker.chamber_label }}</label>
+    <select id="chamber" name="chamber"
+            hx-get="/picker/numbers" hx-trigger="change" hx-include="#district-number"
+            hx-target="#district-number" hx-swap="outerHTML">
+      {% for value, name in picker.chambers.items() %}
+      <option value="{{ value }}">{{ name }}</option>
+      {% endfor %}
+    </select>
+    <label for="district-number">{{ picker.number_label }}</label>
+    {% include "partials/district_number.html" %}
+    <button type="submit">{{ picker.submit }}</button>
+  </fieldset>
+</form>
 {% endblock %}

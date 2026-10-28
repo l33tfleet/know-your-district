@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Know Your District{% endblock %}</title>
+  <title>{% block title %}{{ copy.site.name }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/tokens.css">
   <link rel="stylesheet" href="/static/site.css">
   <script src="{{ htmx_src }}" defer></script>
 </head>
-<body>
+<body{% if state and state.variant %} data-variant="{{ state.variant }}"{% endif %}>
   <header class="site-header">
-    <a href="/" class="site-name">Know Your District</a>
-    <span class="site-tagline">Hawaiʻi State Legislature district briefs</span>
+    <a href="/" class="site-name">{{ copy.site.name }}</a>
+    <span class="site-tagline">{{ copy.site.tagline }}</span>
   </header>
   <main>
     {% block content %}{% endblock %}
   </main>
   <footer class="site-footer">
-    <p>Figures come only from published tables, starting with the U.S. Census Bureau's
-      American Community Survey 5-year estimates. Every figure is cited.</p>
+    <p>{{ copy.site.footer }}</p>
   </footer>
 </body>
 </html>
