@@ -4,7 +4,6 @@ its ±MOE, reliability in words and full citation, and the state's figure beside
 
 from collections.abc import Callable
 
-from app.analysis.reliability import FLAG_WORDS
 from app.copy import Copy, geography_name, section_copy
 from app.facts import FactStore, acs_config
 from app.models import Fact
@@ -26,7 +25,7 @@ def reading(
         return {
             "geography": geography,
             "found": False,
-            "word": FLAG_WORDS["unavailable"],
+            "word": copy["reliability"]["unavailable"],
             "reliability": "unavailable",
             "value_text": copy["no_row"],
         }
@@ -38,7 +37,7 @@ def reading(
         "moe": fact.moe,
         "moe_text": "±" + fmt(fact.moe) if fact.moe is not None else copy["no_moe"],
         "reliability": fact.reliability,
-        "word": FLAG_WORDS[fact.reliability],
+        "word": copy["reliability"][fact.reliability],
     }
 
 

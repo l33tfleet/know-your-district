@@ -52,6 +52,12 @@ sections:
     no_moe: no margin of error published
     no_cv: none
     no_row: No published figure in the fact table yet.
+    # Reliability in words, one per flag from app/analysis/reliability.py (thresholds in docs/data.md).
+    reliability:
+      reliable: reliable
+      moderate: "moderate: use with care"
+      caution: use with caution
+      unavailable: not available
     source_summary: Source and uncertainty
     fields:
       source: Source
