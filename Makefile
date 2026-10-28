@@ -1,4 +1,4 @@
-.PHONY: help sync check lint format typecheck imports test evals run smoke golden
+.PHONY: help sync check lint format typecheck imports test evals run smoke golden data data-check
 
 BASE_URL ?= http://127.0.0.1:8000
 HOST ?= 127.0.0.1
@@ -11,12 +11,19 @@ help:
 	@echo "make run                      serve the app on http://$(HOST):$(PORT)"
 	@echo "make smoke BASE_URL=<url>     check a running app (GET /healthz -> 200)"
 	@echo "make format                   apply ruff fixes and formatting"
+	@echo "make data                     build cited ACS facts (optional CENSUS_API_KEY)"
 	@echo "make golden                   fetch and atomically generate 300 independent ACS cases"
+
+data:
+	$(UV) run python -m etl.build
+
+data-check:
+	$(UV) run python -m etl.build --check
 
 sync:
 	$(UV) sync --locked
 
-check: lint typecheck imports test evals
+check: lint typecheck imports test evals data-check
 
 lint:
 	$(UV) run ruff check .
