@@ -30,6 +30,15 @@
   --headline-space: 0.25rem;
 
   /* figures */
+  --interval-accent: #175b73;
+  --interval-width: 22rem;
+  --interval-column: 20rem;
+  --interval-label-size: 10px;
+  --interval-stroke: 1.5px;
+  --interval-district-stroke: 3px;
+  --interval-dot: 2.5px;
+  --interval-district-dot: 3.5px;
+  --interval-full-width: 100%;
   --figure-space: 0.75rem;
   --figure-name-size: 1rem;
   --figure-value-size: 1.35rem;

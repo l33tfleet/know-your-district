@@ -32,11 +32,30 @@
   {% for f in section.figures %}
   <div class="figure" data-figure="{{ f.key }}" data-variable="{{ f.variable }}">
     <h3 class="figure-name">{{ f.name }}</h3>
+    <div class="figure-comparison">
+    <div>
     {{ show(f.district, none) }}
     {% for county in f.counties %}
     {{ show(county, county.label, true) }}
     {% endfor %}
     {{ show(f.state, copy.state_label) }}
+    </div>
+    {% if f.intervals %}
+    <svg class="interval-strip" viewBox="0 0 320 {{ f.intervals|length * 24 }}" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+      {% for interval in f.intervals %}
+      {% set mark = interval.mark %}
+      {% set y = loop.index0 * 24 + 12 %}
+      <g data-geography="{{ mark.geography }}" data-role="{{ interval.role }}">
+        <text x="0" y="{{ y }}">{{ interval.label }}</text>
+        {% if mark.low is not none %}
+        <line x1="{{ 160 + mark.low * 1.45 }}" x2="{{ 160 + mark.high * 1.45 }}" y1="{{ y }}" y2="{{ y }}"></line>
+        {% endif %}
+        <circle cx="{{ 160 + mark.dot * 1.45 }}" cy="{{ y }}"></circle>
+      </g>
+      {% endfor %}
+    </svg>
+    {% endif %}
+    </div>
     <details class="source">
       <summary>{{ copy.source_summary }}</summary>
       {% for c in f.citations %}

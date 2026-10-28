@@ -4,6 +4,7 @@ its ±MOE, reliability in words and full citation, and county and state figures 
 
 from collections.abc import Callable
 
+from app.analysis.intervals import interval_layout
 from app.copy import Copy, geography_name, section_copy
 from app.counties import load_mapping
 from app.facts import FactStore, acs_config
@@ -76,6 +77,18 @@ def context(state: PageState) -> dict[str, object]:
                     reading(g, facts.get((variables[figure], g)), fmt, copy)
                     | {"label": geography_name(g)}
                     for g in counties
+                ],
+                "intervals": [
+                    {
+                        "mark": mark,
+                        "label": geography_name(mark.geography),
+                        "role": "district"
+                        if mark.geography == district
+                        else "state"
+                        if mark.geography == STATE
+                        else "county",
+                    }
+                    for mark in interval_layout(found)
                 ],
                 "citations": [citation(f, fmt, copy) for f in found if f is not None],
             }
