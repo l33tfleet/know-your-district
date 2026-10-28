@@ -18,7 +18,7 @@ from pathlib import Path
 from app.models import Fact
 from etl.census import CensusClient, CensusError, load_config
 from etl.facts import HOUSE, SENATE, facts_from_batch
-from etl.indicators import INDICATORS
+from etl.indicators import INDICATORS, Indicator
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD_INDICATORS = ("population", "age_65_share", "median_household_income")
@@ -88,11 +88,11 @@ def build(
     output: Path = ROOT / "data",
     *,
     schema: Path = ROOT / "data/schema.sql",
+    indicators: tuple[Indicator, ...] = tuple(INDICATORS[name] for name in BUILD_INDICATORS),
 ) -> int:
     """Stage a complete, validated build before replacing any published file."""
     facts: list[Fact] = []
-    for name in BUILD_INDICATORS:
-        indicator = INDICATORS[name]
+    for indicator in indicators:
         for geography in ("state:15", "county:*", HOUSE + ":*", SENATE + ":*"):
             facts.extend(facts_from_batch(indicator, client.fetch(indicator, geography), geography))
     facts.sort(key=lambda fact: (fact.variable, fact.geography, fact.vintage))
