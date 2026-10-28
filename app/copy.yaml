@@ -69,6 +69,12 @@ sections:
       cv: Coefficient of variation
       endpoint: Data endpoint
 
+  # Names, agencies, purposes and links come from data/programs.yaml.
+  programs:
+    heading: Programs that may help
+    official_link: Official program page
+    referral_link: Aloha United Way 211
+
 # Geography names, shared by the headline and the figures' citations.
 geography:
   house: Hawaiʻi State House District {number}
