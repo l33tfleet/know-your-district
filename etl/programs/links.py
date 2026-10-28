@@ -1,0 +1,118 @@
+"""Read-only link checks. HTTP and calendar time are injectable for offline checks."""
+
+import logging
+import re
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
+from http.client import HTTPConnection, HTTPException, HTTPSConnection
+from pathlib import Path
+from time import perf_counter
+from urllib.parse import urljoin, urlsplit
+
+from pydantic import TypeAdapter
+
+from etl.programs import Program
+
+# Exact hosts only: catalog authors cannot grant domain approval by adding a URL.
+OFFICIAL_HOSTS = TypeAdapter(dict[str, str]).validate_json(
+    Path(__file__).with_name("official_hosts.json").read_text(encoding="utf-8")
+)
+TIMEOUT = 10.0
+MAX_REDIRECTS = 5
+
+
+@dataclass(frozen=True)
+class LinkResponse:
+    status: int
+    location: str | None = None
+
+
+def http_get(url: str, timeout: float) -> LinkResponse:
+    """One GET, headers only, no automatic redirects; always close and measure latency.
+
+    Uses the system TLS trust store; reads no credentials or environment variables.
+    """
+    parts = urlsplit(url)
+    connection_type = HTTPSConnection if parts.scheme == "https" else HTTPConnection
+    connection = connection_type(parts.netloc, timeout=timeout)
+    started = perf_counter()
+    try:
+        path = parts.path or "/"
+        if parts.query:
+            path += "?" + parts.query
+        connection.request("GET", path)
+        response = connection.getresponse()
+        return LinkResponse(response.status, response.getheader("Location"))
+    finally:
+        connection.close()
+        logging.getLogger(__name__).info("GET %s took %.3fs", url, perf_counter() - started)
+
+
+def _trusted(url: str) -> None:
+    try:
+        parts = urlsplit(url)
+        host = parts.hostname or ""
+        valid = (
+            not any(ord(c) <= 32 or ord(c) == 127 for c in url)
+            and parts.scheme in ("http", "https")
+            and parts.username is None
+            and parts.password is None
+            and (parts.port is None or 1 <= parts.port <= 65535)
+            and (
+                re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+gov", host)
+                or host in OFFICIAL_HOSTS
+            )
+        )
+    except ValueError:
+        valid = False
+    if not valid:
+        raise ValueError(f"Untrusted URL: {url!r}")
+
+
+def check_url(url: str, *, get: Callable[[str, float], LinkResponse] = http_get) -> None:
+    """Check each hop before sending it; accept only a final 200 within five redirects."""
+    for hop in range(MAX_REDIRECTS + 1):
+        _trusted(url)
+        try:
+            response = get(url, TIMEOUT)
+        except (OSError, HTTPException) as exc:
+            raise ValueError(f"HTTP request failed: {url}") from exc
+        if response.status == 200:
+            return
+        if response.status not in (301, 302, 303, 307, 308):
+            raise ValueError(f"HTTP {response.status}: {url}")
+        if not response.location:
+            raise ValueError(f"Missing redirect location: {url}")
+        if hop == MAX_REDIRECTS:
+            raise ValueError(f"Too many redirects: {url}")
+        # urljoin strips some control characters: reject before normalization.
+        if any(ord(c) <= 32 or ord(c) == 127 for c in response.location):
+            raise ValueError(f"Untrusted URL: {response.location!r}")
+        url = urljoin(url, response.location)
+
+
+def check_catalog(
+    programs: Sequence[Program],
+    *,
+    get: Callable[[str, float], LinkResponse] = http_get,
+    today: Callable[[], date] = lambda: datetime.now(UTC).date(),
+) -> list[str]:
+    """Report all failures; never update last_verified, even when every URL passes."""
+    failures: list[str] = []
+    now = today()
+    for program in programs:
+        age = (now - program.last_verified).days
+        if not 0 <= age < 30:
+            failures.append(f"{program.name}: verification age {age} days; expected 0–29")
+        for field, url in (
+            ("official_url", program.official_url),
+            ("referral_url", program.referral_url),
+            ("agency_guideline.source_url", program.agency_guideline.source_url),
+            ("eligibility_proxy.source_url", program.eligibility_proxy.source_url),
+        ):
+            try:
+                check_url(str(url), get=get)
+            except ValueError as exc:
+                failures.append(f"{program.name} {field}: {exc}")
+    return failures
