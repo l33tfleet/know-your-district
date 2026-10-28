@@ -1,0 +1,29 @@
+{
+  "district_sources": [
+    {
+      "sha256": "64c217228d44938fc9f4dfd930ae1e8181850b57bb4613f9e9349dbbf5728ffd",
+      "provenance": {
+        "source_url": "https://geodata.hawaii.gov/arcgis/rest/services/AdminBnd/MapServer/33/query?where=1%3D1&outFields=house_id&f=geojson&outSR=4326&returnGeometry=true",
+        "retrieved_on": "2026-10-28",
+        "vintage": "2022 district plan",
+        "plan_year": 2022,
+        "method": "ArcGIS GeoJSON; outSR=4326; no generalization, simplification or geometry repair."
+      },
+      "credit": "State of Hawaii Office of Elections; Hawaii Statewide GIS Program"
+    },
+    {
+      "sha256": "4407ae430ab0b140751aa37ec495fc5a0bb91a7f628ddb8f4bbf907369a54a0e",
+      "provenance": {
+        "source_url": "https://geodata.hawaii.gov/arcgis/rest/services/AdminBnd/MapServer/34/query?where=1%3D1&outFields=senate_id&f=geojson&outSR=4326&returnGeometry=true",
+        "retrieved_on": "2026-10-28",
+        "vintage": "2022 district plan",
+        "plan_year": 2022,
+        "method": "ArcGIS GeoJSON; outSR=4326; no generalization, simplification or geometry repair."
+      },
+      "credit": "Hawaii State Office of Elections; Hawaii Statewide GIS Program"
+    }
+  ],
+  "county_source": "https://www2.census.gov/geo/tiger/TIGER2022/COUNTY/tl_2022_us_county.zip",
+  "county_sha256": "a48c6e018d80e5557720971831a37120450f02c6d934687ccb3c26314ae8bda6",
+  "method": "EPSG:6933 equal-area polygon intersection; share = county intersection area / sum of configured county intersection areas; Kalawao excluded; water/coastline differences excluded from denominator; no sliver threshold or repair."
+}

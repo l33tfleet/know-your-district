@@ -166,7 +166,7 @@ def _validate(geometry: Geometry) -> None:
                 raise ValueError("invalid geometry: nested holes")
     for i, polygon in enumerate(geometry):
         for other in geometry[:i]:
-            if _areas([polygon], [other])[2] > 0:
+            if areas([polygon], [other])[2] > 0:
                 raise ValueError("invalid geometry: overlapping multipolygon parts")
             edges = _edges([polygon]) + _edges([other])
             split = len(_edges([polygon]))
@@ -178,7 +178,8 @@ def _validate(geometry: Geometry) -> None:
                 raise ValueError("invalid geometry: shared multipolygon edge")
 
 
-def _geometry(value: object, transformer: Transformer | None = None) -> Geometry:
+def geometry(value: object, transformer: Transformer | None = None) -> Geometry:
+    """Validate polygon topology, optionally project, and return overlay geometry."""
     try:
         model = TypeAdapter(_Polygon | _MultiPolygon).validate_python(value)
     except ValidationError as exc:
@@ -203,7 +204,8 @@ def _intervals(edges: list[Segment], x: float) -> list[tuple[float, float]]:
     return list(zip(ys[::2], ys[1::2], strict=True))
 
 
-def _areas(left: Geometry, right: Geometry) -> tuple[float, float, float]:
+def areas(left: Geometry, right: Geometry) -> tuple[float, float, float]:
+    """Return left, right and intersection areas of validated planar geometry."""
     a, b = _edges(left), _edges(right)
     edges = a + b
     cuts = {point[0] for edge in edges for point in edge}
@@ -236,16 +238,16 @@ def _areas(left: Geometry, right: Geometry) -> tuple[float, float, float]:
 
 
 def _agreement(left: Geometry, right: Geometry) -> float:
-    a, b, overlap = _areas(left, right)
+    a, b, overlap = areas(left, right)
     return 100 * overlap / (a + b - overlap)
 
 
 def agreement(left: object, right: object) -> float:
     """Compare already projected equal-area Polygon/MultiPolygon GeoJSON objects."""
-    return _agreement(_geometry(left), _geometry(right))
+    return _agreement(geometry(left), geometry(right))
 
 
-def _shapefile_geometry(shape: Any) -> dict[str, object]:
+def shapefile_geometry(shape: Any) -> dict[str, object]:
     """Preserve shapefile ring roles; never promote an orphan hole to a shell."""
     if shape.shapeType != 5:
         raise ValueError("invalid geometry: TIGER shape must be a Polygon")
@@ -254,7 +256,7 @@ def _shapefile_geometry(shape: Any) -> dict[str, object]:
     rings = [points[a:b] for a, b in pairwise(parts)]
     # Validate rings before reading orientation or assigning holes.
     for ring in rings:
-        _geometry({"type": "Polygon", "coordinates": [ring]})
+        geometry({"type": "Polygon", "coordinates": [ring]})
     shells = [[ring] for ring in rings if _signed_area(ring) < 0]
     for hole in (ring for ring in rings if _signed_area(ring) > 0):
         parents = [shell for shell in shells if _inside(hole[0], shell[0])]
@@ -304,7 +306,7 @@ def load_tiger_archive(path: Path, chamber: Chamber) -> dict[str, Geometry]:
                 key = district.fact_key
                 if key in result:
                     raise ValueError(f"duplicate district: {key}")
-                result[key] = _geometry(_shapefile_geometry(record.shape), transformer)
+                result[key] = geometry(shapefile_geometry(record.shape), transformer)
     expected = expected_fact_keys(chamber)
     if set(result) != expected:
         raise ValueError(
@@ -358,7 +360,7 @@ def compare_export(
             TypeAdapter(InputPolygon | InputMultiPolygon).validate_python(feature["geometry"])
         except ValidationError as exc:
             raise ValueError(f"invalid geometry: {key}: {exc}") from exc
-        projected[key] = _geometry(feature["geometry"], transformer)
+        projected[key] = geometry(feature["geometry"], transformer)
     tiger = load_tiger_archive(sldl, "house") | load_tiger_archive(sldu, "senate")
     print(
         f"CRS={EQUAL_AREA_CRS}; method=100*intersection/union; shortfall in percentage points",
