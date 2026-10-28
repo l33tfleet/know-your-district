@@ -47,3 +47,72 @@
   --citation-columns: 12rem 1fr;
   --citation-gap: 0.1rem 0.75rem;
 }
+
+/* Shared variant vocabulary; the unvarianted memo keeps its original tokens. */
+:is([data-variant="a"], [data-variant="b"]) {
+  --size-tiny: 0.85rem;
+  --size-small: 0.9rem;
+  --headline-leading: 1.18;
+  --heading-font: var(--font-label);
+  --section-size: 1.15rem;
+  --section-space: 1.5rem 0 0.5rem;
+  --program-size: 1rem;
+  --program-space: 0.9rem;
+  --paragraph-space: 0.35rem 0;
+  --figure-space: 0.85rem;
+  --figure-value-size: 1.6rem;
+  --figure-indent: 0;
+  --citation-columns: minmax(5rem, 0.3fr) minmax(0, 1fr);
+  --citation-gap: 0.35rem 0.75rem;
+  --citation-padding: 0.75rem 0;
+  --control-padding: 0.5rem 0.65rem;
+  --control-height: 2.75rem;
+  --control-radius: 0.15rem;
+  --control-font-size: 0.9rem;
+  --control-margin: 0.35rem 0;
+  --focus-width: 3px;
+  --focus-offset: 3px;
+  --link-offset: 0.16em;
+  --link-thickness: 1px;
+  --content-wrap: anywhere;
+}
+
+/* A — refined memo: warm ink, serif headline, compact document rhythm. */
+[data-variant="a"] {
+  --color-text: #292620;
+  --color-muted: #555149;
+  --color-rule: #464139;
+  --color-rule-light: #c5c0b7;
+  --color-link: #3d514b;
+  --color-link-hover: #202e29;
+  --color-control: #f4f2ed;
+  --color-control-hover: #e9e5db;
+  --color-focus: #70551f;
+  --interval-accent: #3d514b;
+  --headline-size: clamp(1.7rem, 4vw, 2.3rem);
+  --headline-space: 0.6rem;
+  --line-height: 1.45;
+  --space-page: 1.25rem;
+  --figure-name-size: 0.95rem;
+}
+
+/* B — civic: document navy and restrained maroon, with clear sans headings. */
+[data-variant="b"] {
+  --color-text: #172e46;
+  --color-muted: #455568;
+  --color-rule: #172e46;
+  --color-rule-light: #b7c2ce;
+  --color-link: #793941;
+  --color-link-hover: #51232a;
+  --color-control: #eef2f6;
+  --color-control-hover: #dfe7ef;
+  --color-focus: #793941;
+  --interval-accent: #793941;
+  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --headline-size: clamp(1.65rem, 4vw, 2.15rem);
+  --headline-space: 0.75rem;
+  --line-height: 1.5;
+  --space-page: 1.5rem;
+  --section-size: 1.25rem;
+  --figure-name-size: 1rem;
+}
