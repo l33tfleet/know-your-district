@@ -47,6 +47,10 @@ sections:
       population: Total population
       age_65_share: Share of residents age 65 and over
       median_household_income: Median household income
+    multi_county: This district lies in more than one county.
+    county_area: Share of county-covered district area
+    mapping_summary: County boundary sources and method
+    mapping_source: State of Hawaiʻi official district boundaries and U.S. Census Bureau county boundaries
     state_label: "State of Hawaiʻi:"
     not_available: not available
     no_moe: no margin of error published
@@ -69,8 +73,20 @@ sections:
       cv: Coefficient of variation
       endpoint: Data endpoint
 
+  # Names, agencies, purposes and links come from data/programs.yaml.
+  programs:
+    heading: Programs that may help
+    official_link: Official program page
+    referral_link: Aloha United Way 211
+
 # Geography names, shared by the headline and the figures' citations.
 geography:
   house: Hawaiʻi State House District {number}
   senate: Hawaiʻi State Senate District {number}
   state: State of Hawaiʻi
+
+counties:
+  "001": Hawaiʻi County
+  "003": Honolulu County
+  "007": Kauaʻi County
+  "009": Maui County

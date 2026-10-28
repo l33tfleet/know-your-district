@@ -25,5 +25,8 @@ def geography_name(geography: str) -> str:
     """Display name of a qualified fact key: `house:15:022:2022`, `senate:…` or `state:15`."""
     names: dict[str, str] = load_copy()["geography"]
     chamber, _, rest = geography.partition(":")
+    if chamber == "county":
+        counties: dict[str, str] = load_copy()["counties"]
+        return counties[rest.split(":")[1]]
     number = rest.split(":")[1] if chamber in ("house", "senate") else ""
     return names[chamber].format(number=int(number) if number else "")

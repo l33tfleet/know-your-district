@@ -1,10 +1,11 @@
 # ruff: noqa: N999 -- sections are named NN_name.py by convention (#97); the prefix orders them
 """Three figures (population, share 65+, median household income) for the district, each with
-its ±MOE, reliability in words and full citation, and the state's figure beside it."""
+its ±MOE, reliability in words and full citation, and county and state figures beside it."""
 
 from collections.abc import Callable
 
 from app.copy import Copy, geography_name, section_copy
+from app.counties import load_mapping
 from app.facts import FactStore, acs_config
 from app.models import Fact
 from app.page_state import PageState
@@ -54,21 +55,37 @@ def context(state: PageState) -> dict[str, object]:
     copy = section_copy("figures")
     vintage, _ = acs_config()
     district = state.district.fact_key
+    shares = load_mapping()[district]
+    counties = [share.county for share in shares]
+    geographies = (district, *counties, STATE)
     variables = {figure: INDICATORS[figure].variables[0] for figure in FORMATS}
     facts = FactStore.default().get(
-        ((v, g) for v in variables.values() for g in (district, STATE)), vintage
+        ((v, g) for v in variables.values() for g in geographies), vintage
     )
     figures: list[dict[str, object]] = []
     for figure, fmt in FORMATS.items():
-        found = [facts.get((variables[figure], g)) for g in (district, STATE)]
+        found = [facts.get((variables[figure], g)) for g in geographies]
         figures.append(
             {
                 "key": figure,
                 "variable": variables[figure],
                 "name": copy["names"][figure],
                 "district": reading(district, found[0], fmt, copy),
-                "state": reading(STATE, found[1], fmt, copy),
+                "state": reading(STATE, found[-1], fmt, copy),
+                "counties": [
+                    reading(g, facts.get((variables[figure], g)), fmt, copy)
+                    | {"label": geography_name(g)}
+                    for g in counties
+                ],
                 "citations": [citation(f, fmt, copy) for f in found if f is not None],
             }
         )
-    return {"figures": figures}
+    return {
+        "figures": figures,
+        "multi_county": len(shares) > 1,
+        "county_shares": [
+            {"name": geography_name(s.county), "share_text": f"{s.area_share * 100:.1f}%"}
+            for s in shares
+        ],
+        "mapping": shares[0],
+    }

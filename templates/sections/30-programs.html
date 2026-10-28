@@ -1,0 +1,15 @@
+<section class="programs">
+  <h2>{{ copy.heading }}</h2>
+  <ul class="program-list">
+    {% for p in section.programs %}
+    <li class="program" data-program="{{ p.name }}">
+      <h3 class="program-name">{{ p.name }}</h3>
+      <p class="program-agency">{{ p.agency }}</p>
+      <p class="program-purpose">{{ p.purpose }}</p>
+      <p class="program-official"><a href="{{ p.official_url }}">{{ copy.official_link }}</a></p>
+      <p class="program-guidance">{{ p.guidance }}
+        <a href="{{ p.referral_url }}">{{ copy.referral_link }}</a></p>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
