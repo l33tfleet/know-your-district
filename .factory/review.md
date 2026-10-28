@@ -41,3 +41,4 @@ from `AGENTS.md`; data facts from `docs/data.md`.
 - [ ] **E21 Staged deployment:** deploy shared multi-tenant changes to the operator's own tenant first, verify and gate rollout to other tenants.
 - [ ] **E23 API boundary discipline:** implement within existing boundaries without bypasses or escape hatches, and a change to a public interface states `Interface change:` in the PR's first line with what changes and who uses it instead of waiting for approval.
 - [ ] **E25 Move files by reference:** pass file paths, upload handles or URLs instead of model-relayed bytes, return size and hash for verification, and write large outputs to a file with its path and summary.
+- Every Done-when or acceptance criterion in the work order is shown to be met in the diff, its tests or the supplied check output (for example, a required dependency is actually added, or a required axe report or threshold decision is produced and asserted). A criterion that is left unmet, explained
