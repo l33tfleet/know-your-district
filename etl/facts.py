@@ -12,14 +12,19 @@ from etl.indicators import Indicator
 
 HOUSE = "state legislative district (lower chamber)"
 SENATE = "state legislative district (upper chamber)"
-SENTINELS = {
-    Decimal(v) for v in (-666666666, -999999999, -888888888, -555555555, -222222222, -333333333)
+SENTINELS: dict[Decimal, str] = {
+    Decimal(-666666666): "not available",
+    Decimal(-999999999): "not available",
+    Decimal(-888888888): "not available",
+    Decimal(-555555555): "controlled",
+    Decimal(-222222222): "not available",
+    Decimal(-333333333): "not available: median in open-ended interval (top/bottom-coded)",
 }
 
 
-def _number(raw: str | None) -> Decimal | None:
+def _number(raw: str | None) -> tuple[Decimal | None, str | None]:
     if raw is None:
-        return None
+        return None, "not available"
     try:
         number = Decimal(raw)
     except InvalidOperation:
@@ -27,10 +32,10 @@ def _number(raw: str | None) -> Decimal | None:
     if not number.is_finite():
         raise CensusError("Invalid numeric Census cell")
     if number in SENTINELS:
-        return None
+        return None, SENTINELS[number]
     if number < 0:
         raise CensusError("Invalid numeric Census cell")
-    return number
+    return number, None
 
 
 def _geographies(batch: CensusBatch, request: str) -> list[tuple[str, dict[str, str | None]]]:
@@ -80,7 +85,8 @@ def facts_from_batch(indicator: Indicator, batch: CensusBatch, geography: str) -
         for variable in indicator.variables:
             moe_variable = indicator.moe_variable(variable)
             try:
-                value, moe = _number(row[variable]), _number(row[moe_variable])
+                value, estimate_status = _number(row[variable])
+                moe, moe_status = _number(row[moe_variable])
                 estimate_annotation = row[variable + "A"]
                 moe_annotation = row[moe_variable + "A"]
                 label = batch.labels[variable]
@@ -88,14 +94,11 @@ def facts_from_batch(indicator: Indicator, batch: CensusBatch, geography: str) -
                 raise CensusError("Missing Census cell, annotation or label") from None
             cv, reliability = classify(value, moe)
             method = "published estimate and 90% margin of error"
-            for name, raw, number, annotation in (
-                ("estimate", row[variable], value, estimate_annotation),
-                ("MOE", row[moe_variable], moe, moe_annotation),
+            for name, status, annotation in (
+                ("estimate", estimate_status, estimate_annotation),
+                ("MOE", moe_status, moe_annotation),
             ):
-                if number is None:
-                    status = "controlled" if raw == "-555555555" else "not available"
-                    if raw == "-333333333":
-                        status = "not available: median in open-ended interval (top/bottom-coded)"
+                if status is not None:
                     method += f"; {name} {status}"
                 if annotation:
                     method += f"; {name} annotation: {annotation}"
