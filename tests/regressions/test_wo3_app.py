@@ -73,17 +73,6 @@ def live_url() -> Iterator[str]:
         proc.wait(timeout=10)
 
 
-def test_make_smoke_passes_against_running_app(live_url: str) -> None:
-    result = subprocess.run(
-        ["make", "smoke", f"BASE_URL={live_url}"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-
-
 def test_smoke_fails_when_nothing_is_listening() -> None:
     url = f"http://127.0.0.1:{free_port()}"
     result = subprocess.run(

@@ -1,6 +1,6 @@
 {
   "source_url": "https://geodata.hawaii.gov/arcgis/rest/services/AdminBnd/MapServer/34/query?where=1%3D1&outFields=senate_id&f=geojson&outSR=4326&maxAllowableOffset=0.0005&returnGeometry=true",
-  "retrieved_on": "2026-10-27",
+  "retrieved_on": "2026-10-28",
   "vintage": "2022 district plan",
   "plan_year": 2022,
   "method": "ArcGIS server generalization: maxAllowableOffset=0.0005 degrees; outSR=4326; GeoJSON; source district IDs normalized without further geometry simplification."

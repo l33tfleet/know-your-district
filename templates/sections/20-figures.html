@@ -1,0 +1,67 @@
+{% macro raw(number) %}{{ "" if number is none else number }}{% endmacro %}
+{% macro show(r, label, county=false) %}
+<p class="reading" data-geography="{{ r.geography }}">
+  {% if label %}<span class="reading-label">{{ label }}</span>{% endif %}
+  {% if r.found %}
+  <data class="value" value="{{ raw(r.value) }}">{{ r.value_text }}</data>
+  <span class="moe"><data value="{{ raw(r.moe) }}">{{ r.moe_text }}</data></span>
+  {% else %}
+  <span class="missing">{{ r.value_text }}</span>
+  {% endif %}
+  <span class="{{ 'county-unavailable' if county and not r.found else 'reliability' }}" data-reliability="{{ r.reliability }}">{{ r.word }}</span>
+</p>
+{% endmacro %}
+<section class="figures">
+  <h2>{{ copy.heading }}</h2>
+  {% if section.multi_county %}
+  <p>{{ copy.multi_county }}</p>
+  <ul>
+    {% for county in section.county_shares %}
+    <li>{{ county.name }}: {{ county.share_text }} — {{ copy.county_area }}</li>
+    {% endfor %}
+  </ul>
+  <details class="county-mapping-source">
+    <summary>{{ copy.mapping_summary }}</summary>
+    <p>{{ copy.mapping_source }}</p>
+    <p>{{ section.mapping.vintage }}</p>
+    <p>{{ section.mapping.method }}</p>
+    <p>{{ section.mapping.district_source }}</p>
+    <p>{{ section.mapping.county_source }}</p>
+  </details>
+  {% endif %}
+  {% for f in section.figures %}
+  <div class="figure" data-figure="{{ f.key }}" data-variable="{{ f.variable }}">
+    <h3 class="figure-name">{{ f.name }}</h3>
+    {{ show(f.district, none) }}
+    {% for county in f.counties %}
+    {{ show(county, county.label, true) }}
+    {% endfor %}
+    {{ show(f.state, copy.state_label) }}
+    <details class="source">
+      <summary>{{ copy.source_summary }}</summary>
+      {% for c in f.citations %}
+      <dl class="citation" data-geography="{{ c.fact.geography }}">
+        <dt>{{ copy.fields.geography }}</dt>
+        <dd>{{ c.geography_name }} <code data-field="geography">{{ c.fact.geography }}</code></dd>
+        <dt>{{ copy.fields.source }}</dt>
+        <dd data-field="source">{{ c.fact.source }}</dd>
+        <dt>{{ copy.fields.table_id }}</dt>
+        <dd data-field="table_id">{{ c.fact.table_id }}</dd>
+        <dt>{{ copy.fields.vintage }}</dt>
+        <dd data-field="vintage">{{ c.fact.vintage }}</dd>
+        <dt>{{ copy.fields.method }}</dt>
+        <dd data-field="method">{{ c.fact.method }}</dd>
+        <dt>{{ copy.fields.moe }}</dt>
+        <dd data-field="moe"><data value="{{ raw(c.fact.moe) }}">{{ c.moe_text }}</data></dd>
+        <dt>{{ copy.fields.cv }}</dt>
+        <dd data-field="cv"><data value="{{ raw(c.fact.cv) }}">{{ c.cv_text }}</data></dd>
+        <dt>{{ copy.fields.endpoint }}</dt>
+        <dd data-field="endpoint">{{ c.fact.endpoint }}</dd>
+      </dl>
+      {% else %}
+      <p class="missing">{{ copy.no_row }}</p>
+      {% endfor %}
+    </details>
+  </div>
+  {% endfor %}
+</section>

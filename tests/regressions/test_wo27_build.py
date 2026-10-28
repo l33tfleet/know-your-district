@@ -293,3 +293,36 @@ def test_published_state_shapes_and_every_unaccepted_overlay_have_evidence() -> 
             if "; OK;" not in lines[0]:
                 assert lines[0] in mismatch
     assert "#24" in (ROOT / "docs/data.md").read_text()
+
+
+def test_merged_make_help_preserves_data_and_boundaries() -> None:
+    result = subprocess.run(["make", "help"], cwd=ROOT, capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
+    assert "make data " in result.stdout
+    assert "make boundaries " in result.stdout
+
+
+def test_default_make_proves_join_against_delivered_fact_database(tmp_path: Path) -> None:
+    source, output = tmp_path / "source", tmp_path / "geo"
+    sources(source)
+    database = ROOT / "data/facts.db"
+    before = database.read_bytes()
+    result = subprocess.run(
+        [
+            "make",
+            "boundaries",
+            f"BOUNDARIES_ARGS=--source-dir {source} --output-dir {output}",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    proof = (output / "fact-keys.md").read_text()
+    assert "Database: data/facts.db" in proof
+    assert "PASS: exact House and Senate fact-key equality; missing=[]; extra=[]" in proof
+    assert database.read_bytes() == before
+    for chamber, count in COUNTS.items():
+        assert len(json.loads((output / f"{chamber}.geojson").read_text())["features"]) == count

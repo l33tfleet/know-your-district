@@ -186,7 +186,7 @@ def build_boundaries(output_dir: Path, facts_db: Path, source_dir: Path | None =
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=Path("data/geo"))
-    parser.add_argument("--facts-db", type=Path, default=Path("data/facts.sqlite"))
+    parser.add_argument("--facts-db", type=Path, default=Path("data/facts.db"))
     parser.add_argument("--source-dir", type=Path)
     args = parser.parse_args()
     try:

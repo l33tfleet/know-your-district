@@ -19,10 +19,12 @@ Later work orders cite this file instead of repeating it. Product rules are in
 
 The ETL ([`etl/census.py`](../etl/census.py)), configured by
 [`config.toml`](../config.toml), fetches ACS 2020–2024 5-year Detailed,
-Data Profile and Subject tables from the Census API. It returns fetched rows
-in memory; [`data/`](../data/) holds `README.md` and `schema.sql`, and
-no built database is committed. The table records the terms for these ACS
-products.
+Data Profile and Subject tables from the Census API. The fact build publishes
+the validated SQLite database at [`data/facts.db`](../data/facts.db), using
+[`data/schema.sql`](../data/schema.sql), with a canonical TSV and checksum
+sidecar. This replaces the earlier "no built database is committed" state.
+The boundary build reads this database without modifying it. The table records
+the terms for these ACS products.
 The boundary build also fetches the State's 2022 House and Senate district
 layers and compares them with Census TIGER/Line 2022. The published State
 geometry and evidence are in [`data/geo/`](../data/geo/); these shapes are not
@@ -194,8 +196,8 @@ endpoint URLs use the year placeholder. No database or observations ship here.
 The local GeoJSON FeatureCollection requires provenance: HTTP/S `source_url`, ISO calendar `retrieved_on` (YYYY-MM-DD), nonblank `vintage` and `method`, and `plan_year` 2022. Features have only `chamber` and `district` properties. Map source attributes before validation.
 Geometry must be a nonempty Polygon or MultiPolygon with finite longitude/latitude pairs, closed rings and three distinct vertices per ring. Duplicate normalized keys fail. Structural validation does not prove topology, coverage, projection correctness or official district correspondence.
 Run `make boundaries BOUNDARIES_FILE=<local.geojson>` offline to validate and print canonical keys. `tests/regressions/fixtures/wo47_boundaries.geojson` is synthetic. Partial collections are allowed here; production loads must enforce the district counts above.
-**WO-3 (#24) is a prerequisite for the real-database join proof.** That work must deliver the real fact table and reconcile boundary keys with the qualified fact geography keys before proving exact House and Senate key-set equality, detecting missing and extra keys in either direction. The current checkout has no real fact database, so the published `fact-keys.md`
-records the unavailable prerequisite rather than a successful join.
+**WO-3 (#24) is a prerequisite for the real-database join proof.** That work must deliver the real fact table and reconcile boundary keys with the qualified fact geography keys before proving exact House and Senate key-set equality, detecting missing and extra keys in either direction. The database is now delivered at `data/facts.db`; the default boundary build
+checks it and publishes the result in `fact-keys.md`.
 
 
 ## Production boundary build (WO-80, final step of #27)
@@ -207,7 +209,7 @@ comparison. It rebuilds `data/geo/house.geojson` and `senate.geojson`, each belo
 one megabyte, with separate provenance and verbatim credit sidecars. The
 **displayed source is the State**, with its server generalization preserved;
 TIGER never replaces a State shape. The build uses no ACS values or model calls.
-The app currently serves its landing page; this work does not add a map UI.
+The app serves district briefs; this work does not add a map UI.
 
 `overlay.md` reports every district, its source query, retrieval date, plan,
 method and TIGER archive URL. Agreement is intersection / union in EPSG:6933,
@@ -231,8 +233,9 @@ key evidence on failure. State/county keys are excluded; both chambers and both
 set differences are checked. This is a geography-key proof, not proof of fact
 row completeness or geographic correspondence. **#24 must supply the real
 database**: no database is generated from the boundary IDs as a substitute.
-The current default run publishes shapes and overlay evidence but exits
-nonzero with an unavailable-join report until that prerequisite is delivered.
+The default run now reads the delivered `data/facts.db` and publishes the real
+join proof alongside shapes and overlay evidence. A missing or mismatched
+database still exits nonzero and publishes the failed-join evidence.
 
 Operator commands:
 

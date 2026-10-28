@@ -1,0 +1,92 @@
+# All wording on the pages, grouped by page and then by brief section.
+# Templates hold no wording; they read it from here. Hawaiian place names use the
+# ʻokina (U+02BB) and kahakō. Placeholders in braces are filled by app code.
+
+site:
+  name: Know Your District
+  tagline: Hawaiʻi State Legislature district briefs
+  footer: >-
+    Figures come only from published tables, starting with the U.S. Census Bureau's
+    American Community Survey 5-year estimates. Every figure is cited.
+
+home:
+  heading: Know Your District
+  intro: >-
+    Pick a Hawaiʻi State House or Senate district and get a one-page, printable,
+    cited brief: who lives there, how sure the numbers are, and which public
+    programs may help.
+  picker:
+    legend: Choose a district
+    chamber_label: Chamber
+    chambers:
+      house: House
+      senate: Senate
+    number_label: District number
+    submit: Open the brief
+
+not_found:
+  title: Page not found
+  heading: Page not found
+  body: This page doesn't exist. The address may be mistyped, or the page may have moved.
+  home_link: Go to the home page to pick a Hawaiʻi House or Senate district
+
+brief:
+  # {district} is the district's full name, e.g. "Hawaiʻi State House District 22".
+  title: "{district} · Know Your District"
+
+sections:
+  headline:
+    # {vintage} is the pinned ACS vintage from config.toml; {plan} the district plan year.
+    vintage_line: >-
+      U.S. Census Bureau, American Community Survey 5-year estimates, {vintage}.
+      District lines from the {plan} plan.
+
+  figures:
+    heading: Who lives here
+    names:
+      population: Total population
+      age_65_share: Share of residents age 65 and over
+      median_household_income: Median household income
+    multi_county: This district lies in more than one county.
+    county_area: Share of county-covered district area
+    mapping_summary: County boundary sources and method
+    mapping_source: State of Hawaiʻi official district boundaries and U.S. Census Bureau county boundaries
+    state_label: "State of Hawaiʻi:"
+    not_available: not available
+    no_moe: no margin of error published
+    no_cv: none
+    no_row: No published figure in the fact table yet.
+    # Reliability in words, one per flag from app/analysis/reliability.py (thresholds in docs/data.md).
+    reliability:
+      reliable: reliable
+      moderate: "moderate: use with care"
+      caution: use with caution
+      unavailable: not available
+    source_summary: Source and uncertainty
+    fields:
+      source: Source
+      table_id: Table
+      vintage: Vintage
+      geography: Geography
+      method: Method
+      moe: Margin of error (90%)
+      cv: Coefficient of variation
+      endpoint: Data endpoint
+
+  # Names, agencies, purposes and links come from data/programs.yaml.
+  programs:
+    heading: Programs that may help
+    official_link: Official program page
+    referral_link: Aloha United Way 211
+
+# Geography names, shared by the headline and the figures' citations.
+geography:
+  house: Hawaiʻi State House District {number}
+  senate: Hawaiʻi State Senate District {number}
+  state: State of Hawaiʻi
+
+counties:
+  "001": Hawaiʻi County
+  "003": Honolulu County
+  "007": Kauaʻi County
+  "009": Maui County
