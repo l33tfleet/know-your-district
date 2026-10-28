@@ -1,4 +1,4 @@
-.PHONY: help sync check lint format typecheck imports test evals run smoke golden data data-check
+.PHONY: help sync check lint format typecheck imports browsers test evals run smoke golden data data-check
 
 BASE_URL ?= http://127.0.0.1:8000
 HOST ?= 127.0.0.1
@@ -23,7 +23,7 @@ data-check:
 sync:
 	$(UV) sync --locked
 
-check: lint typecheck imports test evals data-check
+check: lint typecheck imports browsers test evals data-check
 
 lint:
 	$(UV) run ruff check .
@@ -38,6 +38,10 @@ typecheck:
 
 imports:
 	$(UV) run lint-imports --no-cache
+
+# Headless Chromium for the browser checks in tests/regressions/test_wo122_browser_checks.py.
+browsers:
+	$(UV) run playwright install chromium
 
 test:
 	$(UV) run pytest tests --ignore=tests/evals
