@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<article class="brief" data-geography="{{ state.district.fact_key }}">
+  {% for html in sections %}
+  {{ html }}
+  {% endfor %}
+</article>
+{% endblock %}

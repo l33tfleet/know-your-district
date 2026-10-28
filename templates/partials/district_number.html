@@ -1,0 +1,5 @@
+<select id="district-number" name="n">
+  {% for number in numbers %}
+  <option value="{{ number }}"{% if number == selected %} selected{% endif %}>{{ number }}</option>
+  {% endfor %}
+</select>
