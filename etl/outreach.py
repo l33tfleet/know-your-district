@@ -29,6 +29,11 @@ from etl.indicators import Indicator
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "data/outreach/facts"
 INDICATOR = Indicator(("B22003_006E",), "detailed")
+# Mirrors etl/snap.py: feature metadata stays outside the shared ACS config.
+LABEL = (
+    "Estimate!!Total:!!Household did not receive Food Stamps/SNAP in the past 12 months:"
+    "!!Income in the past 12 months below poverty level"
+)
 REQUESTS = ("state:15", HOUSE + ":*", SENATE + ":*")
 ARTIFACTS = ("facts.db", "facts.tsv", "facts.sha256", "source.json", "provenance.json")
 
@@ -48,7 +53,7 @@ def _facts(source: Source) -> list[Fact]:
         if (
             batch.endpoint != config.base_url.format(year=config.year)
             or batch.vintage != config.vintage
-            or batch.labels != {v: config.labels[v] for v in INDICATOR.variables}
+            or batch.labels != {"B22003_006E": LABEL}
         ):
             raise ValueError("Outreach metadata differs from pinned Census configuration")
         facts.extend(facts_from_batch(INDICATOR, batch, request))
@@ -102,9 +107,11 @@ def check(output: Path = OUTPUT) -> bool:
 
 def build(output: Path = OUTPUT, *, source: Path | None = None) -> int:
     if source is None:
-        client = CensusClient(
-            load_config(ROOT / "config.toml"), api_key=os.environ.get("CENSUS_API_KEY")
+        config = load_config(ROOT / "config.toml")
+        outreach_config = config.model_copy(
+            update={"labels": config.labels | {"B22003_006E": LABEL}}
         )
+        client = CensusClient(outreach_config, api_key=os.environ.get("CENSUS_API_KEY"))
         batches = {g: asdict(client.fetch(INDICATOR, g)) for g in REQUESTS}
         source_bytes = (
             json.dumps(
