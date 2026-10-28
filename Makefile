@@ -1,4 +1,4 @@
-.PHONY: help sync check lint format typecheck imports browsers test evals run smoke golden data data-check
+.PHONY: help sync check lint format typecheck imports browsers test evals run smoke golden data data-check snap-check
 
 BASE_URL ?= http://127.0.0.1:8000
 HOST ?= 127.0.0.1
@@ -24,7 +24,7 @@ data-check:
 sync:
 	$(UV) sync --locked
 
-check: lint typecheck imports browsers test evals data-check
+check: lint typecheck imports browsers test evals data-check snap-check
 
 lint:
 	$(UV) run ruff check .
@@ -69,3 +69,7 @@ ifneq ($(strip $(BOUNDARIES_FILE)),)
 else
 	$(UV) run python -m etl.boundaries.build $(BOUNDARIES_ARGS)
 endif
+
+# Offline SNAP coverage, independent district golden and dated referral evidence.
+snap-check:
+	$(UV) run python -m scripts.independent_snap
