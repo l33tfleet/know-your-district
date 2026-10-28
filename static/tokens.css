@@ -96,7 +96,9 @@
   --figure-name-size: 0.95rem;
 }
 
-/* B — civic: document navy and restrained maroon, with clear sans headings. */
+/* B — civic: document navy and restrained maroon, with clear sans headings.
+   Maroon identifies links and the district series, never good/bad or reliability.
+   Reliability remains in words and font weight in both directions. */
 [data-variant="b"] {
   --color-text: #172e46;
   --color-muted: #455568;
