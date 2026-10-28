@@ -5,7 +5,7 @@
   <h1>{{ copy.home.heading }}</h1>
   <p>{{ copy.home.intro }}</p>
 </section>
-<form class="picker" action="/brief" method="get">
+<form class="picker" action="/brief" method="get" hx-boost="true">
   <fieldset>
     <legend>{{ picker.legend }}</legend>
     <label for="chamber">{{ picker.chamber_label }}</label>
