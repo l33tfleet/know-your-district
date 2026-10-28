@@ -151,10 +151,11 @@ CV = (MOE / 1.645) / estimate
    state, 81 geographies in all. A load with any other count fails.
 6. **Annotation values.** The API returns sentinel numbers instead of nulls,
    e.g. `-666666666` (estimate not available), `-999999999`, `-888888888`,
-   `-555555555` (MOE: controlled, not sampled) and `-222222222`. They are never
+   `-555555555` (MOE: controlled, not sampled), `-222222222` and `-333333333`
+   (median in an open-ended interval, top- or bottom-coded). They are never
    figures; map each to "not available" (or "controlled") before anything
-   computes with it. Medians can also be top- or bottom-coded (e.g. rent or
-   income at the table's limit); say so when that happens.
+   computes with it. For `-333333333`, preserve the open-ended-interval wording
+   (e.g. rent or income at the table's limit) in the method.
 
 ## WO59 fact contract: reconciliation of #23 and #24
 
