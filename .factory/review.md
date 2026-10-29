@@ -23,6 +23,7 @@ from `AGENTS.md`; data facts from `docs/data.md`.
 - [ ] **G5 Stack pins:** htmx 2.0.x syntax only (no htmx 4 attributes or APIs); Leaflet 1.9.x with the SVG renderer; no CDN scripts; SQLite opened read-only; no transaction held open across a model call; figures are Pydantic models.
 - [ ] **G6 Data traps:** poverty multiples use the nearest named C17002 bracket, never interpolated, and are called a lower bound; benefit counts note the survey undercount; DP/S variable labels are asserted for the pinned vintage.
 - [ ] **G7 Done:** `make check` passes.
+- [ ] **G8 Claim ladder:** a change to data, programs, matches, chat claims or maps labels each claim with the strongest level its evidence supports (relevant need, modeled eligibility, comparable nonparticipation) and meets the matching row of "Acceptance evidence for reviewers" in `docs/agent-docs/district-data-build-guide.md`; no eligible-nonparticipant count, unclaimed-dollar total or uptake gap appears without that guide's comparability gate.
 - Every validation or failure branch the change adds or touches has its own negative test, and each test triggers exactly one check (input that only that check rejects, asserting its specific error), so no branch goes untested and no test passes because a different check fired.
 - Any prose the change adds or leaves in place that describes the current state of the repo or the run (docs preambles, README claims, commit messages about test or check results) matches the merged code and the supplied `make check` output; stale or contradicted statements fail.
 
