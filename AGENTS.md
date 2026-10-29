@@ -7,6 +7,22 @@ line by line, and `docs/data.md` holds the data facts (indicators, vintage,
 reliability thresholds, known traps). `docs/engineering.md` holds the engineering principles (facades for external APIs, flat modules, validating at the edges, single-goal changes); follow them as strictly as the product rules. If these files ever disagree, stop and
 say so in the PR instead of guessing.
 
+## Read before you change
+
+Read the row that matches your work order before writing code or tests. These
+guides carry the claim rules and acceptance evidence for data and program work.
+
+| If the change touches | Read first |
+|---|---|
+| `etl/`, a population measure, a map layer, chat claims about need, or evals | [`docs/agent-docs/district-data-build-guide.md`](docs/agent-docs/district-data-build-guide.md): the claim ladder (relevant need, modeled eligibility, comparable nonparticipation), the data and claim contracts, and the acceptance evidence for reviewers |
+| a program record, a population-to-program match, a recommendation or next step, or a demo population | [`docs/agent-docs/benefit-outreach.md`](docs/agent-docs/benefit-outreach.md), then that program's dossier in [`docs/research/benefit-program-access.md`](docs/research/benefit-program-access.md) |
+| choosing or replacing a source, ZIP or tract data, or any allocation to districts | [`docs/research/district-data-source-audit.md`](docs/research/district-data-source-audit.md) |
+
+The guides are research guidance: where they disagree with this file or
+`docs/data.md`, this file and `docs/data.md` win, and the PR says so.
+Program facts in the dossiers are dated; a referral cites a current official
+source, not the dossier alone.
+
 ## What this is
 
 Know Your District is a public web tool for Hawaiʻi legislators and their staff.
