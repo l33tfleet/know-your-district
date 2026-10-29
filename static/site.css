@@ -167,7 +167,192 @@ code {
   margin: 0;
 }
 
+/* brief notes */
+.screen-only-note,
+.section-failure {
+  font-family: var(--note-font);
+  font-size: var(--note-size);
+  color: var(--note-color);
+  border-left: var(--note-rule);
+  padding: var(--note-space);
+  margin: var(--note-margin);
+}
+
 @media print {
+  /* Off the printout: sections that are not PRINT, and preview failure notes. */
+  .screen-only,
+  .section-failure {
+    display: none;
+  }
+
+  /* One Letter page. The interval strips keep their screen geometry (WO144), so only the
+     type and spacing around them shrink; outreach keeps its text, citations in a grid. */
+  .site-header,
+  .site-footer,
+  .brief-headline .vintage-line,
+  .programs,
+  .outreach {
+    font-size: var(--print-text-size);
+  }
+
+  /* Not on body: the strips inherit it and must keep their screen font. */
+  .site-header,
+  .site-footer,
+  .brief-headline,
+  .figure-name,
+  .reading,
+  .programs,
+  .outreach {
+    line-height: var(--print-line-height);
+  }
+
+  /* Vertical only: the horizontal page padding sizes the interval strips (WO144). */
+  .site-header,
+  main,
+  .site-footer {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .brief-headline h1 {
+    font-size: var(--print-headline-size);
+  }
+
+  .brief h2 {
+    font-size: var(--print-heading-size);
+    margin: var(--print-space) 0;
+  }
+
+  .brief p,
+  .site-footer p {
+    margin: var(--print-space) 0;
+  }
+
+  .figure {
+    padding: var(--print-space) 0;
+  }
+
+  .figure-name,
+  .reading,
+  .reading + .reading {
+    font-size: var(--print-text-size);
+  }
+
+  /* County and state readings sit under the district's on one line each. */
+  .reading + .reading {
+    margin-left: 0;
+  }
+
+  .reading + .reading .value {
+    font-size: inherit;
+  }
+
+  /* Paper cannot open a disclosure, so every figure prints its full citation (R1),
+     open or not, as a compact run of fields like the outreach citations. */
+  .figure details.source::details-content {
+    content-visibility: visible;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 0 var(--print-gap);
+  }
+
+  .figure details.source > summary {
+    display: none;
+  }
+
+  /* One column per geography; inline runs, so a long value continues on its label's line. */
+  .figures .figure .citation {
+    display: block;
+    margin: 0;
+    padding: 0;
+    font-size: var(--print-citation-size);
+    line-height: var(--print-line-height);
+  }
+
+  .figure .citation :is(dt, dd, code) {
+    display: inline;
+    margin: 0;
+    font-size: inherit;
+    overflow-wrap: anywhere;
+  }
+
+  .figure .citation dd {
+    margin-right: var(--print-gap);
+  }
+
+  .figure .citation dt {
+    font-weight: var(--weight-bold);
+  }
+
+  /* The margin of error and reliability already print beside the figure; the endpoint
+     is not one of R1's fields. Leaving them off keeps the brief on one page. */
+  .figure .citation :is(
+    dd:is([data-field="moe"], [data-field="cv"], [data-field="endpoint"]),
+    dt:has(+ dd:is([data-field="moe"], [data-field="cv"], [data-field="endpoint"]))
+  ) {
+    display: none;
+  }
+
+  .outreach > p,
+  .program :is(.program-agency, .program-purpose, .program-guidance) {
+    font-size: var(--print-tiny-size);
+  }
+
+  .reading .value {
+    font-size: var(--print-value-size);
+  }
+
+  .program-list {
+    display: grid;
+    grid-template-columns: var(--print-program-columns);
+    gap: 0 var(--print-gap);
+    padding: 0;
+    list-style: none;
+  }
+
+  .program {
+    break-inside: avoid;
+  }
+
+  .program-name {
+    font-size: var(--print-text-size);
+    margin: 0;
+  }
+
+  .outreach table {
+    border-collapse: collapse;
+  }
+
+  .outreach :is(th, td) {
+    padding: 0 var(--print-space);
+    vertical-align: top;
+    text-align: left;
+  }
+
+  /* Flex items stay block-level, so the printed text matches the screen (WO136). */
+  .outreach-citation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--print-space);
+    margin: 0;
+    font-size: var(--print-citation-size);
+  }
+
+  .outreach-citation :is(dt, dd) {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .outreach-citation dd {
+    margin-right: var(--print-gap);
+  }
+
+  .outreach-citation dt {
+    font-weight: var(--weight-bold);
+  }
+
   .figures .figure-comparison {
     break-inside: avoid;
   }

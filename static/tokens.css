@@ -46,6 +46,32 @@
   --reliability-caution-weight: 700;
   --citation-columns: 12rem 1fr;
   --citation-gap: 0.1rem 0.75rem;
+
+  /* brief notes: a failed preview section, a section left off the printout */
+  --note-font: var(--font-label);
+  --note-size: var(--size-tiny);
+  --note-color: var(--color-muted);
+  --note-rule: var(--rule-heavy) solid var(--color-rule-light);
+  --note-space: 0.25rem 0.5rem;
+  --note-margin: 0.5rem 0;
+
+  /* print: the brief fits one Letter page (see @page below) */
+  --print-text-size: 0.65rem;
+  --print-tiny-size: 0.6rem;
+  --print-citation-size: 0.5rem;
+  --print-program-columns: repeat(2, minmax(0, 1fr));
+  --print-line-height: 1.15;
+  --print-gap: 0.75rem;
+  --print-space: 0.15rem;
+  --print-heading-size: 0.95rem;
+  --print-headline-size: 1.3rem;
+  --print-value-size: 1rem;
+}
+
+/* A page is US Letter with 0.25 inch margins; custom properties do not reach @page. */
+@page {
+  size: letter;
+  margin: 0.25in;
 }
 
 /* Shared variant vocabulary; the unvarianted memo keeps its original tokens. */
@@ -75,6 +101,25 @@
   --link-offset: 0.16em;
   --link-thickness: 1px;
   --content-wrap: anywhere;
+}
+
+/* Print keeps both directions on one Letter page with the memo's compact rhythm. */
+@media print {
+  /* html raises specificity above the variant blocks below, which set the same tokens. */
+  html :is([data-variant="a"], [data-variant="b"]) {
+    /* Not --figure-space or --space-page: they size the interval strips (WO144). */
+    --size-small: var(--print-text-size);
+    --headline-space: var(--print-space);
+    --section-size: var(--print-heading-size);
+    --section-space: var(--print-space) 0;
+    --program-size: var(--print-text-size);
+    --program-space: var(--print-space);
+    --paragraph-space: var(--print-space) 0;
+    --control-height: auto;
+    --control-padding: 0;
+    --control-margin: 0;
+    --control-font-size: var(--print-text-size);
+  }
 }
 
 /* A — refined memo: warm ink, serif headline, compact document rhythm. */

@@ -33,6 +33,11 @@ not_found:
 brief:
   # {district} is the district's full name, e.g. "Hawaiʻi State House District 22".
   title: "{district} · Know Your District"
+  # Shown only with ?preview=1, in place of a flagged section that failed; {name} is the
+  # section's file name in words. Never printed.
+  section_failed: "Preview: the {name} section could not be shown. The rest of the brief is unaffected."
+  # Above a section that is shown on screen but left off the printout.
+  screen_only: Not on the printout
 
 sections:
   headline:
