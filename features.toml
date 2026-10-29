@@ -1,0 +1,2 @@
+# Set false to omit outreach from both screen and print, including its fact reads.
+outreach = true
