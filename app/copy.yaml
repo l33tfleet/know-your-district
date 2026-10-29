@@ -73,6 +73,24 @@ sections:
       cv: Coefficient of variation
       endpoint: Data endpoint
 
+  outreach:
+    measure: Households below poverty reporting no SNAP — an outreach signal
+    basis: "State of Hawaiʻi average per {chamber} district"
+    caveat: >-
+      These are households, not people or an estimate of program eligibility.
+      ACS uses national Census poverty thresholds, which differ from Hawaiʻi
+      program guidelines. Survey answers undercount benefit receipt.
+      The state reference is the average count per district in the same chamber,
+      not a household rate. Differences in district household totals can affect
+      this signal. The agency decides eligibility.
+    program_url: https://humanservices.hawaii.gov/bessd/snap/
+    groups:
+      higher: Clearly higher than the state average per district
+      indeterminate: No clear difference from the state average per district
+      lower: Clearly lower than the state average per district
+      caution: "Use with caution; no comparison claim"
+      missing: Comparable published estimates are not available
+
   snap:
     heading: Households below poverty reporting no SNAP receipt
     units: households
