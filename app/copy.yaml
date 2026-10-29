@@ -91,6 +91,26 @@ sections:
       caution: "Use with caution; no comparison claim"
       missing: Comparable published estimates are not available
 
+  snap:
+    heading: Households below poverty reporting no SNAP receipt
+    units: households
+    measure_note: >-
+      ACS survey-reported receipt over the past 12 months, not current enrollment or eligibility.
+      This published joint cell counts households with income below poverty that
+      reported no Food Stamps/SNAP receipt during that period.
+    undercount_note: >-
+      Survey answers undercount benefit receipt; reported nonreceipt does not
+      establish that a household received no benefits.
+    poverty_note: >-
+      ACS uses national Census poverty thresholds, not the higher Hawaiʻi HHS
+      poverty guidelines. This count does not determine eligibility or identify
+      households eligible for SNAP but not enrolled.
+    referral_note: >-
+      SNAP may help. DHS decides eligibility. Contact DHS or Aloha United Way 211
+      for assistance.
+    official_url: https://humanservices.hawaii.gov/bessd/snap/
+    referral_url: https://auw211.org/
+
   # Names, agencies, purposes and links come from data/programs.yaml.
   programs:
     heading: Programs that may help
