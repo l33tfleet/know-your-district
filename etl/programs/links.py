@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from pathlib import Path
 from time import perf_counter
+from typing import Literal
 from urllib.parse import urljoin, urlsplit
 
 from pydantic import TypeAdapter
@@ -20,12 +21,22 @@ OFFICIAL_HOSTS = TypeAdapter(dict[str, str]).validate_json(
 )
 TIMEOUT = 10.0
 MAX_REDIRECTS = 5
+# Bot walls (auw211.org answers 403): the link is not verified, and its date stays as reviewed.
+BLOCKED = (401, 403, 429)
+USER_AGENT = "KnowYourDistrict-LinkChecker/1.0 (+https://district.hawaiitechmentors.org)"
+LinkState = Literal["verified", "blocked"]
 
 
 @dataclass(frozen=True)
 class LinkResponse:
     status: int
     location: str | None = None
+
+
+@dataclass(frozen=True)
+class LinkReport:
+    failures: list[str]
+    blocked: list[str]
 
 
 def http_get(url: str, timeout: float) -> LinkResponse:
@@ -41,7 +52,7 @@ def http_get(url: str, timeout: float) -> LinkResponse:
         path = parts.path or "/"
         if parts.query:
             path += "?" + parts.query
-        connection.request("GET", path)
+        connection.request("GET", path, headers={"User-Agent": USER_AGENT})
         response = connection.getresponse()
         return LinkResponse(response.status, response.getheader("Location"))
     finally:
@@ -70,26 +81,30 @@ def _trusted(url: str) -> None:
         raise ValueError(f"Untrusted URL: {url!r}")
 
 
-def check_url(url: str, *, get: Callable[[str, float], LinkResponse] = http_get) -> None:
-    """Check each hop before sending it; accept only a final 200 within five redirects."""
-    for hop in range(MAX_REDIRECTS + 1):
+def check_url(url: str, *, get: Callable[[str, float], LinkResponse] = http_get) -> LinkState:
+    """Check each hop before sending it; verify only a final 200 within five redirects.
+
+    A final 401/403/429 is "blocked": the site refused automated access. Anything else raises.
+    """
+    for _ in range(MAX_REDIRECTS + 1):
         _trusted(url)
         try:
             response = get(url, TIMEOUT)
         except (OSError, HTTPException) as exc:
             raise ValueError(f"HTTP request failed: {url}") from exc
         if response.status == 200:
-            return
+            return "verified"
+        if response.status in BLOCKED:
+            return "blocked"
         if response.status not in (301, 302, 303, 307, 308):
             raise ValueError(f"HTTP {response.status}: {url}")
         if not response.location:
             raise ValueError(f"Missing redirect location: {url}")
-        if hop == MAX_REDIRECTS:
-            raise ValueError(f"Too many redirects: {url}")
         # urljoin strips some control characters: reject before normalization.
         if any(ord(c) <= 32 or ord(c) == 127 for c in response.location):
             raise ValueError(f"Untrusted URL: {response.location!r}")
         url = urljoin(url, response.location)
+    raise ValueError(f"Too many redirects: {url}")
 
 
 def check_catalog(
@@ -97,9 +112,10 @@ def check_catalog(
     *,
     get: Callable[[str, float], LinkResponse] = http_get,
     today: Callable[[], date] = lambda: datetime.now(UTC).date(),
-) -> list[str]:
-    """Report all failures; never update last_verified, even when every URL passes."""
+) -> LinkReport:
+    """Report failures and blocked links; never update last_verified, whatever the result."""
     failures: list[str] = []
+    blocked: list[str] = []
     now = today()
     for program in programs:
         age = (now - program.last_verified).days
@@ -112,7 +128,10 @@ def check_catalog(
             ("eligibility_proxy.source_url", program.eligibility_proxy.source_url),
         ):
             try:
-                check_url(str(url), get=get)
+                if check_url(str(url), get=get) == "blocked":
+                    blocked.append(
+                        f"{program.name} {field}: {url} refused automated access; not verified"
+                    )
             except ValueError as exc:
                 failures.append(f"{program.name} {field}: {exc}")
-    return failures
+    return LinkReport(failures, blocked)
