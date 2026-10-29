@@ -5,7 +5,7 @@ This note describes repository mechanisms; hosting configuration is separate.
 **Data and individuals.** The app serves district brief pages, a picker and a
 health response. Handlers open committed SQLite fact databases under `data/`
 read-only (`mode=ro`); ETL builds them from public, aggregate Census ACS
-tables. No State dataset is used. App handlers neither collect nor persist personal information,
+tables; district shapes are State boundary layers ([`data/geo/`](../data/geo/)). App handlers neither collect nor persist personal information,
 chat history or user profiles. There is no person lookup or inference about
 individuals. The product's aggregate-only rule permits published population
 tables, never individual records ([data and licences](data.md#data-licences)).
