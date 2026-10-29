@@ -2,8 +2,8 @@
 
 Source: HAIC 2026 Technology Use Case, "Know Your District: An AI Agent for Hawaiʻi's Legislative District Resident
 Profiles", https://haic.hawaii.gov/wp-content/uploads/2026/10/HAIC_Use_Case_Know_Your_District_AI_Agent_2026.pdf
-(sha256 1283f8a2…793305e, 6 pages, read 2026-10-28). Wording kept close to the original; IDs are ours, `pN` = PDF
-page. Cite as `UC-<id>`. The PDF wins over this copy.
+(sha256 1283f8a2…793305e, 6 pages, read 2026-10-28). Wording kept close to the original; IDs (C1, A2, D9, R3, etc.) are project-assigned citation labels,
+not official requirements or additional obligations; `pN` = PDF page. Cite as `UC-<id>`. The PDF wins over this copy.
 
 Champion: DBEDT Research & Economic Analysis Division (READ); coordinated by ETS. Subject-matter contact: Chief State
 Economist, questions only via Slack #c_dbedt_agent. (p1)
@@ -20,7 +20,7 @@ Economist, questions only via Slack #c_dbedt_agent. (p1)
 
 ## Assumptions (p2)
 - A1 Public, aggregated data only; no individual taxpayer or confidential records.
-- A2 Most datasets aren't by district: apportion or crosswalk tract/ZIP/county data and explain the method.
+- A2 Many datasets aren't by district: apportion or crosswalk tract/ZIP/county data and explain the method.
 - A3 Small districts or groups may have large margins of error or be suppressed; say so, don't overstate precision.
 - A4 Boundaries follow the latest reapportionment; use official boundary files.
 - A5 Program info (eligibility, contacts, links) changes; the solution needs a way to keep it current.
@@ -60,13 +60,13 @@ Economist, questions only via Slack #c_dbedt_agent. (p1)
 - D6 datatrove.ai public data.
 - D7 Official legislative district boundary files.
 - D8 Public program and eligibility information (state, county, federal).
-- D9 Collect no new resident data; a structured program/eligibility inventory from public sources is expected.
+- D9 Collect no new resident data; teams may need a structured program/eligibility inventory from public sources.
 
 ## Outputs (p4)
 - R1 Summary per House and Senate district: population and age (incl. kūpuna), household income and poverty,
   employment and industries, housing costs, other indicators DBEDT/READ prioritizes.
 - R2 District vs its county and the state.
-- R3 Populations likely eligible for existing programs, beside current uptake where data exists: where outreach could
+- R3 Estimates of populations likely eligible for existing programs, beside current uptake where data exists: where outreach could
   help most.
 - R4 Map views of boundaries and key indicators (ESRI).
 - R5 Exportable summary (PDF or printable one-pager) with sources.
