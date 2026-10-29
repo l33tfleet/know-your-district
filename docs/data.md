@@ -128,6 +128,14 @@ CV = (MOE / 1.645) / estimate
   not an error**: show the figure with its flag, don't hide it.
 - The MOE of a sum of estimates is approximated as `sqrt(MOE₁² + MOE₂² + …)`
   (Census Bureau guidance); say "derived" in the method when this is used.
+  A controlled MOE (annotation `*****`) counts as 0 in that sum; any other
+  missing MOE leaves the derived MOE missing.
+- The MOE of a derived proportion `p = X / Y` (numerator X a subset of
+  denominator Y, both in one universe and one geography) uses the ACS handbook
+  proportion formula `sqrt(MOE_X² - p² · MOE_Y²) / Y`. When the radicand
+  `MOE_X² - p² · MOE_Y²` is negative, use the ratio formula
+  `sqrt(MOE_X² + p² · MOE_Y²) / Y` instead, and name the formula used in the
+  method. A zero denominator is "not computed", never 0%.
 
 ## Known traps (each becomes an eval case in `tests/evals/`)
 
