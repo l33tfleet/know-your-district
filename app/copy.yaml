@@ -116,6 +116,19 @@ sections:
     official_url: https://humanservices.hawaii.gov/bessd/snap/
     referral_url: https://auw211.org/
 
+  # A fixed question; its answer reads the same SNAP result as the outreach card.
+  snap_question:
+    heading: Ask about this district
+    question: >-
+      How many households here have income under the poverty threshold and report
+      no SNAP receipt?
+    submit: Show the answer
+    answer_label: Answer
+    caption: District, county and state published estimates
+    estimate_label: Estimate and uncertainty
+    official_label: Official SNAP program page
+    referral_label: Aloha United Way 211
+
   # Names, agencies, purposes and links come from data/programs.yaml.
   programs:
     heading: Programs that may help
