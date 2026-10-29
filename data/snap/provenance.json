@@ -1,0 +1,35 @@
+{
+  "retrieved_on": "2026-10-28",
+  "source": "U.S. Census Bureau",
+  "table_id": "B22003",
+  "variable": "B22003_006E",
+  "vintage": "2020–2024",
+  "plan_year": 2022,
+  "source_url": "https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/acsdt5y2024-b22003.dat",
+  "full_source_sha256": "03c3c8f329c7223bd9c570a3b9874c6b626585482fce33f665b5a8f43f2b117c",
+  "metadata_url": "https://api.census.gov/data/2024/acs/acs5/variables/B22003_006E.json",
+  "source_excerpt": "evidence/b22003-hawaii.dat",
+  "method": "Unchanged pipe-delimited header and rows selected from the official ACS 5-year table-based summary file. GEO_ID 0400000US15 is state; 0500000US15xxx is county; 620L900US15xxx is House; 610U900US15xxx is Senate. Read B22003_E006 and B22003_M006 directly; no subtraction, aggregation, interpolation or modeled eligibility. The summary file has no annotation columns. The canonical endpoint identifies the ACS dataset; the method in each fact records the actual bulk download URL.",
+  "geographies": {
+    "house": 51,
+    "senate": 25,
+    "counties": [
+      "001",
+      "003",
+      "007",
+      "009"
+    ],
+    "state": "15",
+    "excluded_counties": [
+      "005"
+    ]
+  },
+  "retrieval_note": "Census API observation queries redirected to missing_key.html without a key. Metadata was accessible. Used the official public bulk table instead; no replacement or invented observations.",
+  "limitations": [
+    "ACS national poverty thresholds differ from Hawaiʻi program guidelines: this is a lower-bound outreach indicator, not an eligibility count.",
+    "Survey answers undercount benefit receipt; nonreceipt is self-reported and does not establish an unmet entitlement.",
+    "DHS determines eligibility after reviewing household circumstances."
+  ],
+  "rebuild": "python -m scripts.independent_snap --build-summary --dry-run; python -m scripts.independent_snap --build-summary",
+  "independent_reproduction": "python -m scripts.independent_snap --fetch prints House 1 from a fresh bulk download without app, ETL or config imports; compare against the committed golden fixture."
+}

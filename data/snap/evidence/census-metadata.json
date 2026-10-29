@@ -1,0 +1,9 @@
+{
+  "name": "B22003_006E",
+  "label": "Estimate!!Total:!!Household did not receive Food Stamps/SNAP in the past 12 months:!!Income in the past 12 months below poverty level",
+  "concept": "Receipt of Food Stamps/SNAP in the Past 12 Months by Poverty Status in the Past 12 Months for Households",
+  "predicateType": "int",
+  "group": "B22003",
+  "limit": 0,
+  "attributes": "B22003_006EA,B22003_006M,B22003_006MA"
+}

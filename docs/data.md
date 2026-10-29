@@ -19,13 +19,16 @@ Later work orders cite this file instead of repeating it. Product rules are in
 
 The ETL ([`etl/census.py`](../etl/census.py)), configured by
 [`config.toml`](../config.toml), fetches ACS 2020–2024 5-year Detailed,
-Data Profile and Subject tables from the Census API. It returns fetched rows
-in memory; [`data/`](../data/) holds `README.md` and `schema.sql`, and
-no built database is committed. The table records the terms for these ACS
-products.
-No State dataset, district boundary file or program dataset is currently used;
-the fetcher requests Census geographies, and the district-plan description
-below is not a separately loaded dataset.
+Data Profile and Subject tables from the Census API. The fact build publishes
+the validated SQLite database at [`data/facts.db`](../data/facts.db), using
+[`data/schema.sql`](../data/schema.sql), with a canonical TSV and checksum
+sidecar. This replaces the earlier "no built database is committed" state.
+The boundary build reads this database without modifying it. The table records
+the terms for these ACS products.
+The boundary build also fetches the State's 2022 House and Senate district
+layers and compares them with Census TIGER/Line 2022. The published State
+geometry and evidence are in [`data/geo/`](../data/geo/); these shapes are not
+ACS observations. Program reference data is in `data/programs.yaml`.
 The repository's MIT software licence does not license third-party data.
 
 | Dataset | Publisher | Licence or terms | Attribution line |
@@ -33,6 +36,13 @@ The repository's MIT software licence does not license third-party data.
 | ACS 2020–2024 5-year Detailed Tables (B and C tables listed below) | U.S. Census Bureau | U.S. public domain, federal government work ([17 U.S.C. § 105](https://www.govinfo.gov/content/pkg/USCODE-2022-title17/html/USCODE-2022-title17-chap1.htm#sec105)); [Census citation guidance](https://www.census.gov/about/policies/citation.html) | Source: U.S. Census Bureau, 2020–2024 ACS 5-Year Estimates, Detailed Tables, [table ID and title], [geography], https://api.census.gov/data/2024/acs/acs5, accessed [date]. |
 | ACS 2020–2024 5-year Data Profiles (DP04, DP05) | U.S. Census Bureau | U.S. public domain, federal government work ([17 U.S.C. § 105](https://www.govinfo.gov/content/pkg/USCODE-2022-title17/html/USCODE-2022-title17-chap1.htm#sec105)); [Census citation guidance](https://www.census.gov/about/policies/citation.html) | Source: U.S. Census Bureau, 2020–2024 ACS 5-Year Estimates, Data Profiles, [table ID and title], [geography], https://api.census.gov/data/2024/acs/acs5/profile, accessed [date]. |
 | ACS 2020–2024 5-year Subject Tables (S tables listed below) | U.S. Census Bureau | U.S. public domain, federal government work ([17 U.S.C. § 105](https://www.govinfo.gov/content/pkg/USCODE-2022-title17/html/USCODE-2022-title17-chap1.htm#sec105)); [Census citation guidance](https://www.census.gov/about/policies/citation.html) | Source: U.S. Census Bureau, 2020–2024 ACS 5-Year Estimates, Subject Tables, [table ID and title], [geography], https://api.census.gov/data/2024/acs/acs5/subject, accessed [date]. |
+
+Boundary source attribution is separate from the ACS figure citations:
+
+| Dataset | Publisher | Terms and credit |
+|---|---|---|
+| 2022 State House and Senate district layers, ArcGIS layers 33 and 34 | State of Hawaiʻi Office of Elections / Hawaiʻi Statewide GIS Program | [Source service](https://geodata.hawaii.gov/arcgis/rest/services/AdminBnd/MapServer). Preserve each layer's verbatim credit in `house.credit.txt` and `senate.credit.txt`; the repository software licence does not grant data rights. Exact query, retrieval date, plan and server generalization method are in each chamber's `.provenance.json`. |
+| TIGER/Line 2022 Hawaiʻi SLDL and SLDU | U.S. Census Bureau | Comparison inputs, not the displayed shapes; [TIGER/Line documentation and use limitations](https://www.census.gov/programs-surveys/geography/technical-documentation/complete-technical-documentation/tiger-geo-line.html). Exact archive URLs accompany each overlay result. |
 
 Attribution lines are templates: replace bracketed fields with the actual table,
 geography and access date. For derived figures, identify Census as the source of
@@ -186,4 +196,112 @@ endpoint URLs use the year placeholder. No database or observations ship here.
 The local GeoJSON FeatureCollection requires provenance: HTTP/S `source_url`, ISO calendar `retrieved_on` (YYYY-MM-DD), nonblank `vintage` and `method`, and `plan_year` 2022. Features have only `chamber` and `district` properties. Map source attributes before validation.
 Geometry must be a nonempty Polygon or MultiPolygon with finite longitude/latitude pairs, closed rings and three distinct vertices per ring. Duplicate normalized keys fail. Structural validation does not prove topology, coverage, projection correctness or official district correspondence.
 Run `make boundaries BOUNDARIES_FILE=<local.geojson>` offline to validate and print canonical keys. `tests/regressions/fixtures/wo47_boundaries.geojson` is synthetic. Partial collections are allowed here; production loads must enforce the district counts above.
-**WO-3 (#24) is a prerequisite for the real-database join proof.** That work must deliver the real fact table and reconcile boundary keys with the qualified fact geography keys before proving exact House and Senate key-set equality, detecting missing and extra keys in either direction. This step provides no real-database join proof.
+**WO-3 (#24) is a prerequisite for the real-database join proof.** That work must deliver the real fact table and reconcile boundary keys with the qualified fact geography keys before proving exact House and Senate key-set equality, detecting missing and extra keys in either direction. The database is now delivered at `data/facts.db`; the default boundary build
+checks it and publishes the result in `fact-keys.md`.
+
+
+## Production boundary build (WO-80, final step of #27)
+
+`make boundaries` fetches both State layers through `etl.boundaries.state`,
+validates and exports qualified identities through `etl.boundaries.production`,
+and uses `etl.boundaries.overlay` for the TIGER archive validation and equal-area
+comparison. It rebuilds `data/geo/house.geojson` and `senate.geojson`, each below
+one megabyte, with separate provenance and verbatim credit sidecars. The
+**displayed source is the State**, with its server generalization preserved;
+TIGER never replaces a State shape. The build uses no ACS values or model calls.
+The app serves district briefs; this work does not add a map UI.
+
+`overlay.md` reports every district, its source query, retrieval date, plan,
+method and TIGER archive URL. Agreement is intersection / union in EPSG:6933,
+using the prepared overlay engine without snapping, buffering or repairs.
+Every result below the 99% threshold appears in `mismatch.md` with its computed
+shortfall in percentage points. Invalid topology and computation failures are
+listed as **UNVERIFIED**, with their errors and no invented agreement or
+shortfall. They are exceptions requiring review, not successful overlays.
+Invalid TIGER archives fail the build before publishing new artifacts.
+
+The published run has five districts at or above the threshold, 55 below it,
+and 16 unverified; the per-district evidence, rather than this summary, is the
+record of the comparison. The State's generalized geometry has topology errors
+in some districts; the prepared overlay also encounters interval computation
+failures. No geometry has been silently repaired to improve agreement.
+
+A successful build additionally requires exact equality with distinct district
+geography keys read from the **actual** SQLite `facts` table in read-only mode.
+`fact-keys.md` records the database path, checksum on success, and missing/extra
+key evidence on failure. State/county keys are excluded; both chambers and both
+set differences are checked. This is a geography-key proof, not proof of fact
+row completeness or geographic correspondence. **#24 must supply the real
+database**: no database is generated from the boundary IDs as a substitute.
+The default run now reads the delivered `data/facts.db` and publishes the real
+join proof alongside shapes and overlay evidence. A missing or mismatched
+database still exits nonzero and publishes the failed-join evidence.
+
+Operator commands:
+
+```sh
+make boundaries
+make boundaries BOUNDARIES_ARGS='--facts-db /path/to/real/facts.sqlite'
+make boundaries BOUNDARIES_FILE=/path/to/normalized.geojson
+# Offline replay of downloaded inputs (not synthetic production data):
+make boundaries BOUNDARIES_ARGS='--source-dir /path/to/downloads --facts-db /path/to/real/facts.sqlite'
+```
+
+`--source-dir` contains unchanged `state-house.json`, `state-senate.json`,
+`tl_2022_15_sldl.zip` and `tl_2022_15_sldu.zip`. `--output-dir` selects an
+alternative artifact directory. An explicitly supplied `BOUNDARIES_FILE`
+retains the earlier offline structural validation and canonical key output,
+including support for partial collections, with no network or database access.
+Offline regression builds use synthetic State responses, actual shapefile ZIP
+encoding and temporary SQL tables; their join passes are test evidence only.
+
+## ZIP tax and population crosswalk contracts (#168, step 1 of #134)
+
+These additive, offline contracts live in `etl/zip_contract.py`. They do not
+change ACS facts, existing geometry, the SQLite schema or runtime readers.
+`read_tax`, `read_crosswalk` and `read_records` read normalized JSON arrays,
+validate records and reject duplicate keys. Upstream adapters normalize source
+labels and suppression markers before calling these readers. Steps 2–4 return
+validated records; step 5 alone writes outputs. No tax observations ship here.
+Pydantic, pyproj and pyshp are pinned to the versions in `uv.lock` for replay.
+
+- Tax identity is (ZIP, measure, filing status, tax year). Preserve every source
+  year and filing-status category separately, including comparison years;
+  never replace the tax year with the retrieval year. Each row carries units,
+  decimal value, published/suppressed/unavailable status, table, source URL and
+  retrieval date. A suppressed or unavailable value is null, never zero.
+  These are aggregate administrative tax-return statistics, not ACS estimates
+  of households or residents. They carry no invented ACS MOE or CV flag.
+- **ZIP ≠ ZCTA.** Postal ZIP codes describe delivery routes; Census ZCTAs are
+  generalized statistical areas, and not every ZIP has a corresponding ZCTA
+  ([Census definition](https://www.census.gov/programs-surveys/geography/guidance/geo-areas/zctas.html)).
+  Keep five ASCII digits, including leading zeros. ZCTA geometry has its own
+  2020 vintage, source URL and retrieval date. A matching code alone does not
+  establish geographic equivalence. Preserve unmappable ZIPs with reasons;
+  never fabricate geometry or silently drop them.
+- Crosswalk rows identify ZCTA and chamber-qualified 2022 district, intersection
+  population, **both population denominators** (whole ZCTA and whole district),
+  population year 2020, source URL and retrieval date. The method is exactly
+  `population-weighted (2020 blocks)`. Each share divides the intersection by
+  its respective denominator. Zero denominators are unmappable, not zero
+  shares. Existing overlay areas and county area normalization cannot supply
+  population weights. Geometry failures described above remain review failures;
+  do not silently repair shapes or substitute area fractions.
+- **Medians are non-apportionable.** Never multiply ZIP median AGI by a crosswalk
+  share, sum medians, or label a weighted average of ZIP medians a district
+  median. Published ZIP observations remain separate from derived crosswalks.
+
+Source rights and attribution for subsequent builds:
+
+| Input | Terms and required evidence |
+|---|---|
+| Hawaiʻi Department of Taxation individual income tax tables | [Published report example](https://files.hawaii.gov/tax/stats/stats/indinc/2022indinc.pdf). No redistribution licence is asserted here; public access is not a licence grant. Record report-specific terms and permission before redistributing source files. Attribute Department of Taxation, report/table, tax year, filing status, ZIP, units, exact URL and retrieval date. Preserve suppression notes. |
+| Census 2020 ZCTA/block geometry and block population | Federal government works are public domain under the federal-work terms cited above. Retain [TIGER/Line documentation and limitations](https://www.census.gov/programs-surveys/geography/technical-documentation/complete-technical-documentation/tiger-geo-line.html); attribute Census, product/table, 2020 vintage, geography, exact URL and retrieval date. These are decennial inputs, not ACS. |
+| State district geometry | Retain the State service terms and verbatim layer credits described above; the repository MIT licence grants no third-party data rights. |
+
+Step 5 must package full outputs (including the tax TSV exceeding the review
+line budget) as reproducible build artifacts, not truncated samples in code PRs.
+Include input URLs and retrieval dates, dependency lock, replay command, input
+and output SHA-256 checksums, row counts, suppression/year/status checks,
+unmappable reasons and geometry/crosswalk review evidence. Keep code PRs below
+12 files and 400 changed lines. This step defines contracts, not that publisher.

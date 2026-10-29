@@ -1,4 +1,4 @@
-.PHONY: help sync check lint format typecheck imports browsers test evals run smoke golden data data-check links
+.PHONY: help sync check lint format typecheck imports browsers test evals run smoke golden data data-check snap-check links
 
 BASE_URL ?= http://127.0.0.1:8000
 HOST ?= 127.0.0.1
@@ -12,6 +12,7 @@ help:
 	@echo "make run                      serve the app on http://$(HOST):$(PORT)"
 	@echo "make smoke BASE_URL=<url>     check a running app (GET /healthz -> 200)"
 	@echo "make format                   apply ruff fixes and formatting"
+	@echo "make boundaries               rebuild State shapes, TIGER evidence and real fact-key proof"
 	@echo "make data                     build cited ACS facts (optional CENSUS_API_KEY)"
 	@echo "make golden                   fetch and atomically generate 300 independent ACS cases"
 
@@ -19,7 +20,7 @@ links:
 	$(UV) run python -m etl.programs
 
 data:
-	$(UV) run python -m etl.build
+	$(UV) run python -m etl.build --sources data/sources
 
 data-check:
 	$(UV) run python -m etl.build --check
@@ -27,7 +28,7 @@ data-check:
 sync:
 	$(UV) sync --locked
 
-check: lint typecheck imports browsers test evals data-check
+check: lint typecheck imports browsers test evals data-check snap-check
 
 lint:
 	$(UV) run ruff check .
@@ -65,5 +66,14 @@ golden:
 	$(UV) run python -m scripts.generate_golden
 
 .PHONY: boundaries
+# A supplied local collection retains the offline structural validator.
 boundaries:
+ifneq ($(strip $(BOUNDARIES_FILE)),)
 	$(UV) run python -m etl.boundaries "$(BOUNDARIES_FILE)"
+else
+	$(UV) run python -m etl.boundaries.build $(BOUNDARIES_ARGS)
+endif
+
+# Offline SNAP coverage, independent district golden and dated referral evidence.
+snap-check:
+	$(UV) run python -m scripts.independent_snap
