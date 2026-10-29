@@ -1,7 +1,11 @@
 """Selection and presentation shared by the brief and district-bound fact tools."""
 
 from collections.abc import Callable
+from typing import Literal
 
+from pydantic import BaseModel, ConfigDict
+
+from app.analysis.compare import compare
 from app.copy import Copy, geography_name
 from app.counties import CountyShare, load_mapping
 from app.facts import FactStore, acs_config
@@ -14,6 +18,25 @@ FORMATS: dict[str, Callable[[float], str]] = {
     "population": lambda v: f"{v:,.0f}",
     "age_65_share": lambda v: f"{v:.1f}%",
     "median_household_income": lambda v: f"${v:,.0f}",
+}
+
+
+class Kind(BaseModel):
+    """How a figure reads in a sentence, and whether it is compared with a reference."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["count", "share", "dollars"]
+    compared: bool
+    # The published count behind a share, once the ETL acquires it; never computed.
+    companion_count: str | None = None
+
+
+KINDS: dict[str, Kind] = {
+    "population": Kind(kind="count", compared=False),
+    # DP05_0024E (count 65+) is not in etl/indicators.py yet; acquiring it is a separate work order.
+    "age_65_share": Kind(kind="share", compared=True, companion_count=None),
+    "median_household_income": Kind(kind="dollars", compared=True),
 }
 
 
@@ -37,6 +60,34 @@ def reading(
         "moe_text": "±" + fmt(fact.moe) if fact.moe is not None else copy["no_moe"],
         "reliability": fact.reliability,
         "word": copy["reliability"][fact.reliability],
+    }
+
+
+def comparison(
+    district: Fact | None,
+    reference: Fact | None,
+    fmt: Callable[[float], str],
+    copy: Copy,
+    *,
+    figure: str,
+    geography: str = STATE,
+) -> dict[str, object] | None:
+    """The worded comparison of a district figure with a reference, or None if never compared.
+
+    The reference reading carries the Fact's value and MOE unchanged, for `<data value=…>`.
+    """
+    kind = KINDS[figure]
+    if not kind.compared:
+        return None
+    group = compare(district, reference)
+    words: dict[str, str] = copy["comparisons"][kind.kind][group]
+    return {
+        "group": group,
+        "clause": words["lead"],
+        "tail": words.get("tail", ""),
+        "reference": reading(
+            reference.geography if reference is not None else geography, reference, fmt, copy
+        ),
     }
 
 
