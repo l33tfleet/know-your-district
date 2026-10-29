@@ -1,6 +1,7 @@
 """Fail a PR that modifies, renames or deletes an existing file under tests/regressions/.
 
-The PR is diffed against its merge base with the base branch. New files pass.
+The PR is diffed against its merge base with the base branch. New files pass;
+new non-.py files (fixtures, data) add no tests and are never errors.
 
 One exception lets a spec change: the PR's Issue (number from the `agent/<n>-`
 branch name) may carry `Supersedes: PATH::TEST` lines. Each named top-level
@@ -145,8 +146,9 @@ def check(repo: Path, base: str, head: str, supersedes: dict[str, set[str]]) -> 
         old_path = paths[0]
         new_path = paths[-1]
         added_here = kind in "AC" or (kind == "R" and not old_path.startswith(REGRESSIONS))
-        if added_here and new_path.startswith(REGRESSIONS):
-            # An unparsable new file adds no replacement tests.
+        if added_here and new_path.startswith(REGRESSIONS) and new_path.endswith(".py"):
+            # Only new .py files add replacement tests; other new files (fixtures,
+            # data) are neutral. An unparsable new file adds no replacement tests.
             with contextlib.suppress(SyntaxError):
                 new_tests += len(top_level_tests(git(repo, "show", f"{head}:{new_path}")))
         if kind in "AC" or not old_path.startswith(REGRESSIONS):
@@ -157,7 +159,7 @@ def check(repo: Path, base: str, head: str, supersedes: dict[str, set[str]]) -> 
             )
         elif kind == "D":
             errors.append(f"{old_path!r}: deleted; files under {REGRESSIONS} are append-only")
-        elif kind == "M" and old_path in supersedes:
+        elif kind == "M" and old_path in supersedes and old_path.endswith(".py"):
             old = git(repo, "show", f"{merge_base}:{old_path}")
             new = git(repo, "show", f"{head}:{old_path}")
             file_errors, lost = check_superseded(old_path, old, new, supersedes[old_path])
