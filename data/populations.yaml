@@ -1,0 +1,227 @@
+# Population registry (WO147). Validated by app/populations.py; cells from etl/population_variables.py.
+# Every numerator and denominator lists published estimate cells; a plus means a derived sum
+# (MOE sqrt of summed squares), never a new published fact. Definitions follow docs/data.md.
+# There is no "fixed income" entry: no published table measures it. Its three measured
+# alternatives are older_below_poverty, older_living_alone and social_security; retirement is
+# a separate fourth entry and is never combined with social_security (the two overlap).
+source: U.S. Census Bureau ACS 5-year
+vintage: 2020–2024
+method: published estimate and 90% margin of error
+populations:
+  - id: children_under_5
+    label: Children under 5
+    unit: persons
+    universe: Total population
+    exclusions:
+      - Residents aged 5 and over are excluded from the numerator.
+    definition: >-
+      Residents of both sexes under 5 years old, including group quarters, as a share of
+      total population.
+    numerator: [B01001_003E, B01001_027E]
+    denominator: [B01001_001E]
+    period: survey_time
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: children_below_poverty
+    label: Children under 18 below poverty
+    unit: persons
+    universe: Population for whom poverty status is determined
+    exclusions:
+      - Adults are excluded from both terms.
+      - Children whose poverty status is not determined, including unrelated children under 15, are excluded.
+      - Institutionalized people and people in college dormitories or military group quarters are excluded.
+    definition: >-
+      Poverty rate among children under 18 whose poverty status is determined, using national
+      Census poverty thresholds (a lower bound for Hawaiʻi programs, not eligibility).
+    numerator: [B17001_004E, B17001_005E, B17001_006E, B17001_007E, B17001_008E, B17001_009E,
+                B17001_018E, B17001_019E, B17001_020E, B17001_021E, B17001_022E, B17001_023E]
+    denominator: [B17001_004E, B17001_005E, B17001_006E, B17001_007E, B17001_008E, B17001_009E,
+                  B17001_018E, B17001_019E, B17001_020E, B17001_021E, B17001_022E, B17001_023E,
+                  B17001_033E, B17001_034E, B17001_035E, B17001_036E, B17001_037E, B17001_038E,
+                  B17001_047E, B17001_048E, B17001_049E, B17001_050E, B17001_051E, B17001_052E]
+    period: past_12_months
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: households_with_children
+    label: Households with children under 18
+    unit: households
+    universe: Households
+    exclusions:
+      - People in group quarters are outside the household universe.
+    definition: >-
+      Family and nonfamily households with any resident under 18, not only own children, as a
+      share of all households.
+    numerator: [B11005_002E]
+    denominator: [B11005_001E]
+    period: survey_time
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: native_hawaiian
+    label: Native Hawaiian alone or in combination
+    unit: persons
+    universe: Total population
+    exclusions:
+      - Residents without a Native Hawaiian response are excluded from the numerator.
+      - Native Hawaiian alone (B02016) is not added; race tallies are never summed.
+    definition: >-
+      Residents reporting Native Hawaiian alone or in any combination (B02019, whose own
+      universe is Native Hawaiian and Other Pacific Islander alone or in any combination), as a
+      share of total population. B02019_001 is groups tallied, not total population.
+    numerator: [B02019_002E]
+    denominator: [B01001_001E]
+    period: survey_time
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: kupuna
+    label: Kūpuna (65 and over)
+    unit: persons
+    universe: Total population
+    exclusions:
+      - Residents under 65 are excluded from the numerator.
+    definition: >-
+      Residents of both sexes aged 65 and over, including group quarters, as a share of total
+      population.
+    numerator: [B01001_020E, B01001_021E, B01001_022E, B01001_023E, B01001_024E, B01001_025E,
+                B01001_044E, B01001_045E, B01001_046E, B01001_047E, B01001_048E, B01001_049E]
+    denominator: [B01001_001E]
+    period: survey_time
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: older_below_poverty
+    label: Kūpuna (65 and over) below poverty
+    unit: persons
+    universe: Population for whom poverty status is determined
+    exclusions:
+      - Residents under 65 are excluded from both terms.
+      - Residents 65 and over whose poverty status is not determined, including institutionalized people, are excluded.
+    definition: >-
+      Poverty rate among residents 65 and over whose poverty status is determined, using
+      national Census poverty thresholds (a lower bound for Hawaiʻi programs, not eligibility).
+      A measured alternative to "fixed income", which no published table defines.
+    numerator: [B17001_015E, B17001_016E, B17001_029E, B17001_030E]
+    denominator: [B17001_015E, B17001_016E, B17001_029E, B17001_030E,
+                  B17001_044E, B17001_045E, B17001_058E, B17001_059E]
+    period: past_12_months
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: older_living_alone
+    label: Households with a person 65 years and over living alone
+    unit: households
+    universe: Households
+    exclusions:
+      - People in group quarters are outside the household universe.
+      - Older people living with others are excluded.
+    definition: >-
+      One-person households whose resident is 65 or over, as a share of all households; not a
+      share of all older people. A measured alternative to "fixed income".
+    numerator: [B11007_003E]
+    denominator: [B11007_001E]
+    period: survey_time
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: social_security
+    label: Households with Social Security income
+    unit: households
+    universe: Households
+    exclusions:
+      - People in group quarters are outside the household universe.
+      - SSI-only receipt is excluded.
+      - Retirement income (B19059) is a separate entry and is never added.
+    definition: >-
+      Households where any member reported Social Security income, including survivor and
+      disability benefits, in the past 12 months, as a share of all households. Says nothing
+      about age or income adequacy; self-reported receipt is undercounted. A measured
+      alternative to "fixed income", not a measure of it.
+    numerator: [B19055_002E]
+    denominator: [B19055_001E]
+    period: past_12_months
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: retirement
+    label: Households with retirement income
+    unit: households
+    universe: Households
+    exclusions:
+      - People in group quarters are outside the household universe.
+      - Social Security and SSI are not retirement income here.
+      - Social Security income (B19055) is a separate entry and is never added.
+    definition: >-
+      Households reporting retirement, survivor or disability pensions or other retirement
+      income in the past 12 months, as a share of all households. Says nothing about age.
+    numerator: [B19059_002E]
+    denominator: [B19059_001E]
+    period: past_12_months
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: disability
+    label: People with a disability
+    unit: persons
+    universe: Civilian noninstitutionalized population
+    exclusions:
+      - Active-duty military and institutional residents are excluded.
+    definition: >-
+      Civilian noninstitutionalized residents with a disability, as a share of that population.
+    numerator: [S1810_C02_001E]
+    denominator: [S1810_C01_001E]
+    period: survey_time
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: rent_burden
+    label: Renter households paying 30% or more of income on rent
+    unit: households
+    universe: Occupied units paying rent (excluding units where GRAPI cannot be computed)
+    exclusions:
+      - Units where GRAPI cannot be computed, including no-cash-rent units, are excluded.
+      - Owner-occupied units are excluded.
+    definition: >-
+      Occupied units paying 30.0–34.9% plus 35.0% or more of household income on monthly gross
+      rent (against one-twelfth of past-12-month income), as a share of units paying rent. One
+      household per occupied unit; never a count of people.
+    numerator: [DP04_0141E, DP04_0142E]
+    denominator: [DP04_0136E]
+    period: past_12_months
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: below_200_percent_poverty
+    label: Residents below 200% of the poverty threshold
+    unit: persons
+    universe: Population for whom poverty status is determined
+    exclusions:
+      - Residents at 2.00 times the poverty threshold or more are excluded from the numerator.
+      - Residents whose poverty status is not determined are excluded from both terms.
+    definition: >-
+      Residents with income below 2.00 times the national Census poverty threshold, summing
+      the published brackets below 2.00 without interpolation; a lower bound for Hawaiʻi
+      programs, not eligibility.
+    numerator: [C17002_002E, C17002_003E, C17002_004E, C17002_005E, C17002_006E, C17002_007E]
+    denominator: [C17002_001E]
+    period: past_12_months
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
+
+  - id: below_poverty_no_snap
+    label: Households below poverty reporting no SNAP
+    unit: households
+    universe: Households
+    exclusions:
+      - Households at or above poverty are excluded from both terms.
+    definition: >-
+      Households below poverty that reported no SNAP in the past 12 months, as a share of
+      households below poverty. Self-reported receipt is undercounted; this does not establish
+      unmet need or eligibility.
+    numerator: [B22003_006E]
+    denominator: [B22003_003E, B22003_006E]
+    period: past_12_months
+    geography: {native: state legislative district, plan: 2022, allocation: none}
+    comparisons: [county, state]
