@@ -272,33 +272,63 @@ def test_preview_failure_note_is_on_screen_not_in_print(
     assert not note.is_visible()
 
 
+SHIPPED_DB = ROOT / "data/facts.db"
+HOUSE_22_GEOGRAPHIES = ("house:15:022:2022", "county:15:003", "state:15")
+FIGURE_VARIABLES = ("B01003_001E", "DP05_0024PE", "B19013_001E")
+
+
+@pytest.fixture
+def shipped_facts(base_url: str, monkeypatch: pytest.MonkeyPatch) -> str:
+    """The committed fact table, read per request by the in-process server: the complete
+    House 22 brief with district, Honolulu County and state rows, not the WO122 fixture."""
+    assert SHIPPED_DB.is_file()
+    monkeypatch.setenv("KYD_FACTS_DB", str(SHIPPED_DB))
+    return base_url
+
+
+def assert_complete_house_22(page: Page) -> None:
+    """Every figure shows a reading and a citation for the district, the county and the state."""
+    figures = page.locator(".figure")
+    assert sorted(f.get_attribute("data-variable") or "" for f in figures.all()) == sorted(
+        FIGURE_VARIABLES
+    )
+    for figure in figures.all():
+        for geography in HOUSE_22_GEOGRAPHIES:
+            reading = figure.locator(f'.reading[data-geography="{geography}"]')
+            citation = figure.locator(f'dl.citation[data-geography="{geography}"]')
+            assert reading.count() == 1, (figure.get_attribute("data-variable"), geography)
+            assert citation.count() == 1, (figure.get_attribute("data-variable"), geography)
+
+
 @pytest.mark.parametrize("variant", ["", "?v=a", "?v=b"])
 def test_house_22_with_every_printable_section_prints_on_one_letter_page(
-    page: Page, base_url: str, live_config: Path, variant: str
+    page: Page, shipped_facts: str, live_config: Path, variant: str
 ) -> None:
-    open_page(page, base_url + "/brief/house/22" + variant, 1440)
+    open_page(page, shipped_facts + "/brief/house/22" + variant, 1440)
+    assert_complete_house_22(page)
     assert page.locator(".outreach").count() == 1
     assert pdf_pages(page) == 1
 
 
 def test_planted_overflow_fails_the_one_page_check(
-    page: Page, base_url: str, live_config: Path, plant: Plant
+    page: Page, shipped_facts: str, live_config: Path, plant: Plant
 ) -> None:
     filler = " ".join(["Planted filler paragraph text."] * 400)
     plant("25", "wo196_tall", header='FEATURE = "wo196_tall"\nPRINT = True\n', body=filler)
     live_config.write_text('outreach = "on"\nwo196_tall = "on"\n')
-    open_page(page, base_url + "/brief/house/22", 1440)
+    open_page(page, shipped_facts + "/brief/house/22", 1440)
     assert pdf_pages(page) > 1
 
 
 @pytest.mark.parametrize("variant", ["", "?v=a", "?v=b"])
 @pytest.mark.parametrize("opened", [False, True])
 def test_printed_figures_keep_every_citation_field_on_the_one_page(
-    page: Page, base_url: str, live_config: Path, variant: str, opened: bool
+    page: Page, shipped_facts: str, live_config: Path, variant: str, opened: bool
 ) -> None:
     """R1: each printed figure cites source, table ID, vintage, geography and method,
     whether or not its disclosure was opened before printing, and the page still fits."""
-    open_page(page, base_url + "/brief/house/22" + variant, 1440)
+    open_page(page, shipped_facts + "/brief/house/22" + variant, 1440)
+    assert_complete_house_22(page)
     if opened:
         page.locator(".figure details.source").evaluate_all("ds => ds.forEach(d => d.open = true)")
     page.emulate_media(media="print")
