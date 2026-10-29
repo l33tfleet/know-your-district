@@ -1,6 +1,1 @@
-{
-  "service_url": "https://geodata.hawaii.gov/arcgis/rest/services/Fixture/MapServer",
-  "layer_id": 7,
-  "retrieved_on": "2026-10-29",
-  "credit": "Fixture credit: Hawaii Statewide GIS Program (test data, not a real layer)"
-}
+{"service_url": "https://geodata.hawaii.gov/arcgis/rest/services/Fixture/MapServer", "layer_id": 7, "retrieved_on": "2026-10-29", "credit": "Fixture credit: Hawaii Statewide GIS Program (test data, not a real layer)"}

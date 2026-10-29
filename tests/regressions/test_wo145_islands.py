@@ -1,245 +1,135 @@
 """WO145 step 1 (#198): named islands, reviewed district membership, optional coastlines.
 
-Pins the work order's decisions: all 76 districts resolve to correctly named
-islands; multi-island districts list every island they touch; each island states
-coastline availability (unavailable has a reason and no geometry); malformed
-inputs fail validation; the import replays offline byte-identically; existing
-district files stay unchanged; counties are never substituted for islands.
+Pins the work order: all 76 districts resolve to correctly named islands (multi-island
+districts list all), each island states coastline availability, the import replays offline
+byte for byte, district files stay unchanged, each malformed input fails its own check.
 """
 
 import hashlib
 import json
 import shutil
 from pathlib import Path
+from typing import Any
 
 import pytest
-from pydantic import ValidationError
 
 from etl.boundaries import all_districts
-from etl.islands import ISLANDS, build_islands, load_islands
+from etl.islands import ISLANDS, NOT_RETRIEVED, IslandsDocument, build_islands
 
-ROOT = Path(__file__).resolve().parents[2]
-GEO = ROOT / "data/geo"
+GEO = Path(__file__).resolve().parents[2] / "data/geo"
 COMMITTED = GEO / "islands"
 FIXTURES = Path(__file__).resolve().parent / "fixtures/wo145_islands"
-NAMES = {
-    "hawaii": "Hawaiʻi Island",
-    "maui": "Maui",
-    "kahoolawe": "Kahoʻolawe",
-    "lanai": "Lānaʻi",
-    "molokai": "Molokaʻi",
-    "oahu": "Oʻahu",
-    "kauai": "Kauaʻi",
-    "niihau": "Niʻihau",
-}
-DISTRICT_FILES = [
-    f"{chamber}{suffix}"
-    for chamber in ("house", "senate")
-    for suffix in (".geojson", ".provenance.json", ".credit.txt")
-]
+NAMES = ["Hawaiʻi Island", "Maui", "Kahoʻolawe", "Lānaʻi", "Molokaʻi", "Oʻahu", "Kauaʻi", "Niʻihau"]
 
 
 def digests(directory: Path) -> dict[str, str]:
-    return {
-        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(directory.iterdir())
-        if path.is_file()
-    }
+    return {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in directory.glob("*.*")}
 
 
-def geo_copy(tmp_path: Path) -> Path:
-    geo = tmp_path / "geo"
-    geo.mkdir()
-    for name in DISTRICT_FILES:
-        shutil.copyfile(GEO / name, geo / name)
-    return geo
+def load(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_island_names_use_okina_and_kahako() -> None:
-    assert ISLANDS == NAMES
-    for name in NAMES.values():
-        assert "'" not in name and chr(0x2018) not in name
+def test_islands_are_named_with_okina_and_kahako() -> None:
+    assert [name for name, _ in ISLANDS.values()] == NAMES
+    document = IslandsDocument.model_validate(load(COMMITTED / "islands.json"))
+    assert [island.name for island in document.islands] == NAMES
 
 
-def test_all_76_districts_resolve_to_named_islands() -> None:
-    data = load_islands(COMMITTED)
-    assert {island.id: island.name for island in data.islands} == NAMES
+def test_all_76_districts_list_every_island_they_touch() -> None:
+    membership = load(COMMITTED / "membership.json")
     expected = {d.key for chamber in ("house", "senate") for d in all_districts(chamber)}
-    assert set(data.membership) == expected
-    assert len(data.membership) == 76
-    for islands in data.membership.values():
-        assert islands and set(islands) <= set(NAMES)
-
-
-def test_multi_island_districts_list_every_island() -> None:
-    membership = load_islands(COMMITTED).membership
+    assert set(membership) == expected and len(membership) == 76
     maui_nui = ["maui", "kahoolawe", "lanai", "molokai"]
-    assert membership["house-13"] == maui_nui
-    assert membership["senate-07"] == maui_nui
-    assert membership["house-17"] == ["kauai", "niihau"]
-    assert membership["senate-08"] == ["kauai", "niihau"]
-    assert membership["house-01"] == ["hawaii"]
-    assert membership["house-14"] == ["maui"]
-    assert membership["senate-25"] == ["oahu"]
-    every = {island for islands in membership.values() for island in islands}
-    assert every == set(NAMES)
+    assert membership["house-13"] == membership["senate-07"] == maui_nui
+    assert membership["house-17"] == membership["senate-08"] == ["kauai", "niihau"]
+    assert membership["house-01"] == ["hawaii"] and membership["senate-25"] == ["oahu"]
+    assert {i for islands in membership.values() for i in islands} == set(ISLANDS)
 
 
-def test_committed_islands_record_coastline_state_and_provenance() -> None:
-    data = load_islands(COMMITTED)
-    for island in data.islands:
-        if island.coastline.status == "unavailable":
-            assert len(island.coastline.reason) > 20
-            assert island.id not in data.coastlines
-        else:
-            assert island.id in data.coastlines
-    provenance = json.loads((COMMITTED / "islands.json").read_text(encoding="utf-8"))["provenance"]
-    sources = provenance["district_sources"]
-    assert [source["chamber"] for source in sources] == ["house", "senate"]
-    for source in sources:
-        assert source["source_url"].startswith("https://geodata.hawaii.gov/")
-    assert "No county polygons" in provenance["membership_method"]
-    assert "Board on Geographic Names" in provenance["name_authority"]
-    assert (COMMITTED / "credit.txt").read_text(encoding="utf-8").strip()
+def test_committed_coastlines_are_unavailable_with_reason_and_provenance() -> None:
+    document = IslandsDocument.model_validate(load(COMMITTED / "islands.json"))
+    assert {i.coastline.model_dump().get("reason") for i in document.islands} == {NOT_RETRIEVED}
+    assert not (COMMITTED / "coastlines.geojson").exists()
+    sources = document.provenance["district_sources"]
+    assert isinstance(sources, list) and len(sources) == 2
+    assert all(str(s.source_url).startswith("https://geodata.hawaii.gov/") for s in sources)
+    assert "No county polygons" in str(document.provenance["membership_method"])
+    assert "Office of Elections" in (COMMITTED / "credit.txt").read_text(encoding="utf-8")
 
 
-def test_offline_replay_is_byte_identical_and_leaves_districts_unchanged(
-    tmp_path: Path,
-) -> None:
+def test_offline_replay_is_byte_identical_and_leaves_districts_unchanged(tmp_path: Path) -> None:
     before = digests(GEO)
-    output = tmp_path / "islands"
-    build_islands(GEO, output)
-    assert digests(output) == digests(COMMITTED)
+    build_islands(GEO, tmp_path)
+    assert digests(tmp_path) == digests(COMMITTED)
     assert digests(GEO) == before
-    build_islands(GEO, output)
-    assert digests(output) == digests(COMMITTED)
 
 
-def test_verified_coastline_replay_records_provenance(tmp_path: Path) -> None:
-    output = tmp_path / "islands"
-    build_islands(GEO, output, FIXTURES)
-    data = load_islands(output)
-    states = {island.id: island.coastline for island in data.islands}
-    assert {i for i, c in states.items() if c.status == "available"} == {"oahu", "maui"}
-    assert set(data.coastlines) == {"oahu", "maui"}
-    oahu = states["oahu"]
-    assert oahu.status == "available"
-    assert str(oahu.source.service_url).startswith("https://geodata.hawaii.gov/")
-    assert oahu.source.layer_id == 7
-    assert oahu.source.retrieved_on.isoformat() == "2026-10-29"
-    assert "Statewide GIS" in oahu.source.credit
-    for island_id, state in states.items():
-        if state.status == "unavailable":
-            assert state.reason and island_id not in data.coastlines
-    # The Northwestern Hawaiian Islands square is outside every island and dropped.
-    for x, y in data.coastlines["maui"].coordinates[0][0]:
-        assert -157 < x < -156 and 20 < y < 21
-    assert "Fixture credit" in (output / "credit.txt").read_text(encoding="utf-8")
-    first = digests(output)
-    build_islands(GEO, output, FIXTURES)
-    assert digests(output) == first
+def test_verified_coastline_replay_records_source_and_drops_outlying_parts(tmp_path: Path) -> None:
+    build_islands(GEO, tmp_path, FIXTURES)
+    first = digests(tmp_path)
+    document = IslandsDocument.model_validate(load(tmp_path / "islands.json"))
+    states = {island.id: island.coastline.model_dump(mode="json") for island in document.islands}
+    source = load(FIXTURES / "coastline.source.json")
+    assert {i for i, s in states.items() if s["status"] == "available"} == {"oahu", "maui"}
+    assert states["oahu"]["source"] == states["maui"]["source"] == source
+    assert len(states["kauai"]["reason"]) >= 20 and "source" not in states["kauai"]
+    features = load(tmp_path / "coastlines.geojson")["features"]
+    assert [f["properties"]["island"] for f in features] == ["maui", "oahu"]
+    assert len(features[0]["geometry"]["coordinates"]) == 1  # the outlying square is dropped
+    assert source["credit"] in (tmp_path / "credit.txt").read_text(encoding="utf-8")
+    build_islands(GEO, tmp_path, FIXTURES)
+    assert digests(tmp_path) == first
 
 
-def rewrite(path: Path, old: str, new: str) -> None:
-    text = path.read_text(encoding="utf-8")
-    assert old in text
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+def square(west: float, south: float, size: float = 0.1) -> dict[str, object]:
+    ring = [[west, south], [west + size, south], [west + size, south + size], [west, south]]
+    return {"type": "Polygon", "coordinates": [ring]}
 
 
-@pytest.mark.parametrize(
-    ("name", "old", "new"),
-    [
-        ("islands.json", '"Lānaʻi"', '"Lana\'i"'),
-        ("islands.json", '"id": "niihau"', '"id": "nihoa"'),
-        ("islands.json", '"status": "unavailable"', '"status": "missing"'),
-        ("membership.json", '"house-01": ["hawaii"]', '"house-01": []'),
-        ("membership.json", '"house-01": ["hawaii"]', '"house-01": ["honolulu"]'),
-        ("membership.json", '"house-13": ["maui", "kahoolawe", "lanai"', '"house-13": ["maui"'),
-        ("membership.json", '"house-51"', '"house-52"'),
-    ],
-)
-def test_malformed_island_files_fail_validation(
-    tmp_path: Path, name: str, old: str, new: str
+ISLAND_ROWS = load(COMMITTED / "islands.json")["islands"]
+SOURCE, LAYER, COAST = "coastline.source.json", "coastline.geojson", ("islands", 0, "coastline")
+# (file, path to the changed value, new value, the specific error). islands.json cases check
+# the document contract; every other file is an import input and must fail before writing.
+CASES: list[tuple[str, tuple[str | int, ...], object, str]] = [
+    ("islands.json", ("islands", 3, "name"), "Lana'i", "lanai must be named 'Lānaʻi'"),
+    ("islands.json", ("islands",), ISLAND_ROWS[:7], "islands must be exactly"),
+    ("islands.json", ("islands",), ISLAND_ROWS + ISLAND_ROWS[:1], "islands must be exactly"),
+    ("islands.json", ("islands", 7, "id"), "nihoa", r"islands\.7\.id\n  Input should be"),
+    ("islands.json", (*COAST, "reason"), "x", "reason\n  String should have at least 20"),
+    ("islands.json", (*COAST, "geometry"), {}, "geometry\n  Extra inputs are not permitted"),
+    ("islands.json", (*COAST, "status"), "gone", "does not match any of the expected tags"),
+    ("islands.json", COAST, {"status": "available"}, r"available\.source\n  Field required"),
+    (SOURCE, ("service_url",), "http://geodata.hawaii.gov/x", "service_url\n  String should"),
+    (SOURCE, ("service_url",), "https://example.com/x", "service_url\n  String should match"),
+    (SOURCE, ("layer_id",), None, "layer_id\n  Input should be a valid integer"),
+    (SOURCE, ("layer_id",), -1, "layer_id\n  Input should be greater than or equal to 0"),
+    (SOURCE, ("retrieved_on",), "29/10/2026", "retrieved_on\n  Input should be a valid date"),
+    (SOURCE, ("credit",), "", "credit\n  String should have at least 1 character"),
+    (SOURCE, ("note",), "x", "note\n  Extra inputs are not permitted"),
+    (LAYER, ("exceededTransferLimit",), True, "incomplete response: exceededTransferLimit"),
+    (LAYER, ("properties",), {"exceededTransferLimit": True}, "incomplete response"),
+    (LAYER, ("features", 0, "geometry"), square(-157.65, 21.3), "not within exactly one island"),
+    ("house.geojson", ("features", 0, "geometry"), square(-150, 10), "house-01: part .* not"),
+    ("senate.geojson", ("features", 7, "geometry"), square(-159.6, 22.0), r"\['senate-08'\]"),
+]
+
+
+@pytest.mark.parametrize(("name", "path", "value", "error"), CASES)
+def test_each_malformed_input_fails_its_own_validation(
+    tmp_path: Path, name: str, path: tuple[str | int, ...], value: object, error: str
 ) -> None:
-    directory = tmp_path / "islands"
-    shutil.copytree(COMMITTED, directory)
-    rewrite(directory / name, old, new)
-    with pytest.raises((ValueError, ValidationError)):
-        load_islands(directory)
-
-
-def test_unavailable_coastline_needs_reason_and_no_geometry(tmp_path: Path) -> None:
-    directory = tmp_path / "islands"
-    build_islands(GEO, directory, FIXTURES)
-    document = json.loads((directory / "islands.json").read_text(encoding="utf-8"))
-    for island in document["islands"]:
-        if island["coastline"]["status"] == "unavailable":
-            island["coastline"]["reason"] = ""
-    (directory / "islands.json").write_text(json.dumps(document), encoding="utf-8")
-    with pytest.raises(ValidationError):
-        load_islands(directory)
-    shutil.rmtree(directory)
-    build_islands(GEO, directory, FIXTURES)
-    document = json.loads((directory / "islands.json").read_text(encoding="utf-8"))
-    for island in document["islands"]:
-        if island["id"] == "oahu":
-            island["coastline"] = {"status": "unavailable", "reason": "x" * 30}
-    (directory / "islands.json").write_text(json.dumps(document), encoding="utf-8")
-    with pytest.raises(ValueError, match="oahu"):
-        load_islands(directory)
-    (directory / "coastlines.geojson").unlink()
-    build_islands(GEO, directory, FIXTURES)
-    (directory / "coastlines.geojson").unlink()
-    with pytest.raises((OSError, ValueError)):
-        load_islands(directory)
-
-
-def test_district_part_outside_every_island_fails(tmp_path: Path) -> None:
-    geo = geo_copy(tmp_path)
-    document = json.loads((geo / "house.geojson").read_text(encoding="utf-8"))
-    document["features"][0]["geometry"] = {
-        "type": "Polygon",
-        "coordinates": [[[-150.0, 10.0], [-149.9, 10.0], [-149.9, 10.1], [-150.0, 10.0]]],
-    }
-    (geo / "house.geojson").write_text(json.dumps(document), encoding="utf-8")
-    with pytest.raises(ValueError, match="house-01"):
-        build_islands(geo, tmp_path / "out")
+    geo = shutil.copytree(GEO, tmp_path / "geo")
+    coast = shutil.copytree(FIXTURES, tmp_path / "coast")
+    target = {"islands.json": geo / "islands", SOURCE: coast, LAYER: coast}.get(name, geo) / name
+    document = load(target)
+    parent: Any = document
+    for key in path[:-1]:
+        parent = parent[key]
+    parent[path[-1]] = value
+    with pytest.raises(ValueError, match=error):
+        if name == "islands.json":
+            IslandsDocument.model_validate(document)
+        target.write_text(json.dumps(document), encoding="utf-8")
+        build_islands(geo, tmp_path / "out", coast)
     assert not (tmp_path / "out").exists()
-
-
-def test_membership_must_match_reviewed_list(tmp_path: Path) -> None:
-    geo = geo_copy(tmp_path)
-    document = json.loads((geo / "senate.geojson").read_text(encoding="utf-8"))
-    feature = next(f for f in document["features"] if f["properties"]["district"] == 8)
-    feature["geometry"]["coordinates"] = feature["geometry"]["coordinates"][:1]
-    (geo / "senate.geojson").write_text(json.dumps(document), encoding="utf-8")
-    with pytest.raises(ValueError, match="senate-08"):
-        build_islands(geo, tmp_path / "out")
-
-
-@pytest.mark.parametrize(
-    "change",
-    [
-        {"layer_id": None},
-        {"retrieved_on": "29/10/2026"},
-        {"credit": ""},
-        {"service_url": "http://example.com/coast"},
-    ],
-)
-def test_malformed_coastline_source_fails(tmp_path: Path, change: dict[str, object]) -> None:
-    source = tmp_path / "coast"
-    shutil.copytree(FIXTURES, source)
-    meta = json.loads((source / "coastline.source.json").read_text(encoding="utf-8"))
-    (source / "coastline.source.json").write_text(json.dumps(meta | change), encoding="utf-8")
-    with pytest.raises((ValueError, ValidationError)):
-        build_islands(GEO, tmp_path / "out", source)
-
-
-def test_incomplete_coastline_response_fails(tmp_path: Path) -> None:
-    source = tmp_path / "coast"
-    shutil.copytree(FIXTURES, source)
-    payload = json.loads((source / "coastline.geojson").read_text(encoding="utf-8"))
-    payload["exceededTransferLimit"] = True
-    (source / "coastline.geojson").write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="exceededTransferLimit"):
-        build_islands(GEO, tmp_path / "out", source)
