@@ -1,4 +1,4 @@
-.PHONY: help sync check lint format typecheck imports browsers test evals run smoke golden data data-check snap-check
+.PHONY: help sync check lint format typecheck imports browsers test evals run smoke golden data data-check snap-check links
 
 BASE_URL ?= http://127.0.0.1:8000
 HOST ?= 127.0.0.1
@@ -7,6 +7,7 @@ UV ?= uv
 
 help:
 	@echo "make sync                     install pinned dependencies (uv sync --locked)"
+	@echo "make links                    check program URLs live (never refresh verification dates)"
 	@echo "make check                    ruff, pyright strict, import-linter, pytest, evals"
 	@echo "make run                      serve the app on http://$(HOST):$(PORT)"
 	@echo "make smoke BASE_URL=<url>     check a running app (GET /healthz -> 200)"
@@ -14,6 +15,9 @@ help:
 	@echo "make boundaries               rebuild State shapes, TIGER evidence and real fact-key proof"
 	@echo "make data                     build cited ACS facts (optional CENSUS_API_KEY)"
 	@echo "make golden                   fetch and atomically generate 300 independent ACS cases"
+
+links:
+	$(UV) run python -m etl.programs
 
 data:
 	$(UV) run python -m etl.build --sources data/sources
