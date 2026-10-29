@@ -38,17 +38,23 @@ def fact(geography: str, value: float | None, moe: float | None) -> Fact:
 
 @pytest.mark.parametrize("chamber,count", [("house", 51), ("senate", 25)])
 def test_comparable_state_basis_and_no_league_ranking(chamber: Chamber, count: int) -> None:
-    from app.analysis.outreach import build_rows
+    from app.analysis.outreach import OutreachRow, build_rows
 
     state = fact("state:15", 100 * count, 2 * count)
-    districts = [fact(f"{chamber}:15:{n:03}:2022", v, 2) for n, v in [(3, 80), (1, 120), (2, 100)]]
+    districts = [
+        fact(f"{chamber}:15:{n:03}:2022", v, 2)
+        for n, v in [(3, 100), (1, 80), (count, 200), (2, 120)]
+    ]
     inputs = {(f.variable, f.geography): f for f in [state, *districts]}
     result = build_rows(chamber, inputs, load_catalog(ROOT / "data/programs.yaml"))
     assert len(result.rows) == count
     assert [r.geography for r in result.rows] == [
         f"{chamber}:15:{n:03}:2022" for n in range(1, count + 1)
     ]
-    assert [r.group for r in result.rows[:3]] == ["higher", "indeterminate", "lower"]
+    assert {"rank", "position"}.isdisjoint(OutreachRow.model_fields)
+    assert [r.group for r in result.rows[:3]] == ["lower", "higher", "indeterminate"]
+    assert result.rows[-1].fact == districts[2]
+    assert result.rows[-1].group == "higher"
     assert result.rows[0].fact == districts[1]  # published households, no subtraction
     basis = result.state_basis
     assert basis is not None
