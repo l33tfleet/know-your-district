@@ -1,0 +1,46 @@
+{% set result = answer.result %}
+{% set labels = figures_copy %}
+<section class="snap-answer" aria-labelledby="snap-answer-heading">
+  <p class="snap-answer-label">{{ copy.answer_label }}</p>
+  <h3 id="snap-answer-heading">{{ answer.heading }}</h3>
+  <p>{{ answer.measure_note }}</p>
+  <p>{{ result.undercount_note }}</p>
+  <p>{{ answer.poverty_note }}</p>
+  <table>
+    <caption>{{ copy.caption }}</caption>
+    <thead>
+      <tr>
+        <th scope="col">{{ labels.fields.geography }}</th>
+        <th scope="col">{{ copy.estimate_label }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for reading in answer.readings %}
+      <tr>
+        <th scope="row">{{ reading.geography_name }}</th>
+        <td>
+          <p>
+            {{ reading.value_text }}
+            {{ reading.units }}; {{ reading.moe_text }}; {{ reading.reliability_word }}
+          </p>
+          {% if reading.fact %}
+          {% set fact = reading.fact %}
+          <dl class="outreach-citation">
+            {% for field in ('source', 'table_id', 'vintage', 'geography', 'method', 'endpoint') %}
+            <dt>{{ labels.fields[field] }}</dt>
+            <dd>{% for part in fact[field].split('/') %}{{ part }}{% if not loop.last %}/<wbr />{% endif %}{% endfor %}</dd>
+            {% endfor %}
+          </dl>
+          {% else %}
+          <p>{{ labels.no_row }} {{ reading.geography }}; {{ result.period }}</p>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p>{{ result.referral_note }}
+    <a href="{{ result.official_url }}">{{ copy.official_label }}</a>
+    <a href="{{ result.referral_url }}">{{ copy.referral_label }}</a>
+  </p>
+</section>

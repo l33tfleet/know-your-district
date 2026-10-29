@@ -1,0 +1,12 @@
+<section class="snap-question" aria-labelledby="snap-question-heading">
+  <h2 id="snap-question-heading">{{ copy.heading }}</h2>
+  <form action="{{ section.action }}" method="get"
+        hx-get="{{ section.action }}" hx-target="#snap-answer" hx-swap="innerHTML">
+    {% for name, value in section.hidden.items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    <p id="snap-question-text">{{ copy.question }}</p>
+    <button type="submit" aria-describedby="snap-question-text">{{ copy.submit }}</button>
+  </form>
+  <div id="snap-answer" aria-live="polite"></div>
+</section>
