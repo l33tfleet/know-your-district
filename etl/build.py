@@ -54,6 +54,15 @@ def _published_variables(database: Path) -> set[str]:
         return {row[0] for row in db.execute("SELECT DISTINCT variable FROM facts")}
 
 
+def _refuse_removal(output: Path, selected: set[str]) -> None:
+    """Reject any selection that drops a variable already published in ``output``."""
+    if removed := _published_variables(output / "facts.db") - selected:
+        raise ValueError(
+            f"Refresh would remove published facts from {output}: {', '.join(sorted(removed))}"
+            "; select them, or delete the artifacts deliberately"
+        )
+
+
 def _schema_objects(db: sqlite3.Connection) -> list[tuple[str, str, str, str]]:
     return db.execute(
         "SELECT type, name, tbl_name, sql FROM sqlite_schema "
@@ -130,11 +139,7 @@ def build(
         for geography in ("state:15", "county:*", HOUSE + ":*", SENATE + ":*"):
             facts.extend(facts_from_batch(indicator, client.fetch(indicator, geography), geography))
     facts.sort(key=lambda fact: (fact.variable, fact.geography, fact.vintage))
-    if removed := _published_variables(output / "facts.db") - {f.variable for f in facts}:
-        raise ValueError(
-            f"Refresh would remove published facts from {output}: {', '.join(sorted(removed))}"
-            "; select them, or delete the artifacts deliberately"
-        )
+    _refuse_removal(output, {fact.variable for fact in facts})
     if publish:
         output.mkdir(parents=True, exist_ok=True)
     # Same filesystem as the destination makes each replacement atomic. Temporary
@@ -188,10 +193,17 @@ def main() -> int:
         if args.sources is not None:
             from etl.source_build import build_sources, discover_sources
 
+            sources = discover_sources(args.sources)
             if args.check:
-                for relative, _source in discover_sources(args.sources):
+                for relative, _source in sources:
                     check(args.output / relative)
-            elif args.dry_run:
+                return 0
+            # build_sources stages into an empty directory, so compare the
+            # selection with the real destinations before fetching anything.
+            for relative, source in sources:
+                selected = {v.id for g in source.indicators if g.build for v in g.variables}
+                _refuse_removal(args.output / relative, selected)
+            if args.dry_run:
                 with tempfile.TemporaryDirectory(prefix="sources-preview-") as temporary:
                     count = build_sources(args.sources, Path(temporary))
                 print(f"Validated {count} facts; would publish separate source artifacts")

@@ -184,3 +184,42 @@ def test_populations_and_sources_are_mutually_exclusive(
     assert "--populations and --sources are mutually exclusive" in err
     assert err.count("error:") == 1
     assert list(tmp_path.iterdir()) == []
+
+
+def test_sources_route_rejects_removal_against_the_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def client_factory(config: ACSConfig, *, api_key: str | None = None) -> CensusClient:
+        return RecordedClient()
+
+    monkeypatch.setattr("etl.source_build.CensusClient", client_factory)
+    sources = tmp_path / "sources"
+    sources.mkdir()
+    manifest = (ROOT / "data/sources/acs.yaml").read_text(encoding="utf-8")
+    (sources / "acs.yaml").write_text(manifest, encoding="utf-8")
+
+    # The legacy source selection aimed at the population artifacts.
+    population = tmp_path / "data/populations"
+    writer.build(RecordedClient(), population, indicators=writer.population_indicators())
+    # A source selection that shrinks between two builds of the same destination.
+    shared = tmp_path / "data/shared"
+    monkeypatch.setattr(
+        "sys.argv", ["etl.build", "--sources", str(sources), "--output", str(shared)]
+    )
+    assert writer.main() == 0
+    shrunk = tmp_path / "shrunk"
+    shrunk.mkdir()
+    first = manifest.index("build: true")
+    (shrunk / "acs.yaml").write_text(
+        manifest[:first] + "build: false" + manifest[first + len("build: true") :],
+        encoding="utf-8",
+    )
+    for directory, output in ((sources, population), (shrunk, shared)):
+        before = snapshot(output)
+        for extra in (["--dry-run"], []):
+            argv = ["etl.build", "--sources", str(directory), "--output", str(output), *extra]
+            monkeypatch.setattr("sys.argv", argv)
+            assert writer.main() == 1
+            assert "would remove published facts" in capsys.readouterr().err
+            assert snapshot(output) == before
+            assert {p.name for p in output.iterdir()} == set(writer.ARTIFACTS)
