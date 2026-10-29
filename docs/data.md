@@ -254,3 +254,54 @@ retains the earlier offline structural validation and canonical key output,
 including support for partial collections, with no network or database access.
 Offline regression builds use synthetic State responses, actual shapefile ZIP
 encoding and temporary SQL tables; their join passes are test evidence only.
+
+## ZIP tax and population crosswalk contracts (#168, step 1 of #134)
+
+These additive, offline contracts live in `etl/zip_contract.py`. They do not
+change ACS facts, existing geometry, the SQLite schema or runtime readers.
+`read_tax`, `read_crosswalk` and `read_records` read normalized JSON arrays,
+validate records and reject duplicate keys. Upstream adapters normalize source
+labels and suppression markers before calling these readers. Steps 2–4 return
+validated records; step 5 alone writes outputs. No tax observations ship here.
+Pydantic, pyproj and pyshp are pinned to the versions in `uv.lock` for replay.
+
+- Tax identity is (ZIP, measure, filing status, tax year). Preserve every source
+  year and filing-status category separately, including comparison years;
+  never replace the tax year with the retrieval year. Each row carries units,
+  decimal value, published/suppressed/unavailable status, table, source URL and
+  retrieval date. A suppressed or unavailable value is null, never zero.
+  These are aggregate administrative tax-return statistics, not ACS estimates
+  of households or residents. They carry no invented ACS MOE or CV flag.
+- **ZIP ≠ ZCTA.** Postal ZIP codes describe delivery routes; Census ZCTAs are
+  generalized statistical areas, and not every ZIP has a corresponding ZCTA
+  ([Census definition](https://www.census.gov/programs-surveys/geography/guidance/geo-areas/zctas.html)).
+  Keep five ASCII digits, including leading zeros. ZCTA geometry has its own
+  2020 vintage, source URL and retrieval date. A matching code alone does not
+  establish geographic equivalence. Preserve unmappable ZIPs with reasons;
+  never fabricate geometry or silently drop them.
+- Crosswalk rows identify ZCTA and chamber-qualified 2022 district, intersection
+  population, **both population denominators** (whole ZCTA and whole district),
+  population year 2020, source URL and retrieval date. The method is exactly
+  `population-weighted (2020 blocks)`. Each share divides the intersection by
+  its respective denominator. Zero denominators are unmappable, not zero
+  shares. Existing overlay areas and county area normalization cannot supply
+  population weights. Geometry failures described above remain review failures;
+  do not silently repair shapes or substitute area fractions.
+- **Medians are non-apportionable.** Never multiply ZIP median AGI by a crosswalk
+  share, sum medians, or label a weighted average of ZIP medians a district
+  median. Published ZIP observations remain separate from derived crosswalks.
+
+Source rights and attribution for subsequent builds:
+
+| Input | Terms and required evidence |
+|---|---|
+| Hawaiʻi Department of Taxation individual income tax tables | [Published report example](https://files.hawaii.gov/tax/stats/stats/indinc/2022indinc.pdf). No redistribution licence is asserted here; public access is not a licence grant. Record report-specific terms and permission before redistributing source files. Attribute Department of Taxation, report/table, tax year, filing status, ZIP, units, exact URL and retrieval date. Preserve suppression notes. |
+| Census 2020 ZCTA/block geometry and block population | Federal government works are public domain under the federal-work terms cited above. Retain [TIGER/Line documentation and limitations](https://www.census.gov/programs-surveys/geography/technical-documentation/complete-technical-documentation/tiger-geo-line.html); attribute Census, product/table, 2020 vintage, geography, exact URL and retrieval date. These are decennial inputs, not ACS. |
+| State district geometry | Retain the State service terms and verbatim layer credits described above; the repository MIT licence grants no third-party data rights. |
+
+Step 5 must package full outputs (including the tax TSV exceeding the review
+line budget) as reproducible build artifacts, not truncated samples in code PRs.
+Include input URLs and retrieval dates, dependency lock, replay command, input
+and output SHA-256 checksums, row counts, suppression/year/status checks,
+unmappable reasons and geometry/crosswalk review evidence. Keep code PRs below
+12 files and 400 changed lines. This step defines contracts, not that publisher.
