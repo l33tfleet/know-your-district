@@ -2,11 +2,10 @@
 
 This note describes repository mechanisms; hosting configuration is separate.
 
-**Data and individuals.** The app serves a placeholder home page, static files
-and a health response; its handlers load no datasets or database.
-Separately, ETL fetches public, aggregate Census ACS tables into memory;
-no built database is committed. No State dataset is used.
-App handlers neither collect nor persist personal information,
+**Data and individuals.** The app serves district brief pages, a picker and a
+health response. Handlers open committed SQLite fact databases under `data/`
+read-only (`mode=ro`); ETL builds them from public, aggregate Census ACS
+tables. No State dataset is used. App handlers neither collect nor persist personal information,
 chat history or user profiles. There is no person lookup or inference about
 individuals. The product's aggregate-only rule permits published population
 tables, never individual records ([data and licences](data.md#data-licences)).
@@ -35,6 +34,6 @@ client addresses and request URLs, including query strings. Do not put personal
 information or secrets in URLs. The repository defines no log-retention policy;
 hosting and proxy logging settings are outside this note.
 
-Evidence: [handlers](../app/main.py), [template](../templates/home.html),
+Evidence: [handlers](../app/main.py), [fact reads](../app/facts.py),
 [agent](../app/agent/__init__.py), [ETL](../etl/census.py),
 [secret exclusions](../.gitignore), [server command](../Makefile).
