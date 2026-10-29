@@ -7,6 +7,22 @@ line by line, and `docs/data.md` holds the data facts (indicators, vintage,
 reliability thresholds, known traps). `docs/engineering.md` holds the engineering principles (facades for external APIs, flat modules, validating at the edges, single-goal changes); follow them as strictly as the product rules. If these files ever disagree, stop and
 say so in the PR instead of guessing.
 
+## Read before you change
+
+Read the row that matches your work order before writing code or tests. These
+guides carry the claim rules and acceptance evidence for data and program work.
+
+| If the change touches | Read first |
+|---|---|
+| `etl/`, a population measure, a map layer, chat claims about need, or evals | [`docs/agent-docs/district-data-build-guide.md`](docs/agent-docs/district-data-build-guide.md): the claim ladder (relevant need, modeled eligibility, comparable nonparticipation), the data and claim contracts, and the acceptance evidence for reviewers |
+| a program record, a population-to-program match, a recommendation or next step, or a demo population | [`docs/agent-docs/benefit-outreach.md`](docs/agent-docs/benefit-outreach.md), then that program's dossier in [`docs/research/benefit-program-access.md`](docs/research/benefit-program-access.md) |
+| choosing or replacing a source, ZIP or tract data, or any allocation to districts | [`docs/research/district-data-source-audit.md`](docs/research/district-data-source-audit.md) |
+
+The guides are research guidance: where they disagree with this file or
+`docs/data.md`, this file and `docs/data.md` win, and the PR says so.
+Program facts in the dossiers are dated; a referral cites a current official
+source, not the dossier alone.
+
 ## What this is
 
 Know Your District is a public web tool for Hawaiʻi legislators and their staff.
@@ -27,6 +43,8 @@ These are not style preferences. A PR that breaks one is not done.
 3. **No model-written numbers.** No number is written by a language model.
    Numbers come only from tool results that read the fact table.
 4. **Populations, never individuals.** No lookups of, or inferences about, a person.
+   This holds for the one writable store too: district folders keep no data
+   about individuals (see the Stack section).
 5. **Nonpartisan.** No opinions on candidates, parties, votes or bills.
 6. **Hawaiian spelling.** Hawaiian place names use the ʻokina (ʻ, U+02BB, not an
    apostrophe or a left quote) and the kahakō (ā ē ī ō ū) correctly:
@@ -44,7 +62,7 @@ These are not style preferences. A PR that breaks one is not done.
 | Web | FastAPI with Jinja2 templates | ASGI app served as `uvicorn app.main:app` |
 | Interactivity | htmx 2.0.x, vendored at `static/vendor/htmx-2.0.11.min.js` | see the htmx warning below |
 | Map (later) | Leaflet 1.9.x with the SVG renderer | vendored under `static/vendor/` when the map lands |
-| Data | SQLite, read-only at runtime, built ahead of time by `etl/` | open with `mode=ro`; the app never writes |
+| Data | SQLite, read-only at runtime, built ahead of time by `etl/` | open with `mode=ro`; the app never writes, except to the folder store below |
 | Models | Pydantic | every figure is a Pydantic model carrying its citation and uncertainty |
 | Checks | ruff, pyright (strict), import-linter, pytest | all run by `make check` |
 
@@ -55,6 +73,18 @@ file. Before using a doc page or example, check that it is for htmx 2.x.
 
 **SQLite: never hold a transaction open across a model call.** Read what you
 need, close the cursor, then call the model.
+
+**One writable store: district folders.** The fact table and every other
+database stay read-only. The one exception is the folder store, the SQLite file
+named by `KYD_FOLDERS_DB`, and only when all of these hold:
+- the file lives outside the checkout;
+- it is written only while the `folders` feature flag is on (#143);
+- it holds no data about individuals (rule 4 still holds);
+- it is written only through `app/folders/store.py`.
+
+Any other write, or a write to that file from anywhere else, breaks the stack
+pin. What the store keeps, and for how long, is in
+[`docs/security-privacy.md`](docs/security-privacy.md).
 
 **No CDNs.** Front-end libraries are vendored under `static/vendor/` with the
 version in the file name.
