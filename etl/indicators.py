@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Literal
 
+from app.sources import load_source
+
 
 @dataclass(frozen=True)
 class Indicator:
@@ -19,22 +21,10 @@ class Indicator:
         return variable[:-1] + "M"
 
 
+# Compatibility views for existing fetchers and the baseline build API.
+BASELINE_SOURCE = load_source()
 INDICATORS = {
-    "population": Indicator(("B01003_001E",), "detailed"),
-    "age_65_share": Indicator(("DP05_0024PE",), "profile"),
-    "median_household_income": Indicator(("B19013_001E",), "detailed"),
-    "poverty_rate": Indicator(("S1701_C03_001E",), "subject"),
-    "poverty_65_rate": Indicator(("S1701_C03_010E",), "subject"),
-    "unemployment_rate": Indicator(("S2301_C04_001E",), "subject"),
-    "snap_households": Indicator(("B22010_002E",), "detailed"),
-    "snap_share": Indicator(("S2201_C04_001E",), "subject"),
-    "social_security_households": Indicator(("B19055_002E",), "detailed"),
-    "retirement_households": Indicator(("B19059_002E",), "detailed"),
-    "rent_burden": Indicator(("DP04_0141PE", "DP04_0142PE"), "profile"),
-    "median_gross_rent": Indicator(("B25064_001E",), "detailed"),
-    "uninsured_rate": Indicator(("S2701_C05_001E",), "subject"),
-    "disability_share": Indicator(("S1810_C03_001E",), "subject"),
-    "limited_english_share": Indicator(("S1602_C04_001E",), "subject"),
-    "no_vehicle_households": Indicator(("B08201_002E",), "detailed"),
-    "poverty_ratio": Indicator(tuple(f"C17002_{i:03}E" for i in range(1, 9)), "detailed"),
+    group.id: Indicator(tuple(variable.id for variable in group.variables), group.endpoint)
+    for group in BASELINE_SOURCE.indicators
 }
+BUILD_INDICATORS = tuple(group.id for group in BASELINE_SOURCE.indicators if group.build)

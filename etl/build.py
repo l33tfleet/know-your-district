@@ -18,10 +18,9 @@ from pathlib import Path
 from app.models import Fact
 from etl.census import CensusClient, CensusError, load_config
 from etl.facts import HOUSE, SENATE, facts_from_batch
-from etl.indicators import INDICATORS, Indicator
+from etl.indicators import BUILD_INDICATORS, INDICATORS, Indicator
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD_INDICATORS = ("population", "age_65_share", "median_household_income")
 ARTIFACTS = ("facts.db", "facts.tsv", "facts.sha256")
 
 
@@ -126,12 +125,29 @@ def main() -> int:
         "--dry-run", action="store_true", help="validate a build without publishing"
     )
     parser.add_argument("--output", type=Path, default=ROOT / "data")
-    parser.add_argument("--config", type=Path, default=ROOT / "config.toml")
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--config", type=Path, default=ROOT / "config.toml")
+    selection.add_argument(
+        "--sources", type=Path, help="discover acs.yaml and additional *.yaml source manifests"
+    )
     args = parser.parse_args()
     if args.check and args.dry_run:
         parser.error("--check and --dry-run are mutually exclusive")
     try:
-        if args.check:
+        if args.sources is not None:
+            from etl.source_build import build_sources, discover_sources
+
+            if args.check:
+                for relative, _source in discover_sources(args.sources):
+                    check(args.output / relative)
+            elif args.dry_run:
+                with tempfile.TemporaryDirectory(prefix="sources-preview-") as temporary:
+                    count = build_sources(args.sources, Path(temporary))
+                print(f"Validated {count} facts; would publish separate source artifacts")
+            else:
+                count = build_sources(args.sources, args.output)
+                print(f"Built {count} facts in {args.output}")
+        elif args.check:
             check(args.output)
         else:
             client = CensusClient(

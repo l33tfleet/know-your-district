@@ -16,7 +16,7 @@ help:
 	@echo "make golden                   fetch and atomically generate 300 independent ACS cases"
 
 data:
-	$(UV) run python -m etl.build
+	$(UV) run python -m etl.build --sources data/sources
 
 data-check:
 	$(UV) run python -m etl.build --check
