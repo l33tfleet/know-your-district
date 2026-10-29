@@ -118,17 +118,30 @@ def build(
     *,
     schema: Path = ROOT / "data/schema.sql",
     indicators: tuple[Indicator, ...] = tuple(INDICATORS[name] for name in BUILD_INDICATORS),
+    publish: bool = True,
 ) -> int:
-    """Stage a complete, validated build before replacing any published file."""
+    """Stage a complete, validated build before replacing any published file.
+
+    With ``publish=False`` (a preview) the same checks run against ``output``,
+    but nothing is created or replaced there.
+    """
     facts: list[Fact] = []
     for indicator in indicators:
         for geography in ("state:15", "county:*", HOUSE + ":*", SENATE + ":*"):
             facts.extend(facts_from_batch(indicator, client.fetch(indicator, geography), geography))
     facts.sort(key=lambda fact: (fact.variable, fact.geography, fact.vintage))
-    output.mkdir(parents=True, exist_ok=True)
+    if removed := _published_variables(output / "facts.db") - {f.variable for f in facts}:
+        raise ValueError(
+            f"Refresh would remove published facts from {output}: {', '.join(sorted(removed))}"
+            "; select them, or delete the artifacts deliberately"
+        )
+    if publish:
+        output.mkdir(parents=True, exist_ok=True)
     # Same filesystem as the destination makes each replacement atomic. Temporary
     # files disappear even when schema validation or export fails.
-    with tempfile.TemporaryDirectory(prefix=".facts-", dir=output) as temporary:
+    with tempfile.TemporaryDirectory(
+        prefix=".facts-", dir=output if publish else None
+    ) as temporary:
         staged = Path(temporary)
         with closing(sqlite3.connect(staged / "facts.db")) as db:
             db.executescript(schema.read_text(encoding="utf-8"))
@@ -143,13 +156,9 @@ def build(
         (staged / "facts.tsv").write_bytes(_export(staged / "facts.db", schema))
         (staged / "facts.sha256").write_bytes(_digests(staged))
         check(staged, schema=schema)
-        if removed := _published_variables(output / "facts.db") - {f.variable for f in facts}:
-            raise ValueError(
-                f"Refresh would remove published facts from {output}: {', '.join(sorted(removed))}"
-                "; select them, or delete the artifacts deliberately"
-            )
-        for name in ARTIFACTS:
-            (staged / name).replace(output / name)
+        if publish:
+            for name in ARTIFACTS:
+                (staged / name).replace(output / name)
     return len(facts)
 
 
@@ -202,8 +211,7 @@ def main() -> int:
                 indicators = tuple(INDICATORS[name] for name in BUILD_INDICATORS)
             client = CensusClient(config, api_key=os.environ.get("CENSUS_API_KEY"))
             if args.dry_run:
-                with tempfile.TemporaryDirectory(prefix="facts-preview-") as temporary:
-                    count = build(client, Path(temporary), indicators=indicators)
+                count = build(client, output, indicators=indicators, publish=False)
                 print(f"Validated {count} facts; would publish {', '.join(ARTIFACTS)} in {output}")
             else:
                 count = build(client, output, indicators=indicators)

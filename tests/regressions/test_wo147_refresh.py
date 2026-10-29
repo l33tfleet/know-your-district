@@ -144,3 +144,43 @@ def test_population_refresh_failure_preserves_artifacts(tmp_path: Path) -> None:
         )
     assert snapshot(tmp_path) == before
     assert {p.name for p in tmp_path.iterdir()} == set(writer.ARTIFACTS)
+
+
+def test_preview_rejects_the_same_removal_as_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    population = tmp_path / "populations"
+    indicators = writer.population_indicators()
+    writer.build(RecordedClient(), population, indicators=indicators)
+    before = snapshot(population)
+    legacy = tuple(INDICATORS[name] for name in BUILD_INDICATORS)
+    for selection in (legacy, indicators[1:]):  # legacy default, a shrunken registry
+        for publish in (False, True):
+            with pytest.raises(ValueError, match="remove"):
+                writer.build(RecordedClient(), population, indicators=selection, publish=publish)
+            assert snapshot(population) == before
+
+    def client_factory(config: ACSConfig, *, api_key: str | None = None) -> CensusClient:
+        return RecordedClient()
+
+    monkeypatch.setattr(writer, "CensusClient", client_factory)
+    for extra in (["--dry-run"], []):  # legacy CLI aimed at the population directory
+        monkeypatch.setattr("sys.argv", ["etl.build", "--output", str(population), *extra])
+        assert writer.main() == 1
+        assert "would remove published facts" in capsys.readouterr().err
+        assert snapshot(population) == before
+    assert {p.name for p in population.iterdir()} == set(writer.ARTIFACTS)
+
+
+def test_populations_and_sources_are_mutually_exclusive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    argv = ["etl.build", "--populations", "--sources", str(tmp_path), "--output", str(tmp_path)]
+    monkeypatch.setattr("sys.argv", argv)
+    with pytest.raises(SystemExit) as exit_info:
+        writer.main()
+    assert exit_info.value.code == 2
+    err = capsys.readouterr().err
+    assert "--populations and --sources are mutually exclusive" in err
+    assert err.count("error:") == 1
+    assert list(tmp_path.iterdir()) == []
