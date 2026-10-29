@@ -167,12 +167,13 @@ def share(numerator: Derived, denominator: Derived) -> Derived:
 def compare(
     population: Population, geographies: Sequence[str], facts: Mapping[tuple[str, str], Fact]
 ) -> tuple[Comparison, ...]:
-    """The population's count and share in each geography, in the order given."""
+    """The population's count and share in each geography, in the order given.
+
+    Population validation already holds every denominator cell to the population's universe.
+    """
     results: list[Comparison] = []
     for geography in geographies:
         count = total(population.numerator, geography, facts)
         base = total(population.denominator, geography, facts)
-        if base.universe != population.universe:
-            raise ValueError(f"{population.id}: denominator universe is {base.universe!r}")
         results.append(Comparison(geography=geography, count=count, share=share(count, base)))
     return tuple(results)

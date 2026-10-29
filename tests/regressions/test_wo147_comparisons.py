@@ -6,6 +6,7 @@ approximations (sum: root-sum-of-squares; share: ACS handbook proportion formula
 the ratio formula when the proportion radicand is negative). Missing inputs stay missing.
 """
 
+import importlib
 import math
 import sqlite3
 from collections.abc import Iterator
@@ -385,3 +386,22 @@ def test_docs_data_md_states_the_derived_moe_formulas() -> None:
     assert "sqrt(MOE_X² - p² · MOE_Y²) / Y" in text
     assert "sqrt(MOE_X² + p² · MOE_Y²) / Y" in text
     assert "radicand" in text
+
+
+# --- review round 3: each rejection on its own -------------------------------------------------
+
+
+def test_section_rejects_a_subgroup_denominator_it_does_not_name() -> None:
+    """A multi-cell denominator that this section has not named raises, never mislabels."""
+    section = importlib.import_module("app.sections.25_populations")
+    unnamed = population("children_below_poverty").model_copy(update={"id": "unnamed_subgroup"})
+    with pytest.raises(ValueError, match="unnamed_subgroup: name its subgroup denominator"):
+        section.denominator_name(unnamed)
+
+
+def test_population_with_a_denominator_from_another_universe_is_rejected() -> None:
+    """compare() trusts this edge check: a Population never pairs its universe with other cells."""
+    entry = population("children_below_poverty").model_dump()
+    entry["denominator"] = ["B01001_001E"]
+    with pytest.raises(ValueError, match="B01001_001E universe 'Total population' is incompatible"):
+        Population.model_validate(entry)
