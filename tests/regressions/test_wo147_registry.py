@@ -71,10 +71,11 @@ def _shipped() -> dict[str, Any]:
         ("kupuna", "numerator", ["B99999_001E"], "unknown variable"),
         ("native_hawaiian", "numerator", ["B02016_002E"], "unknown variable"),
         ("kupuna", "numerator", ["B01001_020"], "string_pattern"),
-        ("kupuna", "denominator", ["B11005_001E"], "unit"),
-        ("kupuna", "unit", "households", "unit"),
-        ("older_below_poverty", "denominator", ["B01001_001E"], "universe"),
-        ("social_security", "universe", "Total population", "universe"),
+        # Each compatibility case breaks exactly one of unit, universe and period.
+        ("kupuna", "unit", "households", "unit persons is not households"),
+        ("social_security", "denominator", ["DP04_0136E"], "universe .* is incompatible"),
+        ("social_security", "universe", "Total population", "universe .* is incompatible"),
+        ("social_security", "denominator", ["B11005_001E"], "period survey_time is not"),
         ("social_security", "numerator", ["B19055_002E", "B19059_002E"], "B19055 and B19059"),
         ("retirement", "denominator", ["B19055_001E"], "B19055 and B19059"),
         ("social_security", "label", "Households on a fixed income", "fixed income"),
@@ -89,7 +90,39 @@ def _shipped() -> dict[str, Any]:
         ("kupuna", "period", "past_12_months", "period"),
         ("social_security", "period", "survey_time", "period"),
         ("kupuna", "comparisons", ["state", "state"], "comparisons"),
+        ("kupuna", "comparisons", ["county", "city"], "literal_error"),
+        ("kupuna", "comparisons", [], "too_short"),
+        ("kupuna", "numerator", [], "too_short"),
+        ("kupuna", "denominator", [], "too_short"),
         ("kupuna", "exclusions", [], "too_short"),
+        (
+            "kupuna",
+            "geography",
+            {"native": "county", "plan": 2022, "allocation": "none"},
+            "geography.native",
+        ),
+        (
+            "kupuna",
+            "geography",
+            {"native": "state legislative district", "plan": 2012, "allocation": "none"},
+            "geography.plan",
+        ),
+        (
+            "kupuna",
+            "geography",
+            {
+                "native": "state legislative district",
+                "plan": 2022,
+                "allocation": "population-weighted",
+            },
+            "geography.allocation",
+        ),
+        (
+            "kupuna",
+            "geography",
+            {"native": "state legislative district", "plan": 2022},
+            "geography.allocation",
+        ),
         ("kupuna", "surprise", "x", "extra_forbidden"),
     ],
 )
@@ -99,6 +132,23 @@ def test_invalid_entries_fail_loudly(
     data = _shipped()
     _entry(data, key)[field] = value
     with pytest.raises(ValidationError, match=error):
+        load_populations(_write(tmp_path, data))
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("vintage", "2019–2023"),
+        ("vintage", "2020-2024"),
+        ("source", "U.S. Census Bureau ACS 1-year"),
+        ("method", "modeled estimate"),
+        ("populations", []),
+    ],
+)
+def test_invalid_registry_header_fails(tmp_path: Path, field: str, value: object) -> None:
+    data = _shipped()
+    data[field] = value
+    with pytest.raises(ValidationError, match=rf"(?m)^{field}$"):
         load_populations(_write(tmp_path, data))
 
 
