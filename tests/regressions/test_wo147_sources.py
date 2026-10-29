@@ -1,16 +1,19 @@
 """WO202 / WO147: supplemental populations preserve the baseline fact contract."""
 
 import hashlib
-import os
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from etl.census import CensusClient, load_config
+from etl.census import CensusBatch, CensusClient, CensusError, load_config
 from etl.indicators import INDICATORS, Indicator
-from etl.population_variables import POPULATION_VARIABLES, POPULATIONS, load_population_config
+from etl.population_variables import (
+    POPULATION_VARIABLES,
+    POPULATIONS,
+    load_population_config,
+    verify_district_availability,
+)
 
 
 def cells(table: str, *numbers: int) -> tuple[str, ...]:
@@ -72,44 +75,70 @@ def test_exact_published_population_labels() -> None:
     )
 
 
-@pytest.mark.skipif(not os.environ.get("WO202_VERIFY_CENSUS"), reason="opt-in Census verification")
+class FakeCensus(CensusClient):
+    """Offline stand-in for label-checked data; `broken` sets one district cell to `value`."""
+
+    def __init__(self, broken: tuple[str, str, str] = ("", "", ""), value: str | None = None):
+        super().__init__(load_population_config())
+        self.broken, self.value, self.upper = broken, value, 25
+        self.requested: set[str] = set()
+        self.calls = {"lower": 0, "upper": 0}
+
+    def fetch(self, indicator: Indicator, geography: str) -> CensusBatch:
+        chamber = "lower" if "(lower chamber)" in geography else "upper"
+        key = geography.removesuffix(":*")
+        self.requested.update(indicator.variables)
+        self.calls[chamber] += 1
+        rows: list[dict[str, str | None]] = []
+        for n in range(1, (51 if chamber == "lower" else self.upper) + 1):
+            row: dict[str, str | None] = {"state": "15", key: f"{n:03}"}
+            for v in indicator.variables:
+                m = indicator.moe_variable(v)
+                row |= {v: "120", m: "-555555555", v + "A": None, m + "A": "*****"}
+            if self.broken[:2] == (chamber, f"{n:03}") and self.broken[2] in row:
+                row[self.broken[2]] = self.value
+            rows.append(row)
+        labels = {v: self.config.labels[v] for v in indicator.variables}
+        return CensusBatch("fake", self.config.vintage, labels, rows)
+
+
 def test_published_metadata_and_both_chambers() -> None:
-    """Replay: WO202_VERIFY_CENSUS=1 CENSUS_API_KEY=… uv run pytest <this-id>."""
-    client = CensusClient(load_population_config(), api_key=os.environ.get("CENSUS_API_KEY"))
-    # Also verify the unselected alone definition; never combine it with B02019.
-    variables = sorted(set(POPULATION_VARIABLES) | {"B02016_002E"})
-    jobs: list[tuple[Indicator, str, int]] = []
-    for endpoint in ("detailed", "profile", "subject"):
-        selected = [
-            v
-            for v in variables
-            if ("profile" if v.startswith("DP") else "subject" if v.startswith("S") else "detailed")
-            == endpoint
-        ]
-        for start in range(0, len(selected), 12):
-            group = Indicator(tuple(selected[start : start + 12]), endpoint)
-            for chamber, count in (("lower", 51), ("upper", 25)):
-                jobs.append((group, chamber, count))
+    client = FakeCensus()
+    checked = verify_district_availability(client)
+    assert client.calls["lower"] == client.calls["upper"] > 0
+    assert checked == 76 * client.calls["lower"]
+    # Both Native Hawaiian definitions are checked; only B02019 (in combination) is used.
+    assert client.requested == {*POPULATION_VARIABLES, "B02016_002E", "B02019_002E"}
+    assert "B02016_002E" not in POPULATION_VARIABLES
 
-    def verify(job: tuple[Indicator, str, int]) -> None:
-        group, chamber, count = job
-        geography = f"state legislative district ({chamber} chamber)"
-        batch = client.fetch(group, geography + ":*")
-        assert {r[geography] for r in batch.rows} == {f"{n:03}" for n in range(1, count + 1)}
-        for row in batch.rows:
-            assert row["state"] == "15"
-            for variable in group.variables:
-                for column in (variable, group.moe_variable(variable)):
-                    value = row[column]
-                    assert value is not None, (column, row[geography])
-                    if column.endswith("M") and value == "-555555555":
-                        assert row[column + "A"] == "*****"  # Published controlled MOE.
-                    else:
-                        assert float(value) >= 0, (column, row[geography])
-                        assert row[column + "A"] in (None, ""), (column, row[geography])
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        list(executor.map(verify, jobs))
+@pytest.mark.parametrize(
+    "broken,value",
+    [
+        (("upper", "025", "B02016_002E"), None),
+        (("upper", "001", "B02019_002E"), None),
+        (("lower", "051", "B02019_002M"), None),
+        (("lower", "014", "S1810_C02_001E"), None),
+        (("upper", "007", "DP04_0142E"), None),
+        (("lower", "001", "state"), None),
+        (("lower", "010", "B19055_002E"), "-666666666"),
+        (("lower", "010", "B19059_002E"), "n/a"),
+        (("upper", "010", "B11007_003EA"), "-"),
+        (("upper", "010", "B01001_001MA"), "***"),
+    ],
+)
+def test_availability_rejects_a_missing_district_cell(
+    broken: tuple[str, str, str], value: str | None
+) -> None:
+    with pytest.raises(CensusError, match=f"district {broken[1]} \\({broken[0]} chamber"):
+        verify_district_availability(FakeCensus(broken, value))
+
+
+def test_availability_rejects_a_missing_district() -> None:
+    client = FakeCensus()
+    client.upper = 24
+    with pytest.raises(CensusError, match="upper chamber"):
+        verify_district_availability(client)
 
 
 def test_population_configuration_is_isolated() -> None:

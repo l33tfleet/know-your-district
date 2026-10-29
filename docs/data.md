@@ -360,8 +360,10 @@ population**. Do not sum race tallies or add B02016_002 to B02019_002. The chose
 broader NHPI fallback is unnecessary for this vintage; if detailed cells become unavailable, explicitly review the mapping to B02001_006 and
 label it “Native Hawaiian and Pacific Islander” everywhere.
 
-Replay the live metadata and district check (requires `CENSUS_API_KEY`):
+`verify_district_availability` holds the check: exact labels (checked by `CensusClient` before any data request), exact House and
+Senate key sets, and a usable estimate, MOE and annotation for every cell in every district. The regression tests run it offline against
+a stub on every `make check`. Replay it live as an operator step (requires `CENSUS_API_KEY`):
 
 ```sh
-WO202_VERIFY_CENSUS=1 uv run pytest tests/regressions/test_wo147_sources.py::test_published_metadata_and_both_chambers -q
+uv run python -m etl.population_variables
 ```

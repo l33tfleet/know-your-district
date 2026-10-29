@@ -4,14 +4,17 @@ Independent of etl.indicators and data/sources/acs.yaml. Numerator/denominator
 cell sums belong in later pure analysis; definitions and exclusions: docs/data.md.
 """
 
+import os
 import tomllib
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 from pydantic import TypeAdapter
 
-from etl.census import ACSConfig, load_config
+from etl.census import ACSConfig, CensusClient, CensusError, load_config
+from etl.indicators import Indicator
 
 
 @dataclass(frozen=True)
@@ -140,3 +143,50 @@ def load_population_config(path: Path = Path("config.toml")) -> ACSConfig:
         tomllib.loads(path.read_text())["population_labels"], strict=True
     )
     return config.model_copy(update={"labels": config.labels | labels})
+
+
+NATIVE_HAWAIIAN_ALONE = "B02016_002E"  # Verified too; never combined with B02019.
+_ENDPOINTS: dict[str, Literal["profile", "subject"]] = {"DP": "profile", "S1": "subject"}
+
+
+def verify_district_availability(client: CensusClient) -> int:
+    """Check every cell, its MOE and annotations in all 51 House and 25 Senate districts.
+
+    The client checks exact labels before any data request. Returns the number of
+    district rows checked; raises CensusError on the first gap.
+    """
+    groups: dict[Literal["detailed", "profile", "subject"], list[str]] = {}
+    for v in sorted({*POPULATION_VARIABLES, NATIVE_HAWAIIAN_ALONE}):
+        groups.setdefault(_ENDPOINTS.get(v[:2], "detailed"), []).append(v)
+    jobs = [
+        (Indicator(tuple(cells[i : i + 12]), endpoint), chamber, count)
+        for endpoint, cells in groups.items()
+        for i in range(0, len(cells), 12)
+        for chamber, count in (("lower", 51), ("upper", 25))
+    ]
+
+    def verify(job: tuple[Indicator, str, int]) -> int:
+        group, chamber, count = job
+        geography = f"state legislative district ({chamber} chamber)"
+        rows = client.fetch(group, geography + ":*").rows
+        if sorted(str(r.get(geography)) for r in rows) != [f"{n:03}" for n in range(1, count + 1)]:
+            raise CensusError(f"District keys differ from 001-{count:03} ({chamber} chamber)")
+        for row in rows:
+            for column in (c for v in group.variables for c in (v, group.moe_variable(v))):
+                value, note = row.get(column), row.get(column + "A")
+                controlled = column.endswith("M") and (value, note) == ("-555555555", "*****")
+                usable = note in (None, "") and (value or "").replace(".", "", 1).isdigit()
+                if row.get("state") != "15" or not (controlled or usable):
+                    where = f"{row.get(geography)} ({chamber} chamber)"
+                    raise CensusError(f"{column} unavailable for district {where}")
+        return len(rows)
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        return sum(executor.map(verify, jobs))
+
+
+if __name__ == "__main__":
+    # Operator replay: CENSUS_API_KEY=... uv run python -m etl.population_variables
+    config = load_population_config()
+    client = CensusClient(config, api_key=os.environ.get("CENSUS_API_KEY"))
+    print(f"ACS {config.vintage}: {verify_district_availability(client)} district rows verified")
