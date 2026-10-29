@@ -305,3 +305,63 @@ Include input URLs and retrieval dates, dependency lock, replay command, input
 and output SHA-256 checksums, row counts, suppression/year/status checks,
 unmappable reasons and geometry/crosswalk review evidence. Keep code PRs below
 12 files and 400 changed lines. This step defines contracts, not that publisher.
+
+## Supplemental population acquisition plan (#202, step 1 of #147)
+
+`etl/population_variables.py` inventories populations separately from the WO59 indicator contract. `POPULATION_VARIABLES` lists **all 70
+required published estimate cells**, including denominators; acquire each corresponding 90% MOE and both annotations too. Main currently
+publishes only three indicators (243 rows), so membership in the 25-cell indicator registry does not establish availability in `facts.db`.
+This step adds no observations, YAML, analysis or brief section; subsequent steps validate developer-maintained YAML, derive shares and
+refresh artifacts through `etl/build.py`. The SQLite schema, fact keys and TSV stay the same. The full refresh still requires the
+size-policy resolution described in #202; do not truncate observations to fit a review cap.
+
+All cells below are U.S. Census Bureau **2020–2024 ACS 5-year** published cells, using the endpoints and 2022-plan geographies above. Native
+geography is the published district (also county/state), never an area allocation or estimated crosswalk. Counts describe survey-time age,
+race, household composition and disability; income, poverty, Social Security, retirement and SNAP refer to the past 12 months at each
+interview, not one calendar year. Rent is monthly gross rent relative to one-twelfth of household income in the past 12 months. Comparisons
+will use the same numerator and denominator in district, county and state. Every plus sign below means a later **derived** sum with the
+sum-MOE method above, never a new published fact. No marginal percentages are multiplied to infer joint cells.
+
+Notation: table prefixes apply to every listed suffix; ranges are inclusive; all suffixes designate estimate `E` cells. This table
+enumerates the complete numerator/denominator inventory, not merely additions to existing indicators.
+
+| Population / unit | Table: numerator cells | Denominator cells / share meaning | Universe and exclusions |
+|---|---|---|---|
+| Children under 5 / persons | B01001: 003 + 027 | B01001: 001; share of total population | Total population; excludes ages 5+ from numerator; both sexes, including group quarters. |
+| Children under 18 below poverty / persons | B17001: 004–009 + 018–023 | B17001: 004–009 + 018–023 + 033–038 + 047–052; poverty rate among children whose poverty status is determined | Poverty-status universe below; excludes adults and children without determined poverty status. |
+| Households with children under 18 / households | B11005: 002 | B11005: 001; share of all households | Households; includes family and nonfamily households with any resident under 18, not only own children; excludes group quarters. |
+| Native Hawaiian alone or in combination / persons | B02019: 002 | B01001: 001; share of total population | B02019 universe: Native Hawaiian and Other Pacific Islander alone or in any combination reporting one or more responses; excludes residents without a Native Hawaiian response from numerator. |
+| Kūpuna (65+) / persons | B01001: 020–025 + 044–049 | B01001: 001; share of total population | Total population; both sexes, including group quarters; excludes under 65 from numerator. |
+| Residents 65+ below poverty / persons | B17001: 015 + 016 + 029 + 030 | B17001: 015 + 016 + 029 + 030 + 044 + 045 + 058 + 059; poverty rate among residents 65+ with determined status | Poverty-status universe; excludes under 65 and undetermined status, rather than using all older residents as denominator. |
+| Households with a person 65+ living alone / households | B11007: 003 | B11007: 001; share of all households | Households; one-person households with a resident 65+; excludes group quarters and older people living with others. Not a share of all older people. |
+| Households with Social Security income / households | B19055: 002 | B19055: 001; share of all households | Households; any member reporting Social Security, including survivor/disability benefits; excludes SSI-only receipt; no age or income-adequacy inference. |
+| Households with retirement income / households | B19059: 002 | B19059: 001; share of all households | Households; retirement, survivor or disability pensions and other retirement income; excludes Social Security and SSI as retirement income; no age inference. |
+| People with a disability / persons | S1810: C02_001 | S1810: C01_001; share of civilian noninstitutionalized population | Civilian noninstitutionalized population; excludes active-duty military and institutional residents. |
+| Renter households paying 30%+ of income on rent / households | DP04: 0141 + 0142 (counts, not PE) | DP04: 0136; share of occupied units paying rent with computable GRAPI | Occupied units paying rent; excludes units where GRAPI cannot be computed, including no-cash-rent units. One household per occupied unit; never a count of people. |
+| Residents below 200% of poverty / persons | C17002: 002–007 | C17002: 001; share of population with determined poverty status | Poverty-status universe; excludes ratio 2.00+ and undetermined status. No bracket interpolation. |
+| Households below poverty reporting no SNAP / households | B22003: 006 | B22003: 003 + 006; nonreceipt share among households below poverty | Households; joint income/nonreceipt cell; excludes at-or-above-poverty households from both terms. Does not establish unmet need or eligibility. |
+
+The person-level poverty universe excludes institutionalized people, people in college dormitories or military group quarters, and unrelated
+individuals under 15. Household tables exclude people outside households. Census national poverty thresholds differ from Hawaiʻi HHS
+guidelines: these counts are a **lower bound** for outreach, not program eligibility. Benefit receipt is self-reported and undercounted; say
+this alongside SNAP and Social Security figures. B19055 and B19059 populations **overlap**: keep separate, never sum them, never call them
+“fixed income,” and never describe the household counts as kūpuna.
+
+Metadata evidence: [Census detailed groups](https://api.census.gov/data/2024/acs/acs5/groups.html),
+[DP04](https://api.census.gov/data/2024/acs/acs5/profile/groups/DP04.html),
+[S1810](https://api.census.gov/data/2024/acs/acs5/subject/groups/S1810.html). `config.toml` pins supplemental labels under
+`[population_labels]`; `load_population_config` merges them into a private Census config; the regression test pins their independently
+retrieved metadata digest. Live verification on 2026-10-29 passed for all 70 required cells plus the unselected Native Hawaiian alone cell,
+with exact House (001–051) and Senate (001–025) key sets. Estimates are nonnegative; MOEs are nonnegative or explicitly controlled with the
+Census annotation. Both Native Hawaiian alternatives were checked:
+[B02016_002](https://api.census.gov/data/2024/acs/acs5/groups/B02016.html) is alone;
+[B02019_002](https://api.census.gov/data/2024/acs/acs5/groups/B02019.html) includes combinations. B02019_001 is groups tallied, **not total
+population**. Do not sum race tallies or add B02016_002 to B02019_002. The chosen label must also be used in later match explanations. The
+broader NHPI fallback is unnecessary for this vintage; if detailed cells become unavailable, explicitly review the mapping to B02001_006 and
+label it “Native Hawaiian and Pacific Islander” everywhere.
+
+Replay the live metadata and district check (requires `CENSUS_API_KEY`):
+
+```sh
+WO202_VERIFY_CENSUS=1 uv run pytest tests/regressions/test_wo147_sources.py::test_published_metadata_and_both_chambers -q
+```
