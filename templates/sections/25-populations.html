@@ -1,0 +1,72 @@
+{% macro raw(number) %}{{ "" if number is none else number }}{% endmacro %}
+{% macro show(r) %}
+{% if r.found %}
+<data class="value" value="{{ raw(r.value) }}">{{ r.value_text }}</data>
+<span class="moe"><data value="{{ raw(r.moe) }}">{{ r.moe_text }}</data></span>
+{% else %}
+<span class="missing">{{ r.value_text }}</span>
+{% endif %}
+<span class="reliability" data-reliability="{{ r.reliability }}">{{ r.word }}</span>
+{% endmacro %}
+<section class="populations">
+  <h2>{{ section.words.heading }}</h2>
+  <p>{{ section.words.intro.format(source=section.source, vintage=section.vintage) }}</p>
+  {% for p in section.populations %}
+  <div class="population" data-population="{{ p.id }}">
+    <h3>{{ p.label }}</h3>
+    <p>{{ p.definition }}</p>
+    <table>
+      <caption>{{ p.label }}{{ section.words.caption }} ({{ p.unit }})</caption>
+      <thead>
+        <tr><th scope="col">{{ section.words.geography }}</th><th scope="col">{{ section.words.count }}</th><th scope="col">{{ section.words.share }} {{ p.universe|lower }}</th></tr>
+      </thead>
+      <tbody>
+        {% for row in p.rows %}
+        <tr data-geography="{{ row.geography }}">
+          <th scope="row">{{ row.name }}</th>
+          <td>{{ show(row.count) }}</td>
+          <td>{{ show(row.share) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <details class="source">
+      <summary>{{ section.words.summary }}</summary>
+      <div class="derivation">
+        <dl>
+          <dt>{{ section.words.universe }}</dt>
+          <dd data-field="universe">{{ p.universe }}</dd>
+          <dt>{{ section.words.excluded }}</dt>
+          <dd>{{ p.exclusions|join(" ") }}</dd>
+          <dt>{{ section.words.numerator }}</dt>
+          <dd data-field="numerator">{% for c in p.numerator %}<code>{{ c }}</code>{{ " + " if not loop.last }}{% endfor %}</dd>
+          <dt>{{ section.words.denominator }}</dt>
+          <dd data-field="denominator">{% for c in p.denominator %}<code>{{ c }}</code>{{ " + " if not loop.last }}{% endfor %}</dd>
+        </dl>
+        {% for row in p.rows %}
+        <dl class="citation" data-geography="{{ row.geography }}">
+          <dt>{{ section.words.geography }}</dt>
+          <dd>{{ row.name }} <code data-field="geography">{{ row.geography }}</code></dd>
+          <dt>{{ section.words.count_method }}</dt>
+          <dd data-field="method">{{ row.count.method }}</dd>
+          <dt>{{ section.words.share_method }}</dt>
+          <dd data-field="method">{{ row.share.method }}</dd>
+          {% if row.share.missing %}
+          <dt>{{ section.words.missing }}</dt>
+          <dd data-field="missing">{% for c in row.share.missing %}<code>{{ c }}</code>{{ ", " if not loop.last }}{% endfor %}</dd>
+          {% endif %}
+          <dt>{{ section.words.inputs }}</dt>
+          <dd>
+            {% for f in row.inputs %}
+            <span class="input" data-variable="{{ f.variable }}">{{ f.source }}{{ section.words.table }} <span data-field="table_id">{{ f.table_id }}</span>, <code>{{ f.variable }}</code>, <span data-field="vintage">{{ f.vintage }}</span>, <code>{{ f.geography }}</code>, {{ f.endpoint }}</span>{{ ";" if not loop.last }}
+            {% else %}
+            <span class="missing">{{ section.words.not_available }}</span>
+            {% endfor %}
+          </dd>
+        </dl>
+        {% endfor %}
+      </div>
+    </details>
+  </div>
+  {% endfor %}
+</section>
