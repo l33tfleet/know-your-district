@@ -1,4 +1,4 @@
-"""What a brief page is about: the district, and an optional `?v=` page variant.
+"""What a brief page is about: the district, design variant and feature preview.
 
 Validated once at the route; sections trust it.
 """
@@ -17,12 +17,15 @@ class PageState(BaseModel):
 
     district: DistrictId
     variant: Variant | None = None
+    preview: bool = False
 
 
-def page_state(chamber: str, number: str, variant: str | None = None) -> PageState | None:
+def page_state(
+    chamber: str, number: str, variant: str | None = None, *, preview: bool = False
+) -> PageState | None:
     """Return the state for a request, or None when the chamber, number or variant is invalid."""
     try:
         district = DistrictId(chamber=chamber, district=number)  # pyright: ignore[reportArgumentType] -- chamber is untrusted text; DistrictId's Literal check rejects it
-        return PageState(district=district, variant=variant)
+        return PageState(district=district, variant=variant, preview=preview)
     except ValidationError:
         return None

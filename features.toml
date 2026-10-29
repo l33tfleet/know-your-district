@@ -1,2 +1,5 @@
-# Set false to omit outreach from both screen and print, including its fact reads.
-outreach = true
+# Declare feature names with register_feature in route/page-part modules.
+# Statuses: "on" for all requests, "off" to omit, "preview" for ?preview=1 only.
+# ?v= selects a design variant independently. Registered omissions default off.
+# Existing outreach remains on; request/startup wiring lands in the next steps.
+outreach = "on"
