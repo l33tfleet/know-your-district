@@ -1,0 +1,66 @@
+{
+  "verified_on": "2026-10-28",
+  "official_url": "https://humanservices.hawaii.gov/bessd/snap/",
+  "outreach_url": "https://humanservices.hawaii.gov/bessd/snap-outreach-providers/",
+  "fallback_url": "https://auw211.org/",
+  "notice": "SNAP may help. DHS decides eligibility. Contact DHS or Aloha United Way 211 for assistance.",
+  "rules": {
+    "income_chart_effective_on": "2026-10-01",
+    "summary": "DHS lists a BBCE gross income ceiling of 200% of the federal poverty guidelines, no asset ceiling, and no BBCE net income test since February 2025. Disqualifications can affect BBCE. Other households face different income tests and deductions. Work requirements and household documentation also apply; this is not a complete eligibility checklist.",
+    "evidence": "evidence/dhs-snap.html"
+  },
+  "outreach_effective_on": "2026-10-01",
+  "assistance": [
+    {
+      "name": "DHS Public Assistance Information Line",
+      "phone": "1-855-643-1643",
+      "service_area": "State of Hawaiʻi",
+      "service": "Official SNAP information and application assistance routing",
+      "evidence": "evidence/dhs-snap.html"
+    },
+    {
+      "name": "The Food Basket — Hilo",
+      "phone": "808-933-6030",
+      "service_area": "Hawaiʻi Island",
+      "service": "Free SNAP application and recertification assistance",
+      "evidence": "evidence/dhs-outreach.html"
+    },
+    {
+      "name": "The Food Basket — Kona",
+      "phone": "808-322-1418",
+      "service_area": "Hawaiʻi Island",
+      "service": "Free SNAP application and recertification assistance",
+      "evidence": "evidence/dhs-outreach.html"
+    },
+    {
+      "name": "Hawaii Foodbank",
+      "phone": "808-954-7893",
+      "service_area": "Oʻahu",
+      "service": "Free SNAP application and recertification assistance",
+      "evidence": "evidence/dhs-outreach.html"
+    },
+    {
+      "name": "Hawaii Foodbank",
+      "phone": "808-265-0684",
+      "service_area": "Kauaʻi",
+      "service": "Free SNAP application and recertification assistance",
+      "evidence": "evidence/dhs-outreach.html"
+    },
+    {
+      "name": "Project Vision Hawaii",
+      "phone": "808-201-3937",
+      "service_area": "Maui",
+      "service": "Free SNAP application and recertification assistance",
+      "evidence": "evidence/dhs-outreach.html"
+    },
+    {
+      "name": "Aloha United Way 211",
+      "phone": "211",
+      "service_area": "State of Hawaiʻi",
+      "service": "Statewide resource navigation and referrals",
+      "evidence": "evidence/auw211.html"
+    }
+  ],
+  "service_area_limit": "The DHS directory names Maui, without separate confirmation for Molokaʻi or Lānaʻi. Use the statewide DHS line or 211 for routing; do not expand a provider service area to an entire county without evidence.",
+  "verification_note": "Dated review of official DHS rules and outreach directory, and the AUW 211 site. Web evidence only; no phone calls placed and no availability guarantee. The SNAP landing-page link still says FFY 2026; the linked directory explicitly lists FFY 2027 effective October 2026. The directory is the source for outreach contacts and areas."
+}

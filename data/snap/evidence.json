@@ -1,0 +1,37 @@
+{
+  "evidence/dhs-snap.html": {
+    "retrieved_on": "2026-10-28",
+    "source_url": "https://humanservices.hawaii.gov/bessd/snap/",
+    "sha256": "38fcf3f58939e81437dc5e36eaec5b627590490e9d0b02fb58f24192f52589ab"
+  },
+  "evidence/dhs-outreach.html": {
+    "retrieved_on": "2026-10-28",
+    "source_url": "https://humanservices.hawaii.gov/bessd/snap-outreach-providers/",
+    "sha256": "f4b1da96e9577f842bd5c65830430e548450987f0daa037603c76d41cf926655"
+  },
+  "evidence/auw211.html": {
+    "retrieved_on": "2026-10-28",
+    "source_url": "https://auw211.org/",
+    "sha256": "567fa59a46e4c522cdd81c737ea140ff8b5fe9632ae46341a8379f829142a92a"
+  },
+  "evidence/census-metadata.json": {
+    "retrieved_on": "2026-10-28",
+    "source_url": "https://api.census.gov/data/2024/acs/acs5/variables/B22003_006E.json",
+    "sha256": "03b9253fd3a34c45e1093acb49bcad84752dcc0a848a63b49c62f29cd64c2775"
+  },
+  "evidence/b22003-hawaii.dat": {
+    "retrieved_on": "2026-10-28",
+    "source_url": "https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/acsdt5y2024-b22003.dat",
+    "sha256": "d0f121491a34302ec4c6ca05ef56d4225859c4f388391fc4483d702b297d69dd"
+  },
+  "provenance.json": {
+    "retrieved_on": "2026-10-28",
+    "source_url": "https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/acsdt5y2024-b22003.dat",
+    "sha256": "91ec9dabd839bae5e31df108e8e75bec71ff8b67205f16db0541363f1c972b21"
+  },
+  "referrals.json": {
+    "retrieved_on": "2026-10-28",
+    "source_url": "https://humanservices.hawaii.gov/bessd/snap/",
+    "sha256": "68c74131f66d290d1b8a53ce5934f8540fec10bb280b9e9644a71dfc73cca9a8"
+  }
+}

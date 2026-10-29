@@ -1,0 +1,49 @@
+{
+  "retrieved_on": "2026-10-28",
+  "source_url": "https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/acsdt5y2024-b22003.dat",
+  "metadata_url": "https://api.census.gov/data/2024/acs/acs5/variables/B22003_006E.json",
+  "metadata": {
+    "name": "B22003_006E",
+    "label": "Estimate!!Total:!!Household did not receive Food Stamps/SNAP in the past 12 months:!!Income in the past 12 months below poverty level",
+    "concept": "Receipt of Food Stamps/SNAP in the Past 12 Months by Poverty Status in the Past 12 Months for Households",
+    "predicateType": "int",
+    "group": "B22003",
+    "limit": 0,
+    "attributes": "B22003_006EA,B22003_006M,B22003_006MA"
+  },
+  "header": [
+    "GEO_ID",
+    "B22003_E001",
+    "B22003_M001",
+    "B22003_E002",
+    "B22003_M002",
+    "B22003_E003",
+    "B22003_M003",
+    "B22003_E004",
+    "B22003_M004",
+    "B22003_E005",
+    "B22003_M005",
+    "B22003_E006",
+    "B22003_M006",
+    "B22003_E007",
+    "B22003_M007"
+  ],
+  "row": [
+    "620L900US15001",
+    "8619",
+    "436",
+    "1585",
+    "305",
+    "522",
+    "195",
+    "1063",
+    "233",
+    "7034",
+    "410",
+    "599",
+    "191",
+    "6435",
+    "416"
+  ],
+  "full_source_sha256": "03c3c8f329c7223bd9c570a3b9874c6b626585482fce33f665b5a8f43f2b117c"
+}
