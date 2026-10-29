@@ -18,7 +18,7 @@
     <table>
       <caption>{{ p.label }}{{ section.words.caption }} ({{ p.unit }})</caption>
       <thead>
-        <tr><th scope="col">{{ section.words.geography }}</th><th scope="col">{{ section.words.count }}</th><th scope="col">{{ section.words.share }} {{ p.universe|lower }}</th></tr>
+        <tr><th scope="col">{{ section.words.geography }}</th><th scope="col">{{ section.words.count }}</th><th scope="col">{{ section.words.share }} {{ p.denominator_name }}</th></tr>
       </thead>
       <tbody>
         {% for row in p.rows %}
@@ -41,7 +41,7 @@
           <dt>{{ section.words.numerator }}</dt>
           <dd data-field="numerator">{% for c in p.numerator %}<code>{{ c }}</code>{{ " + " if not loop.last }}{% endfor %}</dd>
           <dt>{{ section.words.denominator }}</dt>
-          <dd data-field="denominator">{% for c in p.denominator %}<code>{{ c }}</code>{{ " + " if not loop.last }}{% endfor %}</dd>
+          <dd data-field="denominator">{{ p.denominator_name[:1]|upper }}{{ p.denominator_name[1:] }}: {% for c in p.denominator %}<code>{{ c }}</code>{{ " + " if not loop.last }}{% endfor %}</dd>
         </dl>
         {% for row in p.rows %}
         <dl class="citation" data-geography="{{ row.geography }}">

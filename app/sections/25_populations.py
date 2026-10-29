@@ -14,7 +14,7 @@ from app.copy import geography_name
 from app.counties import load_mapping
 from app.facts import FactStore, acs_config
 from app.page_state import PageState
-from app.populations import load_populations
+from app.populations import Population, load_populations
 
 FEATURE = "populations"
 STATE = "state:15"
@@ -42,6 +42,34 @@ WORDS = {
     "table": ", table",
     "not_available": "not available",
 }
+# Cells that each count a whole registry universe; a share over one of these alone is a share
+# of that universe. Any other denominator is a subgroup and is named below, never as its universe.
+UNIVERSE_TOTALS = frozenset(
+    {
+        "B01001_001E",
+        "B11005_001E",
+        "B11007_001E",
+        "B19055_001E",
+        "B19059_001E",
+        "C17002_001E",
+        "DP04_0136E",
+        "S1810_C01_001E",
+    }
+)
+SUBGROUP_DENOMINATORS = {
+    "children_below_poverty": "children under 18 whose poverty status is determined",
+    "older_below_poverty": "residents 65 and over whose poverty status is determined",
+    "below_poverty_no_snap": "households below poverty",
+}
+
+
+def denominator_name(population: Population) -> str:
+    """What the share divides by: the universe only when the denominator is its total cell."""
+    if len(population.denominator) == 1 and population.denominator[0] in UNIVERSE_TOTALS:
+        return population.universe[:1].lower() + population.universe[1:]
+    if population.id not in SUBGROUP_DENOMINATORS:
+        raise ValueError(f"{population.id}: name its subgroup denominator in this module")
+    return SUBGROUP_DENOMINATORS[population.id]
 
 
 def _count(value: float) -> str:
@@ -97,6 +125,7 @@ def context(state: PageState) -> dict[str, object]:
                 "exclusions": population.exclusions,
                 "numerator": population.numerator,
                 "denominator": population.denominator,
+                "denominator_name": denominator_name(population),
                 "rows": [
                     {
                         "geography": c.geography,

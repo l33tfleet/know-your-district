@@ -333,3 +333,55 @@ def test_section_shows_district_county_and_state_shares_with_citations(
     assert VINTAGE in block
     assert "reliable" in block
     assert "±" in block
+
+
+# --- review round 2: geography, denominators, docs --------------------------------------------
+
+
+def test_share_never_divides_sums_from_different_geographies() -> None:
+    facts = keyed(fact("B11005_002E", 30, 2), fact("B11005_001E", 100, 2, geography=COUNTY))
+    numerator = total(("B11005_002E",), DISTRICT, facts)
+    denominator = total(("B11005_001E",), COUNTY, facts)
+    assert numerator.universe == denominator.universe
+    with pytest.raises(ValueError, match="one geography"):
+        share(numerator, denominator)
+
+
+# The denominator each subgroup share actually divides by, as the brief must name it.
+SUBGROUP_DENOMINATORS = {
+    "children_below_poverty": "Share of children under 18 whose poverty status is determined",
+    "older_below_poverty": "Share of residents 65 and over whose poverty status is determined",
+    "below_poverty_no_snap": "Share of households below poverty",
+}
+
+
+def share_heading(html: str, key: str) -> str:
+    start = html.index(f'data-population="{key}"')
+    head = html[html.index("<thead>", start) : html.index("</thead>", start)]
+    return head.split('<th scope="col">')[3].split("</th>")[0].strip()
+
+
+@pytest.mark.usefixtures("populations_on")
+def test_share_heading_names_the_actual_denominator(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A share over a subgroup is never headed with the broader universe it sits in."""
+    monkeypatch.setenv("KYD_FACTS_DB", str(fixture_db(tmp_path / "facts.db", [])))
+    html = TestClient(asgi_app).get("/brief/house/22").text
+    for entry in load_populations().populations:
+        heading = share_heading(html, entry.id)
+        if entry.id in SUBGROUP_DENOMINATORS:
+            assert heading == SUBGROUP_DENOMINATORS[entry.id]
+            assert heading != f"Share of {entry.universe[:1].lower()}{entry.universe[1:]}"
+        else:
+            # Only a single universe-total cell may be headed with the universe itself.
+            assert len(entry.denominator) == 1
+            assert heading == f"Share of {entry.universe[:1].lower()}{entry.universe[1:]}"
+
+
+def test_docs_data_md_states_the_derived_moe_formulas() -> None:
+    text = (Path(__file__).resolve().parents[2] / "docs/data.md").read_text(encoding="utf-8")
+    assert "sqrt(MOE₁² + MOE₂² + …)" in text
+    assert "sqrt(MOE_X² - p² · MOE_Y²) / Y" in text
+    assert "sqrt(MOE_X² + p² · MOE_Y²) / Y" in text
+    assert "radicand" in text
