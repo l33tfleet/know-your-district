@@ -76,11 +76,19 @@ def test_exact_published_population_labels() -> None:
 
 
 class FakeCensus(CensusClient):
-    """Offline stand-in for label-checked data; `broken` sets one district cell to `value`."""
+    """Offline stand-in for label-checked data; `broken` sets one district cell to `value`.
 
-    def __init__(self, broken: tuple[str, str, str] = ("", "", ""), value: str | None = None):
+    `moe` is every MOE cell and its annotation: controlled by default, or sampled.
+    """
+
+    def __init__(
+        self,
+        broken: tuple[str, str, str] = ("", "", ""),
+        value: str | None = None,
+        moe: tuple[str, str | None] = ("-555555555", "*****"),
+    ):
         super().__init__(load_population_config())
-        self.broken, self.value, self.upper = broken, value, 25
+        self.broken, self.value, self.moe, self.upper = broken, value, moe, 25
         self.requested: set[str] = set()
         self.calls = {"lower": 0, "upper": 0}
 
@@ -94,7 +102,7 @@ class FakeCensus(CensusClient):
             row: dict[str, str | None] = {"state": "15", key: f"{n:03}"}
             for v in indicator.variables:
                 m = indicator.moe_variable(v)
-                row |= {v: "120", m: "-555555555", v + "A": None, m + "A": "*****"}
+                row |= {v: "120", m: self.moe[0], v + "A": None, m + "A": self.moe[1]}
             if self.broken[:2] == (chamber, f"{n:03}") and self.broken[2] in row:
                 row[self.broken[2]] = self.value
             rows.append(row)
@@ -124,7 +132,6 @@ def test_published_metadata_and_both_chambers() -> None:
         (("lower", "010", "B19055_002E"), "-666666666"),
         (("lower", "010", "B19059_002E"), "n/a"),
         (("upper", "010", "B11007_003EA"), "-"),
-        (("upper", "010", "B01001_001MA"), "***"),
     ],
 )
 def test_availability_rejects_a_missing_district_cell(
@@ -132,6 +139,20 @@ def test_availability_rejects_a_missing_district_cell(
 ) -> None:
     with pytest.raises(CensusError, match=f"district {broken[1]} \\({broken[0]} chamber"):
         verify_district_availability(FakeCensus(broken, value))
+
+
+def test_availability_accepts_sampled_moes_without_annotations() -> None:
+    client = FakeCensus(moe=("35", None))
+    assert verify_district_availability(client) == 76 * client.calls["lower"]
+
+
+@pytest.mark.parametrize("note", ["***", "-", "N"])
+def test_availability_rejects_an_annotated_sampled_moe(note: str) -> None:
+    # The MOE value is a nonnegative number, so only the annotation can reject it.
+    client = FakeCensus(("upper", "010", "B01001_001MA"), note, moe=("35", None))
+    match = "B01001_001M unavailable for district 010 \\(upper chamber"
+    with pytest.raises(CensusError, match=match):
+        verify_district_availability(client)
 
 
 def test_availability_rejects_a_missing_district() -> None:
