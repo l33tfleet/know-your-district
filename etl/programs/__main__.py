@@ -20,10 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     for failure in report.failures:
         print(f"FAIL {failure}")
     if not report.failures:
-        print(
-            f"No failed links; verification ages are 0–29 days; {len(report.blocked)} blocked"
-            " link(s) are unverified and need manual review before their dates turn stale."
-        )
+        print(f"No failed links or stale dates; {len(report.blocked)} blocked link(s) unverified.")
     return 1 if report.failures else 0
 
 

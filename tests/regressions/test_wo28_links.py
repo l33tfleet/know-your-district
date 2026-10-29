@@ -1,5 +1,6 @@
 """WO82 / WO28: offline evidence for live program-link verification."""
 
+import re
 from datetime import date, timedelta
 from http.client import HTTPException
 from pathlib import Path
@@ -13,6 +14,11 @@ from etl.programs.links import USER_AGENT, LinkResponse, check_catalog, check_ur
 
 TODAY = date(2026, 10, 28)
 CATALOG = Path("data/programs.yaml")
+
+
+def _urls(p: Program) -> set[str]:
+    g, e = p.agency_guideline.source_url, p.eligibility_proxy.source_url
+    return {str(u) for u in (p.official_url, p.referral_url, g, e)}
 
 
 def _aged(age: int) -> list[Program]:
@@ -119,7 +125,7 @@ def test_network_failure_is_contained(error: OSError | HTTPException) -> None:
         check_url("https://agency.gov/", get=get)
 
 
-def test_http_facade_identifies_itself_and_does_not_follow_redirects() -> None:
+def test_http_facade_identifies_itself_and_is_timed(capsys: pytest.CaptureFixture[str]) -> None:
     assert "KnowYourDistrict-LinkChecker" in USER_AGENT
     assert "district.hawaiitechmentors.org" in USER_AGENT
     with patch("etl.programs.links.HTTPSConnection") as connection:
@@ -131,14 +137,16 @@ def test_http_facade_identifies_itself_and_does_not_follow_redirects() -> None:
             "GET", "/start?q=1", headers={"User-Agent": USER_AGENT}
         )
         connection.return_value.close.assert_called_once()
+    assert re.fullmatch(r"GET https://agency\.gov/start\?q=1: \d+\.\d+s\n", capsys.readouterr().err)
 
 
-def test_http_connection_closes_on_timeout() -> None:
+def test_http_failure_closes_and_is_timed(capsys: pytest.CaptureFixture[str]) -> None:
     with patch("etl.programs.links.HTTPSConnection") as connection:
         connection.return_value.getresponse.side_effect = TimeoutError("slow headers")
         with pytest.raises(TimeoutError, match="slow headers"):
             http_get("https://agency.gov/", 10)
         connection.return_value.close.assert_called_once()
+    assert re.fullmatch(r"GET https://agency\.gov/: \d+\.\d{3}s\n", capsys.readouterr().err)
 
 
 @pytest.mark.parametrize("hops", [[401], [403], [429], [301, 403]])
@@ -163,16 +171,7 @@ def test_every_url_checked_blocked_date_kept_and_turns_stale(age: int, stale: bo
     assert all("referral_url" in b and "not verified" in b for b in report.blocked)
     assert bool(report.failures) == stale
     assert all("verification age" in f for f in report.failures)
-    assert calls == {
-        str(url)
-        for p in programs
-        for url in (
-            p.official_url,
-            p.referral_url,
-            p.agency_guideline.source_url,
-            p.eligibility_proxy.source_url,
-        )
-    }
+    assert calls == {u for p in programs for u in _urls(p)}
     assert [p.model_dump() for p in programs] == before
     assert CATALOG.read_bytes() == original
 

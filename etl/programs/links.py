@@ -1,11 +1,13 @@
 """Read-only link checks. HTTP and calendar time are injectable for offline checks."""
 
 import re
+import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from pathlib import Path
+from time import perf_counter
 from typing import Literal
 from urllib.parse import urljoin, urlsplit
 
@@ -38,19 +40,19 @@ class LinkReport:
 
 
 def http_get(url: str, timeout: float) -> LinkResponse:
-    """One GET, headers only, no automatic redirects, system TLS trust store, always closed."""
+    """One GET, headers only, no redirects, system TLS trust store, always closed and timed."""
     parts = urlsplit(url)
     connection_type = HTTPSConnection if parts.scheme == "https" else HTTPConnection
     connection = connection_type(parts.netloc, timeout=timeout)
+    path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+    started = perf_counter()
     try:
-        path = parts.path or "/"
-        if parts.query:
-            path += "?" + parts.query
         connection.request("GET", path, headers={"User-Agent": USER_AGENT})
         response = connection.getresponse()
         return LinkResponse(response.status, response.getheader("Location"))
     finally:
         connection.close()
+        print(f"GET {url}: {perf_counter() - started:.3f}s", file=sys.stderr)
 
 
 def _trusted(url: str) -> None:
