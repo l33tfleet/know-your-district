@@ -60,7 +60,7 @@
   --print-tiny-size: 0.6rem;
   --print-citation-size: 0.5rem;
   --print-program-columns: repeat(2, minmax(0, 1fr));
-  --print-line-height: 1.2;
+  --print-line-height: 1.15;
   --print-gap: 0.75rem;
   --print-space: 0.15rem;
   --print-heading-size: 0.95rem;
@@ -109,6 +109,7 @@
   html :is([data-variant="a"], [data-variant="b"]) {
     /* Not --figure-space or --space-page: they size the interval strips (WO144). */
     --size-small: var(--print-text-size);
+    --headline-space: var(--print-space);
     --section-size: var(--print-heading-size);
     --section-space: var(--print-space) 0;
     --program-size: var(--print-text-size);

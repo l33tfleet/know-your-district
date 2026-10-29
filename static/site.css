@@ -336,7 +336,7 @@ code {
     flex-wrap: wrap;
     gap: 0 var(--print-space);
     margin: 0;
-    font-size: var(--print-tiny-size);
+    font-size: var(--print-citation-size);
   }
 
   .outreach-citation :is(dt, dd) {
