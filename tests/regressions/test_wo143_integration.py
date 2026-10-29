@@ -289,3 +289,27 @@ def test_planted_overflow_fails_the_one_page_check(
     live_config.write_text('outreach = "on"\nwo196_tall = "on"\n')
     open_page(page, base_url + "/brief/house/22", 1440)
     assert pdf_pages(page) > 1
+
+
+@pytest.mark.parametrize("variant", ["", "?v=a", "?v=b"])
+@pytest.mark.parametrize("opened", [False, True])
+def test_printed_figures_keep_every_citation_field_on_the_one_page(
+    page: Page, base_url: str, live_config: Path, variant: str, opened: bool
+) -> None:
+    """R1: each printed figure cites source, table ID, vintage, geography and method,
+    whether or not its disclosure was opened before printing, and the page still fits."""
+    open_page(page, base_url + "/brief/house/22" + variant, 1440)
+    if opened:
+        page.locator(".figure details.source").evaluate_all("ds => ds.forEach(d => d.open = true)")
+    page.emulate_media(media="print")
+    figures = page.locator(".figure")
+    assert figures.count() > 0
+    for figure in figures.all():
+        citations = figure.locator("details.source dl.citation")
+        assert citations.count() > 0
+        for citation in citations.all():
+            for field in ("source", "table_id", "vintage", "geography", "method"):
+                cell = citation.locator(f'[data-field="{field}"]')
+                assert cell.is_visible(), (figure.get_attribute("data-figure"), field)
+                assert cell.inner_text().strip()
+    assert pdf_pages(page) == 1
