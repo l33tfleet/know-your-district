@@ -27,8 +27,8 @@ ROOT = Path(__file__).resolve().parents[2]
 FEATURE = "folders"
 BUSY_TIMEOUT_MS = 5000
 TRASH_KEEP = timedelta(days=30)
-# Past the size limit, so a store at its limit can still mark records deleted.
-DELETE_ROOM_PAGES = 64
+# This share of the size limit is kept for deletes, which grow a row before a purge frees it.
+DELETE_RESERVE_DIVISOR = 4
 # One entry per schema version, in order; each runs once, inside one transaction.
 MIGRATIONS: tuple[str, ...] = (Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"),)
 # A folder's live cards, in a live folder; takes the folder id as its parameter.
@@ -129,7 +129,11 @@ def _migrate(db: sqlite3.Connection) -> None:
     db.execute("COMMIT")
 
 
-def _open(path: Path) -> sqlite3.Connection:
+def _ceiling_pages(db: sqlite3.Connection, max_bytes: int) -> int:
+    return max_bytes // _count(db, "PRAGMA page_size")
+
+
+def _open(path: Path, max_bytes: int) -> sqlite3.Connection:
     # Native autocommit: `executescript` would otherwise commit a migration part way.
     db = sqlite3.connect(path.as_uri() + "?mode=rw", uri=True, autocommit=True)
     try:
@@ -138,6 +142,8 @@ def _open(path: Path) -> sqlite3.Connection:
         db.execute("PRAGMA foreign_keys = ON")
         if db.execute("PRAGMA journal_mode").fetchone()[0] != "wal":
             db.execute("PRAGMA journal_mode = WAL")
+        # SQLite itself then refuses growth past the cap, whichever statement causes it.
+        db.execute(f"PRAGMA max_page_count = {_ceiling_pages(db, max_bytes)}")
         _migrate(db)
     except BaseException:
         db.close()
@@ -174,14 +180,14 @@ class FolderStore:
         scratch = self.path.with_name(f".{self.path.name}.{secrets.token_hex(8)}")
         os.close(os.open(scratch, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600))
         try:
-            _open(scratch).close()
+            _open(scratch, self._limits.max_db_bytes).close()
             os.link(scratch, self.path)
         except FileExistsError:
             pass  # another opener published first
         finally:
             scratch.unlink(missing_ok=True)
 
-    def _connect(self, spare_pages: int = 0) -> sqlite3.Connection:
+    def _connect(self) -> sqlite3.Connection:
         if not enabled(FEATURE, self._state):
             raise FoldersDisabledError
         if not self.path.exists():
@@ -189,33 +195,59 @@ class FolderStore:
         mode = stat.S_IMODE(os.lstat(self.path).st_mode)
         if mode != 0o600:
             raise StoreConfigError(f"{self.path} must have mode 0600, not {mode:04o}")
-        db = _open(self.path)
-        # SQLite itself then refuses growth past the cap, whichever statement causes it.
-        pages = self._limits.max_db_bytes // _count(db, "PRAGMA page_size") + spare_pages
-        db.execute(f"PRAGMA max_page_count = {pages}")
-        return db
+        return _open(self.path, self._limits.max_db_bytes)
+
+    def _size_error(self) -> CapacityError:
+        return CapacityError(
+            f"The folder store reached its database size limit of "
+            f"{self._limits.max_db_bytes:,} bytes"
+        )
 
     @contextmanager
-    def _write(self, spare_pages: int = 0) -> Generator[sqlite3.Connection]:
-        """One immediate transaction. Leaving without COMMIT rolls back when the file closes."""
-        start = time.perf_counter()
+    def _size_refused(self) -> Generator[None]:
         try:
-            with closing(self._connect(spare_pages)) as db:
-                db.execute("BEGIN IMMEDIATE")
-                yield db
-                db.execute("COMMIT")
+            yield
         except sqlite3.OperationalError as exc:
             if exc.sqlite_errorcode != sqlite3.SQLITE_FULL:
                 raise
+            raise self._size_error() from exc
+
+    def _require_ceiling(self, db: sqlite3.Connection) -> int:
+        """Set the cap inside the transaction; SQLite answers with the file's size if larger."""
+        pages = _ceiling_pages(db, self._limits.max_db_bytes)
+        effective = _count(db, f"PRAGMA max_page_count = {pages}")
+        if effective != pages:
             raise CapacityError(
-                f"The folder store reached its database size limit of "
-                f"{self._limits.max_db_bytes:,} bytes"
-            ) from exc
+                f"The folder store cannot enforce its database size limit of "
+                f"{self._limits.max_db_bytes:,} bytes: the file already holds {effective:,} pages"
+            )
+        return pages
+
+    def _check_reserve(self, db: sqlite3.Connection, pages: int) -> None:
+        # Pages in use, not the file's length: pages a purge freed count as room again.
+        used = _count(db, "PRAGMA page_count") - _count(db, "PRAGMA freelist_count")
+        if used > pages - pages // DELETE_RESERVE_DIVISOR:
+            raise self._size_error()
+
+    @contextmanager
+    def _write(self, deleting: bool = False) -> Generator[sqlite3.Connection]:
+        """One immediate transaction. Leaving without COMMIT rolls back when the file closes.
+
+        Only `deleting` writes may spend the reserve, so a full store can always shrink.
+        """
+        start = time.perf_counter()
+        with self._size_refused(), closing(self._connect()) as db:
+            db.execute("BEGIN IMMEDIATE")
+            pages = self._require_ceiling(db)
+            yield db
+            if not deleting:
+                self._check_reserve(db, pages)
+            db.execute("COMMIT")
         log.info("folder store write in %.1f ms", (time.perf_counter() - start) * 1000)
 
     def _read(self, query: str, params: tuple[object, ...]) -> list[sqlite3.Row]:
         start = time.perf_counter()
-        with closing(self._connect()) as db:
+        with self._size_refused(), closing(self._connect()) as db:
             rows: list[sqlite3.Row] = db.execute(query, params).fetchall()
         elapsed = (time.perf_counter() - start) * 1000
         log.info("folder store read: %d rows in %.1f ms", len(rows), elapsed)
@@ -293,7 +325,7 @@ class FolderStore:
 
     def delete_folder(self, folder_id: str) -> None:
         stamp = self._stamp()
-        with self._write(DELETE_ROOM_PAGES) as db:
+        with self._write(deleting=True) as db:
             query = "UPDATE folders SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL "
             _one(db, query + "RETURNING id", (stamp, folder_id))
             self._purge(db, TRASH_KEEP)
@@ -358,7 +390,7 @@ class FolderStore:
 
     def delete_card(self, folder_id: str, card_id: int) -> None:
         stamp = self._stamp()
-        with self._write(DELETE_ROOM_PAGES) as db:
+        with self._write(deleting=True) as db:
             self._touch(db, folder_id, stamp)
             _one(
                 db,
@@ -429,7 +461,7 @@ class FolderStore:
 
     def delete_note(self, folder_id: str, note_id: int) -> None:
         stamp = self._stamp()
-        with self._write(DELETE_ROOM_PAGES) as db:
+        with self._write(deleting=True) as db:
             self._touch(db, folder_id, stamp)
             _one(
                 db,
@@ -463,7 +495,7 @@ class FolderStore:
 
     def purge_deleted(self, keep: timedelta = TRASH_KEEP) -> None:
         """Remove for good whatever has been in the trash longer than `keep`."""
-        with self._write() as db:
+        with self._write(deleting=True) as db:
             self._purge(db, keep)
 
     def hit_rate(self, hit: RateHit) -> bool:

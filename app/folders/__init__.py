@@ -18,4 +18,8 @@ Deleting is soft. A deleted folder, card or note leaves ordinary reads and frees
 stays recoverable through the `restore_*` calls for `TRASH_KEEP` (30 days); each later delete
 purges what has expired, and `purge_deleted` empties the trash early when the size limit bites.
 Restores recheck the limits. To remove the feature, turn the flag off and delete the file.
+
+The size limit is a ceiling on the database's pages. A quarter of it is kept for deletes and
+purges: other writes stop at three quarters, and the trash keeps its space until purged. A file
+already past the ceiling, say after lowering the limit, stays readable but refuses every write.
 """
