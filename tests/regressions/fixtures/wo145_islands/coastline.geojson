@@ -1,4 +1,1 @@
-{"type": "FeatureCollection", "features": [
-{"type": "Feature", "properties": {"note": "synthetic Oahu square"}, "geometry": {"type": "Polygon", "coordinates": [[[-158.1, 21.4], [-157.9, 21.4], [-157.9, 21.6], [-158.1, 21.6], [-158.1, 21.4]]]}},
-{"type": "Feature", "properties": {"note": "synthetic Maui and Northwestern Hawaiian Islands squares"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-156.4, 20.7], [-156.2, 20.7], [-156.2, 20.9], [-156.4, 20.9], [-156.4, 20.7]]], [[[-166.3, 23.8], [-166.2, 23.8], [-166.2, 23.9], [-166.3, 23.9], [-166.3, 23.8]]]]}}
-]}
+{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"note":"synthetic Oahu square"},"geometry":{"type":"Polygon","coordinates":[[[-158.1,21.4],[-157.9,21.4],[-157.9,21.6],[-158.1,21.6],[-158.1,21.4]]]}},{"type":"Feature","properties":{"note":"synthetic Maui and Northwestern Hawaiian Islands squares"},"geometry":{"type":"MultiPolygon","coordinates":[[[[-156.4,20.7],[-156.2,20.7],[-156.2,20.9],[-156.4,20.9],[-156.4,20.7]]],[[[-166.3,23.8],[-166.2,23.8],[-166.2,23.9],[-166.3,23.9],[-166.3,23.8]]]]}}]}

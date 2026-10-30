@@ -4,16 +4,19 @@ Sole writer of data/geo/islands/ (uv run python -m etl.islands); district export
 read. --coastline-dir replays an unmodified Hawaiʻi Statewide GIS Program coastline layer
 (coastline.geojson, outSR=4326) with coastline.source.json; without it every island records
 coastline "unavailable" with a reason and no geometry. County polygons are never used.
+--dry-run prints the planned actions (the same list a real run executes) and writes nothing.
 """
 
 import argparse
+import hashlib
 import json
+from dataclasses import dataclass
 from datetime import date
 from itertools import batched
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 from etl.boundaries import DistrictId, MultiPolygon, Polygon, Provenance
 
@@ -65,8 +68,8 @@ class CoastlineSource(BaseModel):
     model_config = ConfigDict(extra="forbid")
     service_url: str = Field(pattern=r"^https://(geodata|geoportal)\.hawaii\.gov/\S+$")
     layer_id: int = Field(ge=0, strict=True)
-    retrieved_on: date
-    credit: str = Field(min_length=1)
+    retrieved_on: Annotated[date, BeforeValidator(Provenance.validate_retrieval_date)]
+    credit: str = Field(min_length=1, pattern=r"^\S[^\x00-\x1f]*$")
 
 
 class Available(BaseModel):
@@ -94,9 +97,17 @@ class Island(BaseModel):
         return self
 
 
+class IslandsProvenance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    membership_method: str
+    coastline_method: str
+    name_authority: str
+    district_sources: list[Provenance] = Field(min_length=2)
+
+
 class IslandsDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    provenance: dict[str, str | list[Provenance]]
+    provenance: IslandsProvenance
     islands: list[Island]
 
     @model_validator(mode="after")
@@ -119,7 +130,13 @@ class _Collection[F: BaseModel](BaseModel):
     type: Literal["FeatureCollection"]
     features: list[F]
     properties: dict[str, object] = {}
-    exceeded_transfer_limit: bool = Field(default=False, alias="exceededTransferLimit")
+    exceeded_transfer_limit: bool = Field(False, alias="exceededTransferLimit", strict=True)
+
+
+@dataclass(frozen=True)
+class Action:
+    path: Path
+    text: str | None  # None removes the file
 
 
 def classify(geometry: Shape, *, required: bool = True) -> list[tuple[str | None, Rings]]:
@@ -146,8 +163,8 @@ def _compact(value: object) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def build_islands(geo_dir: Path, output_dir: Path, coastline_dir: Path | None = None) -> None:
-    """Validate every input first, then write islands/; district files are only read."""
+def plan_islands(geo_dir: Path, output_dir: Path, coast_dir: Path | None = None) -> list[Action]:
+    """Validate every input and return the actions for islands/; nothing is written."""
     found: dict[str, set[str | None]] = {}
     sources: list[Provenance] = []
     credits: list[str] = []
@@ -168,9 +185,9 @@ def build_islands(geo_dir: Path, output_dir: Path, coastline_dir: Path | None = 
         raise ValueError(f"membership differs from the reviewed list: {wrong}")
     source: CoastlineSource | None = None
     shapes: dict[str, list[Rings]] = {}
-    if coastline_dir:
-        source = CoastlineSource.model_validate_json(_read(coastline_dir / "coastline.source.json"))
-        layer = _Collection[_Part].model_validate_json(_read(coastline_dir / "coastline.geojson"))
+    if coast_dir:
+        source = CoastlineSource.model_validate_json(_read(coast_dir / "coastline.source.json"))
+        layer = _Collection[_Part].model_validate_json(_read(coast_dir / "coastline.geojson"))
         # ArcGIS reports truncation at the top level or inside the collection's properties.
         if layer.exceeded_transfer_limit or layer.properties.get("exceededTransferLimit"):
             raise ValueError("incomplete response: exceededTransferLimit")
@@ -178,6 +195,8 @@ def build_islands(geo_dir: Path, output_dir: Path, coastline_dir: Path | None = 
             for island, rings in classify(feature.geometry, required=False):
                 if island:
                     shapes.setdefault(island, []).append(rings)
+        if not shapes:
+            raise ValueError("coastline layer has no polygon in any island extent")
         credits.append(source.credit)
     unavailable = {"status": "unavailable", "reason": NOT_IN_LAYER if source else NOT_RETRIEVED}
     islands = [
@@ -188,28 +207,54 @@ def build_islands(geo_dir: Path, output_dir: Path, coastline_dir: Path | None = 
     provenance = METHODS | {"district_sources": sources}
     document = IslandsDocument.model_validate({"provenance": provenance, "islands": islands})
     dump = document.model_dump(mode="json")
-    # Compact rows (one island, six districts or one coastline per line) keep diffs reviewable.
+    # Compact rows (one island, ten districts or one coastline per line) keep diffs reviewable.
     rows = ",\n    ".join(_compact(island) for island in dump["islands"])
     text = f'{{\n  "provenance": {_compact(dump["provenance"])},\n  "islands": [\n    {rows}\n  ]\n}}\n'
     pairs = [f"{_compact(key)}: {_compact(value)}" for key, value in membership.items()]
-    districts = "{\n  " + ",\n  ".join(", ".join(row) for row in batched(pairs, 6)) + "\n}\n"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "islands.json").write_text(text, "utf-8")
-    (output_dir / "membership.json").write_text(districts, "utf-8")
-    (output_dir / "credit.txt").write_text("\n".join(credits) + "\n", "utf-8")
+    districts = "{\n  " + ",\n  ".join(", ".join(row) for row in batched(pairs, 10)) + "\n}\n"
+    actions = [
+        Action(output_dir / "islands.json", text),
+        Action(output_dir / "membership.json", districts),
+        Action(output_dir / "credit.txt", "\n".join(credits) + "\n"),
+    ]
     path = output_dir / "coastlines.geojson"
-    path.unlink(missing_ok=True)
     if shapes:
-        multi = {
-            i: {"type": "MultiPolygon", "coordinates": shapes[i]} for i in ISLANDS if i in shapes
-        }
         features = [
-            {"type": "Feature", "properties": {"island": i}, "geometry": g}
-            for i, g in multi.items()
+            {
+                "type": "Feature",
+                "properties": {"island": i},
+                "geometry": {"type": "MultiPolygon", "coordinates": shapes[i]},
+            }
+            for i in ISLANDS
+            if i in shapes
         ]
-        path.write_text(
-            _compact({"type": "FeatureCollection", "features": features}) + "\n", "utf-8"
-        )
+        collection = _compact({"type": "FeatureCollection", "features": features}) + "\n"
+        actions.append(Action(path, collection))
+    elif path.exists():
+        actions.append(Action(path, None))
+    return actions
+
+
+def preview(action: Action) -> str:
+    """One action as text, with the size and hash a real run would write."""
+    if action.text is None:
+        return f"remove {action.path}"
+    data = action.text.encode("utf-8")
+    return f"write {action.path} ({len(data)} bytes, sha256 {hashlib.sha256(data).hexdigest()})"
+
+
+def apply_actions(actions: list[Action]) -> None:
+    """The one executor of planned actions."""
+    for action in actions:
+        if action.text is None:
+            action.path.unlink()
+        else:
+            action.path.parent.mkdir(parents=True, exist_ok=True)
+            action.path.write_text(action.text, "utf-8")
+
+
+def build_islands(geo_dir: Path, output_dir: Path, coastline_dir: Path | None = None) -> None:
+    apply_actions(plan_islands(geo_dir, output_dir, coastline_dir))
 
 
 def main() -> None:
@@ -217,9 +262,14 @@ def main() -> None:
     parser.add_argument("--geo-dir", type=Path, default=Path("data/geo"))
     parser.add_argument("--output-dir", type=Path, default=Path("data/geo/islands"))
     parser.add_argument("--coastline-dir", type=Path)
+    parser.add_argument("--dry-run", action="store_true", help="print the plan; write nothing")
     args = parser.parse_args()
     try:
-        build_islands(args.geo_dir, args.output_dir, args.coastline_dir)
+        actions = plan_islands(args.geo_dir, args.output_dir, args.coastline_dir)
+        if args.dry_run:
+            print("\n".join(preview(action) for action in actions))
+            return
+        apply_actions(actions)
     except (OSError, ValueError) as exc:
         parser.exit(1, f"Island build failed: {exc}\n")
     print(f"Published islands and membership for 76 districts to {args.output_dir}")
