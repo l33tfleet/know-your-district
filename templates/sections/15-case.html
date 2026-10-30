@@ -7,6 +7,7 @@
     <strong class="case-reading">{{ reading.value_text }} {{ reading.units }}; {{ reading.moe_text }}; {{ reading.reliability_word }}</strong>
     <span class="case-source">({{ section.citation }}).</span>
     <strong>{{ copy.why_lead }}:</strong> {{ section.why }}
+    <span class="case-undercount">{{ section.undercount }}</span>
   </p>
   {% else %}
   <p class="case-unavailable">{{ copy.unavailable }}</p>

@@ -222,3 +222,27 @@ def test_rejects_unknown_fields(tmp_path: Path) -> None:
     data["cases"][0]["eligibility"] = "everyone"
     with pytest.raises(ValidationError, match="extra"):
         cases.load_cases(write(tmp_path, data))
+
+
+def test_card_says_the_survey_undercounts_receipt_beside_the_count(
+    configure: Configure,
+) -> None:
+    """docs/data.md trap 3: the undercount caveat sits next to every benefit figure."""
+    card = page(configure('outreach = "on"\n'), "/brief/senate/5").one("section", class_="case")
+    why = flat(card.one(class_="case-why"))
+    assert "Survey answers undercount benefit receipt" in why
+    assert flat(card.one(class_="case-reading")) in why
+
+
+def test_rejects_a_problem_both_known_and_unknown(tmp_path: Path) -> None:
+    data = record()
+    data["cases"][0]["unknown"]["geography"] = "contradicts the known entry"
+    with pytest.raises(ValidationError, match="both known and unknown: geography"):
+        cases.load_cases(write(tmp_path, data))
+
+
+def test_rejects_a_duplicate_case_id(tmp_path: Path) -> None:
+    data = record()
+    data["cases"].append(data["cases"][0])
+    with pytest.raises(ValueError, match="duplicate case id: snap_poverty_no_receipt"):
+        cases.load_cases(write(tmp_path, data))

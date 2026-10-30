@@ -344,14 +344,20 @@ code {
     column-gap: var(--print-gap);
   }
 
-  .case h2 {
+  .brief .case h2 {
     column-span: all;
+    margin: 0;
     font-size: var(--print-text-size);
   }
 
   .case > :not(h2),
   .case-source {
     font-size: var(--print-citation-size);
+  }
+
+  .case > p,
+  .case-known {
+    margin: 0;
   }
 
   .outreach table {

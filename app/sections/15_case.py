@@ -41,6 +41,7 @@ def context(state: PageState) -> dict[str, object]:
         if fact is not None
         else None,
         "why": copy["why"].format(units=reading.units.capitalize()),
+        "undercount": result.undercount_note,
         "evidence": [
             (copy["problems"][p], copy["known"], record.known[p])
             if p in record.known
