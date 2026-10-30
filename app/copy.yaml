@@ -103,6 +103,14 @@ sections:
         missing:
           lead: "comparable published estimates are not available; no comparison claim with"
     source_summary: Source and uncertainty
+    check_figure: Check this figure
+    check_links:
+      table: Published table on data.census.gov
+      api: Census API query (may require an API key)
+      evidence: Recorded source evidence (see method above)
+      district_source: District boundary source
+      county_source: County boundary source
+      mapping_file: Committed county area mapping (see method above)
     fields:
       source: Source
       table_id: Table
