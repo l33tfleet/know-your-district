@@ -121,8 +121,19 @@ def write_catalog(tmp_path: Path, entries: list[dict[str, Any]]) -> Path:
     return path
 
 
-@pytest.mark.parametrize("change", ["missing", "duplicate", "changed", "removed", "reused"])
-def test_loader_rejects_broken_identities(tmp_path: Path, change: str) -> None:
+@pytest.mark.parametrize(
+    ("change", "expected_error"),
+    [
+        ("missing", None),
+        ("duplicate", "Duplicate program ID: snap"),
+        ("changed", "Immutable program ID snap missing; retain it with retired metadata"),
+        ("removed", "Immutable program ID snap missing; retain it with retired metadata"),
+        ("reused", "Program ID snap cannot be reused for a different identity"),
+    ],
+)
+def test_loader_rejects_broken_identities(
+    tmp_path: Path, change: str, expected_error: str | None
+) -> None:
     entries = [p.model_dump(mode="json") for p in load_catalog(CATALOG)]
     if change == "missing":
         entries[0].pop("id", None)
@@ -134,8 +145,15 @@ def test_loader_rejects_broken_identities(tmp_path: Path, change: str) -> None:
         entries.pop(0)
     else:
         entries[0].update(name="Another program", official_url="https://example.org/other/")
-    with pytest.raises(ValueError, match=r"(?i)(id|identity)"):
+    with pytest.raises(ValueError) as exc:
         load_catalog(write_catalog(tmp_path, entries))
+    if expected_error is None:
+        assert isinstance(exc.value, ValidationError)
+        assert [(error["loc"], error["type"]) for error in exc.value.errors()] == [
+            ((0, "id"), "missing")
+        ]
+    else:
+        assert str(exc.value) == expected_error
 
 
 @pytest.mark.parametrize(
@@ -143,8 +161,11 @@ def test_loader_rejects_broken_identities(tmp_path: Path, change: str) -> None:
 )
 def test_ids_are_lowercase_slugs(entry: dict[str, Any], bad_id: str) -> None:
     entry["id"] = bad_id
-    with pytest.raises(ValidationError, match="id"):
+    with pytest.raises(ValidationError) as exc:
         Program.model_validate(entry)
+    assert [(error["loc"], error["type"]) for error in exc.value.errors()] == [
+        (("id",), "string_pattern_mismatch")
+    ]
 
 
 def test_name_can_change_but_id_is_immutable(tmp_path: Path) -> None:
