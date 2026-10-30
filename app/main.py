@@ -20,6 +20,7 @@ from app.brief import discover, render_section
 from app.copy import geography_name, load_copy
 from app.features import validate_features
 from app.page_state import page_state
+from app.tools.rankings import QUESTIONS, answer, present
 from app.web import snap
 from etl.boundaries import DISTRICT_COUNTS
 
@@ -90,10 +91,28 @@ def district_numbers(chamber: str, n: str | None) -> dict[str, object]:
     return {"numbers": numbers, "selected": selected}
 
 
+def question_answer(q: str | None) -> dict[str, object]:
+    """The answer to a fixed question; anything else is an error, never a default question."""
+    copy = load_copy()
+    if q not in QUESTIONS:
+        unknown: str = copy["home"]["question"]["unknown"]
+        raise HTTPException(status_code=400, detail=unknown.format(valid=", ".join(QUESTIONS)))
+    return present(q, answer(q), copy)
+
+
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request) -> HTMLResponse:
+def home(request: Request, q: str | None = None) -> HTMLResponse:
     context = page_context() | district_numbers("house", None)
+    if q is not None:
+        context["answer"] = question_answer(q)
     return templates.TemplateResponse(request, "home.html", context)
+
+
+@app.get("/questions", response_class=HTMLResponse)
+def questions(request: Request, q: str | None = None) -> HTMLResponse:
+    """htmx partial: the answer block alone; the form's no-JavaScript target is `/`."""
+    context = {"answer": question_answer(q)}
+    return templates.TemplateResponse(request, "partials/question_answer.html", context)
 
 
 @app.get("/picker/numbers", response_class=HTMLResponse)
