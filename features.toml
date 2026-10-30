@@ -3,3 +3,4 @@
 # ?v= selects a design variant independently. Registered omissions default off.
 # Existing outreach remains on; request/startup wiring lands in the next steps.
 outreach = "on"
+source_links = "preview"

@@ -1,5 +1,6 @@
-# Guard rails and the rules every agent reads first. Changes here wait for the
-# Code Owner's review instead of auto-merging.
+# Guard rails and the rules every agent reads first. Code-owned paths are
+# flagged by the labeler, receive extra reviewer scrutiny and a longer veto window,
+# and require no human approval to merge.
 #
 # /tests/regressions/ is left unowned on purpose: agents add new regression
 # files there freely; the `regressions-append-only` CI job keeps existing ones
