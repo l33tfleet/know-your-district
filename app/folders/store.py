@@ -13,7 +13,7 @@ import stat
 import time
 from collections.abc import Callable, Generator
 from contextlib import closing, contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -26,8 +26,16 @@ from etl.boundaries import DistrictId
 ROOT = Path(__file__).resolve().parents[2]
 FEATURE = "folders"
 BUSY_TIMEOUT_MS = 5000
+TRASH_KEEP = timedelta(days=30)
+# Past the size limit, so a store at its limit can still mark records deleted.
+DELETE_ROOM_PAGES = 64
 # One entry per schema version, in order; each runs once, inside one transaction.
 MIGRATIONS: tuple[str, ...] = (Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"),)
+# A folder's live cards, in a live folder; takes the folder id as its parameter.
+_LIVE_CARD_IDS = (
+    "(SELECT cards.id FROM cards JOIN folders ON folders.id = cards.folder_id "
+    "WHERE cards.folder_id = ? AND cards.deleted_at IS NULL AND folders.deleted_at IS NULL)"
+)
 log = logging.getLogger(__name__)
 
 register_feature(FEATURE)
@@ -83,6 +91,7 @@ def _card(row: sqlite3.Row) -> Card:
         state=CardState(status=row["status"], priority=row["priority"], reason=row["reason"]),
         created_at=row["created_at"],
         updated_at=row["updated_at"],
+        deleted_at=row["deleted_at"],
     )
 
 
@@ -172,7 +181,7 @@ class FolderStore:
         finally:
             scratch.unlink(missing_ok=True)
 
-    def _connect(self) -> sqlite3.Connection:
+    def _connect(self, spare_pages: int = 0) -> sqlite3.Connection:
         if not enabled(FEATURE, self._state):
             raise FoldersDisabledError
         if not self.path.exists():
@@ -182,16 +191,16 @@ class FolderStore:
             raise StoreConfigError(f"{self.path} must have mode 0600, not {mode:04o}")
         db = _open(self.path)
         # SQLite itself then refuses growth past the cap, whichever statement causes it.
-        pages = self._limits.max_db_bytes // _count(db, "PRAGMA page_size")
+        pages = self._limits.max_db_bytes // _count(db, "PRAGMA page_size") + spare_pages
         db.execute(f"PRAGMA max_page_count = {pages}")
         return db
 
     @contextmanager
-    def _write(self) -> Generator[sqlite3.Connection]:
+    def _write(self, spare_pages: int = 0) -> Generator[sqlite3.Connection]:
         """One immediate transaction. Leaving without COMMIT rolls back when the file closes."""
         start = time.perf_counter()
         try:
-            with closing(self._connect()) as db:
+            with closing(self._connect(spare_pages)) as db:
                 db.execute("BEGIN IMMEDIATE")
                 yield db
                 db.execute("COMMIT")
@@ -213,19 +222,50 @@ class FolderStore:
         return rows
 
     def _stamp(self) -> str:
-        return self._now().astimezone(UTC).isoformat()
+        return self._now().astimezone(UTC).isoformat(timespec="microseconds")
 
     def _touch(self, db: sqlite3.Connection, folder_id: str, stamp: str) -> None:
-        query = "UPDATE folders SET updated_at = ? WHERE id = ? RETURNING id"
+        query = "UPDATE folders SET updated_at = ? WHERE id = ? AND deleted_at IS NULL RETURNING id"
         _one(db, query, (stamp, folder_id))
+
+    def _purge(self, db: sqlite3.Connection, keep: timedelta) -> None:
+        cutoff = (self._now() - keep).astimezone(UTC).isoformat(timespec="microseconds")
+        for table in ("notes", "cards", "folders"):  # foreign keys take the children too
+            db.execute(f"DELETE FROM {table} WHERE deleted_at <= ?", (cutoff,))
+
+    def _check_folder_room(self, db: sqlite3.Connection) -> None:
+        held = _count(db, "SELECT COUNT(*) FROM folders WHERE deleted_at IS NULL")
+        if held >= self._limits.max_folders:
+            raise CapacityError(
+                f"The folder store holds its limit of {self._limits.max_folders:,} folders"
+            )
+
+    def _check_card_room(
+        self, db: sqlite3.Connection, folder_id: str, key: str, chamber: str, district: int | str
+    ) -> None:
+        same = (
+            "SELECT COUNT(*) FROM cards WHERE folder_id = ? AND card_key = ? AND chamber = ? "
+            "AND district = ? AND deleted_at IS NULL"
+        )
+        if _count(db, same, (folder_id, key, chamber, district)):
+            raise AlreadySavedError(f"This folder already holds {key}")
+        held = "SELECT COUNT(*) FROM cards WHERE folder_id = ? AND deleted_at IS NULL"
+        if _count(db, held, (folder_id,)) >= self._limits.max_cards:
+            raise CapacityError(f"This folder holds its limit of {self._limits.max_cards} cards")
+
+    def _check_note_room(self, db: sqlite3.Connection, folder_id: str, adding: int = 1) -> None:
+        held = _count(
+            db,
+            f"SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL AND card_id IN {_LIVE_CARD_IDS}",
+            (folder_id,),
+        )
+        if held + adding > self._limits.max_notes:
+            raise CapacityError(f"This folder holds its limit of {self._limits.max_notes:,} notes")
 
     def create_folder(self, new: NewFolder) -> Folder:
         stamp = self._stamp()
         with self._write() as db:
-            if _count(db, "SELECT COUNT(*) FROM folders") >= self._limits.max_folders:
-                raise CapacityError(
-                    f"The folder store holds its limit of {self._limits.max_folders:,} folders"
-                )
+            self._check_folder_room(db)
             row = _one(
                 db,
                 "INSERT INTO folders (id, name, created_at, updated_at) "
@@ -235,7 +275,8 @@ class FolderStore:
         return _folder(row)
 
     def get_folder(self, folder_id: str) -> Folder:
-        rows = self._read("SELECT * FROM folders WHERE id = ?", (folder_id,))
+        query = "SELECT * FROM folders WHERE id = ? AND deleted_at IS NULL"
+        rows = self._read(query, (folder_id,))
         if not rows:
             raise FolderNotFoundError("Not found in this folder")
         return _folder(rows[0])
@@ -244,43 +285,63 @@ class FolderStore:
         with self._write() as db:
             row = _one(
                 db,
-                "UPDATE folders SET name = ?, updated_at = ? WHERE id = ? RETURNING *",
+                "UPDATE folders SET name = ?, updated_at = ? "
+                "WHERE id = ? AND deleted_at IS NULL RETURNING *",
                 (new.name, self._stamp(), folder_id),
             )
         return _folder(row)
 
     def delete_folder(self, folder_id: str) -> None:
-        """A true delete: when an office removes a folder its cards and notes go with it."""
+        stamp = self._stamp()
+        with self._write(DELETE_ROOM_PAGES) as db:
+            query = "UPDATE folders SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL "
+            _one(db, query + "RETURNING id", (stamp, folder_id))
+            self._purge(db, TRASH_KEEP)
+
+    def list_deleted_folders(self) -> list[Folder]:
+        rows = self._read("SELECT * FROM folders WHERE deleted_at IS NOT NULL ORDER BY id", ())
+        return [_folder(row) for row in rows]
+
+    def restore_folder(self, folder_id: str) -> Folder:
         with self._write() as db:
-            _one(db, "DELETE FROM folders WHERE id = ? RETURNING id", (folder_id,))
+            self._check_folder_room(db)
+            row = _one(
+                db,
+                "UPDATE folders SET deleted_at = NULL, updated_at = ? "
+                "WHERE id = ? AND deleted_at IS NOT NULL RETURNING *",
+                (self._stamp(), folder_id),
+            )
+        return _folder(row)
 
     def add_card(self, folder_id: str, new: NewCard) -> Card:
         stamp = self._stamp()
-        key = (folder_id, new.card_key, new.district.chamber, new.district.district)
+        chamber, district = new.district.chamber, new.district.district
         state = new.state
         with self._write() as db:
             self._touch(db, folder_id, stamp)
-            saved = (
-                "SELECT COUNT(*) FROM cards WHERE folder_id = ? "
-                "AND card_key = ? AND chamber = ? AND district = ?"
-            )
-            if _count(db, saved, key):
-                raise AlreadySavedError(f"This folder already holds {new.card_key}")
-            held = _count(db, "SELECT COUNT(*) FROM cards WHERE folder_id = ?", (folder_id,))
-            if held >= self._limits.max_cards:
-                raise CapacityError(
-                    f"This folder holds its limit of {self._limits.max_cards} cards"
-                )
+            self._check_card_room(db, folder_id, new.card_key, chamber, district)
             row = _one(
                 db,
                 "INSERT INTO cards (folder_id, card_key, chamber, district, status, priority, "
                 "reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
-                (*key, state.status.value, state.priority.value, state.reason, stamp, stamp),
+                (
+                    folder_id,
+                    new.card_key,
+                    chamber,
+                    district,
+                    state.status.value,
+                    state.priority.value,
+                    state.reason,
+                    stamp,
+                    stamp,
+                ),
             )
         return _card(row)
 
     def list_cards(self, folder_id: str) -> list[Card]:
-        rows = self._read("SELECT * FROM cards WHERE folder_id = ? ORDER BY id", (folder_id,))
+        rows = self._read(
+            f"SELECT * FROM cards WHERE id IN {_LIVE_CARD_IDS} ORDER BY id", (folder_id,)
+        )
         return [_card(row) for row in rows]
 
     def update_card(self, folder_id: str, card_id: int, state: CardState) -> Card:
@@ -290,32 +351,54 @@ class FolderStore:
             row = _one(
                 db,
                 "UPDATE cards SET status = ?, priority = ?, reason = ?, updated_at = ? "
-                "WHERE id = ? AND folder_id = ? RETURNING *",
+                "WHERE id = ? AND folder_id = ? AND deleted_at IS NULL RETURNING *",
                 (state.status.value, state.priority.value, state.reason, stamp, card_id, folder_id),
             )
         return _card(row)
 
     def delete_card(self, folder_id: str, card_id: int) -> None:
+        stamp = self._stamp()
+        with self._write(DELETE_ROOM_PAGES) as db:
+            self._touch(db, folder_id, stamp)
+            _one(
+                db,
+                "UPDATE cards SET deleted_at = ? "
+                "WHERE id = ? AND folder_id = ? AND deleted_at IS NULL RETURNING id",
+                (stamp, card_id, folder_id),
+            )
+            self._purge(db, TRASH_KEEP)
+
+    def list_deleted_cards(self, folder_id: str) -> list[Card]:
+        query = "SELECT * FROM cards WHERE folder_id = ? AND deleted_at IS NOT NULL ORDER BY id"
+        return [_card(row) for row in self._read(query, (folder_id,))]
+
+    def restore_card(self, folder_id: str, card_id: int) -> Card:
+        stamp = self._stamp()
         with self._write() as db:
-            self._touch(db, folder_id, self._stamp())
-            query = "DELETE FROM cards WHERE id = ? AND folder_id = ? RETURNING id"
-            _one(db, query, (card_id, folder_id))
+            self._touch(db, folder_id, stamp)
+            gone = _one(
+                db,
+                "SELECT card_key, chamber, district FROM cards "
+                "WHERE id = ? AND folder_id = ? AND deleted_at IS NOT NULL",
+                (card_id, folder_id),
+            )
+            self._check_card_room(db, folder_id, *gone)
+            query = "SELECT COUNT(*) FROM notes WHERE card_id = ? AND deleted_at IS NULL"
+            self._check_note_room(db, folder_id, _count(db, query, (card_id,)))
+            row = _one(
+                db,
+                "UPDATE cards SET deleted_at = NULL, updated_at = ? WHERE id = ? RETURNING *",
+                (stamp, card_id),
+            )
+        return _card(row)
 
     def add_note(self, folder_id: str, card_id: int, new: NewNote) -> Note:
         stamp = self._stamp()
         with self._write() as db:
             self._touch(db, folder_id, stamp)
-            _one(db, "SELECT id FROM cards WHERE id = ? AND folder_id = ?", (card_id, folder_id))
-            held = _count(
-                db,
-                "SELECT COUNT(*) FROM notes WHERE card_id IN "
-                "(SELECT id FROM cards WHERE folder_id = ?)",
-                (folder_id,),
-            )
-            if held >= self._limits.max_notes:
-                raise CapacityError(
-                    f"This folder holds its limit of {self._limits.max_notes:,} notes"
-                )
+            live = f"SELECT id FROM cards WHERE id = ? AND id IN {_LIVE_CARD_IDS}"
+            _one(db, live, (card_id, folder_id))
+            self._check_note_room(db, folder_id)
             row = _one(
                 db,
                 "INSERT INTO notes (card_id, dated, body, confirmed, created_at, updated_at) "
@@ -326,8 +409,8 @@ class FolderStore:
 
     def list_notes(self, folder_id: str, card_id: int) -> list[Note]:
         rows = self._read(
-            "SELECT notes.* FROM notes JOIN cards ON cards.id = notes.card_id "
-            "WHERE notes.card_id = ? AND cards.folder_id = ? ORDER BY notes.dated, notes.id",
+            f"SELECT * FROM notes WHERE card_id = ? AND deleted_at IS NULL "
+            f"AND card_id IN {_LIVE_CARD_IDS} ORDER BY dated, id",
             (card_id, folder_id),
         )
         return [_note(row) for row in rows]
@@ -338,22 +421,50 @@ class FolderStore:
             self._touch(db, folder_id, stamp)
             row = _one(
                 db,
-                "UPDATE notes SET dated = ?, body = ?, confirmed = ?, updated_at = ? "
-                "WHERE id = ? AND card_id IN (SELECT id FROM cards WHERE folder_id = ?) "
-                "RETURNING *",
+                f"UPDATE notes SET dated = ?, body = ?, confirmed = ?, updated_at = ? "
+                f"WHERE id = ? AND deleted_at IS NULL AND card_id IN {_LIVE_CARD_IDS} RETURNING *",
                 (new.dated.isoformat(), new.body, int(new.confirmed), stamp, note_id, folder_id),
             )
         return _note(row)
 
     def delete_note(self, folder_id: str, note_id: int) -> None:
-        with self._write() as db:
-            self._touch(db, folder_id, self._stamp())
+        stamp = self._stamp()
+        with self._write(DELETE_ROOM_PAGES) as db:
+            self._touch(db, folder_id, stamp)
             _one(
                 db,
-                "DELETE FROM notes WHERE id = ? AND card_id IN "
-                "(SELECT id FROM cards WHERE folder_id = ?) RETURNING id",
-                (note_id, folder_id),
+                f"UPDATE notes SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL "
+                f"AND card_id IN {_LIVE_CARD_IDS} RETURNING id",
+                (stamp, note_id, folder_id),
             )
+            self._purge(db, TRASH_KEEP)
+
+    def list_deleted_notes(self, folder_id: str) -> list[Note]:
+        rows = self._read(
+            "SELECT * FROM notes WHERE deleted_at IS NOT NULL "
+            "AND card_id IN (SELECT id FROM cards WHERE folder_id = ?) ORDER BY id",
+            (folder_id,),
+        )
+        return [_note(row) for row in rows]
+
+    def restore_note(self, folder_id: str, note_id: int) -> Note:
+        stamp = self._stamp()
+        with self._write() as db:
+            self._touch(db, folder_id, stamp)
+            live_card = f"deleted_at IS NOT NULL AND card_id IN {_LIVE_CARD_IDS}"
+            _one(db, f"SELECT id FROM notes WHERE id = ? AND {live_card}", (note_id, folder_id))
+            self._check_note_room(db, folder_id)
+            row = _one(
+                db,
+                "UPDATE notes SET deleted_at = NULL, updated_at = ? WHERE id = ? RETURNING *",
+                (stamp, note_id),
+            )
+        return _note(row)
+
+    def purge_deleted(self, keep: timedelta = TRASH_KEEP) -> None:
+        """Remove for good whatever has been in the trash longer than `keep`."""
+        with self._write() as db:
+            self._purge(db, keep)
 
     def hit_rate(self, hit: RateHit) -> bool:
         """Count one hit in the current window; False when the window is already at its limit."""

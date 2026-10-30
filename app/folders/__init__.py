@@ -13,4 +13,9 @@ the app running or not:
 To restore, stop the app, then remove any `-wal` and `-shm` files beside the live file, copy
 the backup over it, and run `chmod 600 "$KYD_FOLDERS_DB"`. The next open refuses a file with
 any other mode, and applies any migrations the backup is missing.
+
+Deleting is soft. A deleted folder, card or note leaves ordinary reads and frees its limit but
+stays recoverable through the `restore_*` calls for `TRASH_KEEP` (30 days); each later delete
+purges what has expired, and `purge_deleted` empties the trash early when the size limit bites.
+Restores recheck the limits. To remove the feature, turn the flag off and delete the file.
 """

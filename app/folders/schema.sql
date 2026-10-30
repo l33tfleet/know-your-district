@@ -1,11 +1,13 @@
 -- Version 1 of the folder store. Applied by app/folders/store.py inside one transaction.
 -- Keys and office state only: no figures, and no column for anything about a person.
+-- A set deleted_at is the trash: ordinary reads skip the row until restore or purge.
 
 CREATE TABLE folders (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 120),
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
 ) STRICT;
 
 CREATE TABLE cards (
@@ -19,8 +21,12 @@ CREATE TABLE cards (
     reason TEXT CHECK (length(reason) <= 200),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    UNIQUE (folder_id, card_key, chamber, district)
+    deleted_at TEXT
 ) STRICT;
+
+CREATE UNIQUE INDEX cards_live ON cards (folder_id, card_key, chamber, district)
+    WHERE deleted_at IS NULL;
+CREATE INDEX cards_by_folder ON cards (folder_id);
 
 CREATE TABLE notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +35,8 @@ CREATE TABLE notes (
     body TEXT NOT NULL,
     confirmed INTEGER NOT NULL CHECK (confirmed IN (0, 1)),
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
 ) STRICT;
 
 CREATE INDEX notes_by_card ON notes (card_id);
