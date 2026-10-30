@@ -167,6 +167,32 @@ code {
   margin: 0;
 }
 
+/* opening case: the same text on screen and paper */
+.case {
+  padding: var(--figure-space) 0;
+  border-bottom: var(--rule-width) solid var(--color-rule-light);
+}
+
+.case p {
+  margin: var(--headline-space) 0;
+}
+
+.case-reading {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-bold);
+}
+
+.case-undercount,
+.case-source {
+  font-size: var(--size-small);
+}
+
+.case-citation {
+  font-size: var(--size-tiny);
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
 /* brief notes */
 .screen-only-note,
 .section-failure {
@@ -220,6 +246,7 @@ code {
 
   .brief h2 {
     font-size: var(--print-heading-size);
+    line-height: var(--print-line-height);
     margin: var(--print-space) 0;
   }
 
@@ -294,9 +321,22 @@ code {
     display: none;
   }
 
-  .outreach > p,
   .program :is(.program-agency, .program-purpose, .program-guidance) {
     font-size: var(--print-tiny-size);
+  }
+
+  /* The notes and readings sit under the opening case: same text, tighter set. */
+  .outreach > p,
+  .outreach caption {
+    font-size: var(--print-citation-size);
+  }
+
+  .brief .outreach h2 {
+    font-size: var(--print-text-size);
+  }
+
+  .brief .outreach td p {
+    margin: 0;
   }
 
   .reading .value {
@@ -336,7 +376,7 @@ code {
     flex-wrap: wrap;
     gap: 0 var(--print-space);
     margin: 0;
-    font-size: var(--print-citation-size);
+    font-size: calc(var(--print-citation-size) * 0.9);
   }
 
   .outreach-citation :is(dt, dd) {
@@ -351,6 +391,34 @@ code {
 
   .outreach-citation dt {
     font-weight: var(--weight-bold);
+  }
+
+  /* Four balanced columns of tiny type: the case must leave real room on the one page. */
+  .case {
+    columns: 4;
+    column-gap: calc(var(--print-gap) / 2);
+    padding: var(--print-space) 0;
+    font-size: calc(var(--print-citation-size) * 0.9);
+    line-height: var(--print-line-height);
+  }
+
+  .brief .case h2 {
+    column-span: all;
+    margin: 0;
+    font-size: var(--print-text-size);
+  }
+
+  .brief .case p {
+    margin: 0;
+  }
+
+  .case :is(.case-undercount, .case-source) {
+    font-size: inherit;
+  }
+
+  /* Section 40 prints this same citation, larger, lower on the page. */
+  .case .case-citation {
+    font-size: calc(var(--print-citation-size) * 0.8);
   }
 
   .figures .figure-comparison {

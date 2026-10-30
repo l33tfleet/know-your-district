@@ -43,6 +43,10 @@ def validate_startup() -> None:
             "each app/sections/NN_name.py needs templates/sections/NN-name.html"
         )
     validate_features()
+    # Local: sections import at render time, so only this call runs it before serving.
+    from app.cases import load_cases
+
+    load_cases()
 
 
 @asynccontextmanager

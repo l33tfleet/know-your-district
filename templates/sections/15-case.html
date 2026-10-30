@@ -1,0 +1,43 @@
+{% if section.result %}
+{% set record = section.record %}
+{% set reading = section.reading %}
+<section class="case" aria-labelledby="case-heading">
+  <h2 id="case-heading">{{ section.title }}</h2>
+  {% if section.citation %}
+  <div class="case-figure">
+    <p class="case-reading">
+      {{ reading.value_text }}
+      {{ reading.units }}; {{ reading.moe_text }}; {{ reading.reliability_word }}
+    </p>
+    <p class="case-undercount">{{ section.result.undercount_note }}</p>
+    <p class="case-citation">{{ section.citation }}</p>
+  </div>
+  <div class="case-understand">
+    <p class="case-why">{{ record.claim }}</p>
+    <p class="case-gap">
+      <strong>{{ copy.gap_label }}:</strong> {{ section.gap }} ({{ record.failure.note }}).
+      <strong>{{ copy.action_label }}:</strong> {{ section.action }}.
+    </p>
+  </div>
+  <div class="case-evidence">
+    <p><strong>{{ copy.known_label }}:</strong>
+      {% for label, words in section.known %}{{ label }}: {{ words }} {% endfor %}</p>
+    <p><strong>{{ copy.unknown_label }}:</strong>
+      {% for label, words in section.unknown %}{{ label }}: {{ words }} {% endfor %}</p>
+  </div>
+  {% else %}
+  <p class="case-unavailable">{{ section.unavailable }}</p>
+  {% endif %}
+  <div class="case-step">
+    <p class="case-next">
+      <strong>{{ copy.next_label }}:</strong> {{ section.result.referral_note }}
+      {% for label, url in section.links %}<a href="{{ url }}">{{ label }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+    </p>
+    <p class="case-source">{{ section.checked }}
+      <a href="#outreach-heading">{{ copy.evidence_link }}</a></p>
+    {% if section.save_control %}
+    <div class="case-save">{{ section.save_control }}</div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
