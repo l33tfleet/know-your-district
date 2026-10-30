@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 import yaml
+from pydantic import ValidationError
 
 from app.populations import load_populations
 from etl.programs import load_catalog
@@ -44,7 +45,13 @@ def comparability() -> dict[str, Any]:
         "participation_source": "https://example.org/participation",
         "geography": "Synthetic matching native district boundaries.",
         "period": "Synthetic matching reference periods.",
-        "unit": "Synthetic matching assistance units and population definitions.",
+        "unit": "Synthetic matching household counts.",
+        "eligibility_definition": "Synthetic matching rule set and eligible population.",
+        "assistance_unit_definition": "Synthetic matching food-purchasing groups.",
+        "enrollment_receipt_definition": (
+            "Synthetic point-in-time enrollment, excluding applications, approvals, "
+            "active cases and annual recipients as alternative receipt measures."
+        ),
         "overlap": "Synthetic deduplication and eligibility overlap assessment.",
         "coverage": "Synthetic coverage and suppression assessment.",
     }
@@ -172,6 +179,9 @@ def test_invalid_contract_fails(mapping: dict[str, Any], field: str, value: str)
         ("comparability_evidence", "geography"),
         ("comparability_evidence", "period"),
         ("comparability_evidence", "unit"),
+        ("comparability_evidence", "eligibility_definition"),
+        ("comparability_evidence", "assistance_unit_definition"),
+        ("comparability_evidence", "enrollment_receipt_definition"),
         ("comparability_evidence", "overlap"),
         ("comparability_evidence", "coverage"),
     ],
@@ -189,8 +199,41 @@ def test_incomplete_evidence_fails(
         comparability_evidence=comparability,
     )
     del mapping[evidence][field]
-    with pytest.raises(ValueError, match=field):
+    with pytest.raises(ValidationError) as exc:
         ProgramMapping.model_validate(mapping)
+    assert [(e["loc"], e["type"]) for e in exc.value.errors()] == [((evidence, field), "missing")]
+
+
+@pytest.mark.parametrize(
+    ("evidence", "field", "value", "error"),
+    [
+        ("modeling_evidence", "assumptions", [], "too_short"),
+        ("modeling_evidence", "rule_source", "not a URL", "url_parsing"),
+        ("modeling_evidence", "evidence_url", "not a URL", "url_parsing"),
+        ("comparability_evidence", "participation_source", "not a URL", "url_parsing"),
+        ("comparability_evidence", "eligibility_definition", "  ", "too_short"),
+        ("comparability_evidence", "assistance_unit_definition", "  ", "too_short"),
+        ("comparability_evidence", "enrollment_receipt_definition", "  ", "too_short"),
+    ],
+)
+def test_invalid_evidence_fails(
+    mapping: dict[str, Any],
+    modeling: dict[str, Any],
+    comparability: dict[str, Any],
+    evidence: str,
+    field: str,
+    value: object,
+    error: str,
+) -> None:
+    mapping.update(
+        claim="comparable_nonparticipation",
+        modeling_evidence=modeling,
+        comparability_evidence=comparability,
+    )
+    mapping[evidence][field] = value
+    with pytest.raises(ValidationError) as exc:
+        ProgramMapping.model_validate(mapping)
+    assert [(e["loc"], e["type"]) for e in exc.value.errors()] == [((evidence, field), error)]
 
 
 def test_duplicate_mapping_fails(tmp_path: Path, mapping: dict[str, Any]) -> None:

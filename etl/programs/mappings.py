@@ -44,6 +44,10 @@ class ComparabilityEvidence(BaseModel):
     geography: Text
     period: Text
     unit: Text
+    eligibility_definition: Text
+    assistance_unit_definition: Text
+    # Specify applications, approvals, active cases, annual recipients or point-in-time enrollment.
+    enrollment_receipt_definition: Text
     overlap: Text
     coverage: Text
 
