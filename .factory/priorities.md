@@ -9,6 +9,16 @@ Know Your District (KevinPlusAgents, DBEDT). Cites: S=Scoring, R=Rules, U=Use ca
 1. "sort by how often you see the role described in the news media, attention getters win here": legislators, then staff, then officials (U2); higher role wins.
 2. "verifiable data should ground everything"
 3. "anything that won't make judges go "wow" is out of scope, but there is a baseline "the ground level execution of the foundaitonal work" that is necessary to wow": deployed, reliable, sourced is always in scope.
+4. 2026-10-29: the working chat must keep state: prioritized population–program matches. It is a coworker managing case files. Persistent case work belongs in the first complete demo, not a later extension.
+5. 2026-10-29: build the whole journey thin first (open a district → understand a case → save and prioritize it → record progress → come back → see what needs attention), then widen it. Work orders labelled journey are done only when their walkthrough video shows the step working.
+
+## Stateful coworker: first complete demo
+- A case is a district population × program match, never an individual resident's file. It carries cited evidence and claim limits, priority with rationale, status, dated notes, next steps and suggestion decisions.
+- Case records are the durable source of truth. Chat reads and updates those records through validated tools; conversation history alone does not satisfy the requirement.
+- The office can set priorities and record progress. The agent uses current case state to propose what to do next, preserves human decisions, and does not repeatedly suggest dismissed work. Existing accept/dismiss behavior remains the basis for agent proposals (#154).
+- Acceptance: create and prioritize matches → record an action or decision → close and reopen the folder → ask what needs attention → receive a grounded answer reflecting the saved priorities, progress and decisions. Chat and the visible case list must agree.
+- Critical path includes shared match cards (#152), persistent folders (#153), case-aware suggestions (#154), and a ready-to-use demo folder (#155), alongside grounded Ask. News and broader enrichment follow this complete workflow.
+- The folder-store rule update (#252) landed in #267. Follow its narrow exception in AGENTS.md; source fact databases remain read-only. This product direction does not itself amend those storage rules.
 
 ## Tests
 - Wow, or the wow needs it? Else not now.
