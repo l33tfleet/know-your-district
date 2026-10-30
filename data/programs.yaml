@@ -1,5 +1,6 @@
 # Agency pages reviewed 2026-10-25. No individual eligibility determination.
-- name: Supplemental Nutrition Assistance Program (SNAP)
+- id: snap
+  name: Supplemental Nutrition Assistance Program (SNAP)
   agency: Hawaiʻi Department of Human Services, Benefit, Employment & Support Services Division
   level: federal
   purpose: SNAP may help households pay for food.
@@ -27,7 +28,8 @@
       in quadrature. This is a lower bound: national thresholds understate the
       population below the higher Hawaiʻi HHS guidelines. This population proxy
       does not determine program eligibility or count households.
-- name: General Assistance (GA)
+- id: ga
+  name: General Assistance (GA)
   agency: Hawaiʻi Department of Human Services, Benefit, Employment & Support Services Division
   level: state
   purpose: General Assistance may help temporarily disabled adults pay for basic needs.
