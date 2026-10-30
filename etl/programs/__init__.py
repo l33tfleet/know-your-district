@@ -81,6 +81,8 @@ class AgencyGuideline(CatalogModel):
 
 
 class Program(CatalogModel):
+    id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$", frozen=True)]
+    retired: date | None = None
     name: str
     agency: str
     level: Literal["federal", "state", "county"]
@@ -107,4 +109,8 @@ def load_catalog(path: Path) -> list[Program]:
         raw: object = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
         raise ValueError("Invalid catalog YAML") from exc
-    return TypeAdapter(Annotated[list[Program], Field(min_length=1)]).validate_python(raw)
+    from etl.programs.rules import validate_program_ids
+
+    programs = TypeAdapter(Annotated[list[Program], Field(min_length=1)]).validate_python(raw)
+    validate_program_ids(programs)
+    return programs
