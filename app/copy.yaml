@@ -67,7 +67,50 @@ sections:
       moderate: "moderate: use with care"
       caution: use with caution
       unavailable: not available
+    # Sentence templates per figure kind (KINDS in app/brief_facts.py). Placeholders only:
+    # every number comes from a Fact and is rendered by the template, never written here.
+    count_sentence: "{geography} has {value} residents ({moe}, {word})."
+    share_sentence: "{value} of residents in {geography} are age 65 and over ({moe}, {word}), {comparison}."
+    dollars_sentence: "The median household income in {geography} is {value} ({moe}, {word}), {comparison}."
+    count_unavailable: >-
+      The number of residents age 65 and over is not yet published here; it is
+      never computed from the share.
+    # #30 comparison wording per kind, one per group from app/analysis/compare.py.
+    # The reference figure goes between lead and tail.
+    comparisons:
+      share:
+        higher:
+          lead: a larger share than
+        lower:
+          lead: a smaller share than
+        indeterminate:
+          lead: about the same share as
+          tail: within the margins of error
+        caution:
+          lead: "use with caution; no comparison claim with"
+        missing:
+          lead: "comparable published estimates are not available; no comparison claim with"
+      dollars:
+        higher:
+          lead: higher than
+        lower:
+          lead: lower than
+        indeterminate:
+          lead: about the same as
+          tail: within the margins of error
+        caution:
+          lead: "use with caution; no comparison claim with"
+        missing:
+          lead: "comparable published estimates are not available; no comparison claim with"
     source_summary: Source and uncertainty
+    check_figure: Check this figure
+    check_links:
+      table: Published table on data.census.gov
+      api: Census API query (may require an API key)
+      evidence: Recorded source evidence (see method above)
+      district_source: District boundary source
+      county_source: County boundary source
+      mapping_file: Committed county area mapping (see method above)
     fields:
       source: Source
       table_id: Table

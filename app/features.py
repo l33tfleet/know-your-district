@@ -130,3 +130,4 @@ def load_features() -> Features:
 # The existing section predates declarations. Later steps register their routes
 # and page parts explicitly; filenames never add names to this registry.
 register_feature("outreach")
+register_feature("source_links")

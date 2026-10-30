@@ -1,39 +1,35 @@
 # Security and privacy
 
-This note describes repository mechanisms; hosting configuration is separate.
+This note describes today's app; hosting configuration is separate.
 
-**Data and individuals.** The app serves district brief pages, a picker and a
-health response. Handlers open committed SQLite fact databases under `data/`
-read-only (`mode=ro`); ETL builds them from public, aggregate Census ACS
-tables; district shapes are State boundary layers ([`data/geo/`](../data/geo/)). App handlers neither collect nor persist personal information,
-chat history or user profiles. There is no person lookup or inference about
-individuals. The product's aggregate-only rule permits published population
-tables, never individual records ([data and licences](data.md#data-licences)).
+**Reads and storage.** Handlers read prebuilt SQLite databases
+`data/facts.db` and `data/snap/facts.db` with `mode=ro` (read-only), plus local
+reference files for district/county mappings, program descriptions, referrals
+and configuration. ETL builds the databases from public, aggregate Census ACS
+tables. There are no accounts, individual records, person lookups or inferences
+about individuals. The app persists no user content, chat history or profiles;
+it has no writable user store today. See [data and licences](data.md#data-licences).
 
-**Folder store (not yet built).** District folders will be the one writable
-store: the SQLite file `KYD_FOLDERS_DB`, outside the checkout, written only
-through `app/folders/store.py` while the `folders` flag is on. It holds folders
-of districts, never data about individuals, and deletes a folder idle for 180
-days. A folder link is a secret: anyone holding it can open the folder.
+**Third-party requests.** Brief requests read local files; no runtime Census
+or model-provider requests are made. No chat endpoint or external model client
+is implemented, and the app reads no model API key. Front-end libraries are
+vendored locally, without CDNs. Following external links to agencies or 211
+sends the browser to those services, whose privacy practices apply.
+Offline ETL requests Census data and accepts an optional Census API key in
+request parameters; HTTP errors suppress keyed URLs.
 
-**Model provider.** No chat endpoint or external model client is implemented.
-No prompts, conversation history, district facts or credentials are sent to a
-model provider by this app.
+**Logs and secrets.** Uvicorn's default access logging includes client addresses
+and request URLs, including query strings. Do not put personal information or
+secrets in URLs. Hosting and proxy access logs may also retain request data;
+the repository defines no log-retention policy. Git ignore patterns cover
+environment files, private keys and `secrets/`; they prevent accidental staging,
+not exposure of tracked files.
 
-**Limits and costs.** No rate limiter, token budget or cost cap is implemented,
-and no model calls incur provider charges.
-
-**Secrets.** The app reads no model API key. ETL accepts an optional Census API
-key, sent to Census in request parameters; HTTP errors suppress keyed URLs.
-Git ignore patterns cover
-`.env`, `.env.*` (except `.env.example`), private-key files and `secrets/`;
-they prevent accidental staging, not exposure of tracked files.
-
-**Request logs.** `make run` uses Uvicorn's default access logging, which includes
-client addresses and request URLs, including query strings. Do not put personal
-information or secrets in URLs. The repository defines no log-retention policy;
-hosting and proxy logging settings are outside this note.
+**Planned changes.** Ask (#183) and folders (#155) own updates to this note when
+they land, including provider disclosures and any storage/retention behavior.
+Neither capability is available today.
 
 Evidence: [handlers](../app/main.py), [fact reads](../app/facts.py),
-[agent](../app/agent/__init__.py), [ETL](../etl/census.py),
-[secret exclusions](../.gitignore), [server command](../Makefile).
+[SNAP reads](../app/snap.py), [agent](../app/agent/__init__.py),
+[ETL](../etl/census.py), [secret exclusions](../.gitignore),
+[server command](../Makefile).
