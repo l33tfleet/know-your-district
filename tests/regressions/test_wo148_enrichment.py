@@ -203,3 +203,34 @@ def test_permission_record_must_grant_reuse() -> None:
     )
     with pytest.raises(ValidationError, match="permits_reuse"):
         Enrichment.model_validate({"media": [raw]})
+
+
+def test_unpublished_reason_requires_explicit_uncertainty_flag() -> None:
+    raw = observation()
+    del raw["moe"]
+    raw["uncertainty_reason"] = "Administrative count; publisher supplies no MOE"
+    with pytest.raises(ValidationError) as error:
+        Enrichment.model_validate({"stats": [raw]})
+    assert error.value.errors()[0]["msg"] == (
+        "Value error, Missing MOE requires uncertainty: not-published and a reason"
+    )
+
+
+def test_published_moe_rejects_uncertainty_flag_alone() -> None:
+    raw = observation()
+    raw["uncertainty"] = "not-published"
+    with pytest.raises(ValidationError) as error:
+        Enrichment.model_validate({"stats": [raw]})
+    assert error.value.errors()[0]["msg"] == (
+        "Value error, Published MOE cannot also have unpublished uncertainty metadata"
+    )
+
+
+def test_published_moe_rejects_uncertainty_reason_alone() -> None:
+    raw = observation()
+    raw["uncertainty_reason"] = "Administrative count; publisher supplies no MOE"
+    with pytest.raises(ValidationError) as error:
+        Enrichment.model_validate({"stats": [raw]})
+    assert error.value.errors()[0]["msg"] == (
+        "Value error, Published MOE cannot also have unpublished uncertainty metadata"
+    )
