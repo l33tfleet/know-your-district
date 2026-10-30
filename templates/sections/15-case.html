@@ -1,0 +1,36 @@
+{% if section.case %}
+<section class="case" aria-labelledby="case-heading">
+  <h2 id="case-heading">{{ section.title }}</h2>
+  {% if section.reading %}
+  {% set reading = section.reading %}
+  <p class="case-why">
+    <strong class="case-reading">{{ reading.value_text }} {{ reading.units }}; {{ reading.moe_text }}; {{ reading.reliability_word }}</strong>
+    <span class="case-source">({{ section.citation }}).</span>
+    <strong>{{ copy.why_lead }}:</strong> {{ section.why }}
+  </p>
+  {% else %}
+  <p class="case-unavailable">{{ copy.unavailable }}</p>
+  {% endif %}
+  <div class="case-known">
+    <strong>{{ copy.evidence_heading }}:</strong>
+    <dl class="case-evidence">
+      {% for problem, status, text in section.evidence %}
+      <dt>{{ problem }}:</dt>
+      <dd>{{ status }}, {{ text }}.</dd>
+      {% endfor %}
+    </dl>
+  </div>
+  <p class="case-gap"><strong>{{ copy.gap_label }}:</strong> {{ section.gap }}, {{ section.case.failure.note }}.
+    <span class="case-action"><strong>{{ copy.action_label }}:</strong> {{ section.action }}, {{ section.case.action.note }}. {{ copy.agency_note }}</span>
+  </p>
+  <p class="case-next"><strong>{{ copy.next_label }}:</strong>
+    {% for label, url in section.steps %}
+    <a href="{{ url }}">{{ label }}</a> ·
+    {% endfor %}
+    <a class="case-evidence-link" href="#outreach-heading">{{ copy.evidence_link }}</a>
+  </p>
+  {% if section.save_control %}
+  <div class="case-save">{{ section.save_control }}</div>
+  {% endif %}
+</section>
+{% endif %}

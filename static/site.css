@@ -72,6 +72,22 @@ code {
   color: var(--color-muted);
 }
 
+/* case: the opening outreach case, before the figures (#286) */
+.case {
+  border-bottom: var(--rule-heavy) solid var(--color-rule);
+}
+
+.case-source {
+  color: var(--color-muted);
+  font-size: var(--size-tiny);
+}
+
+.case-known dl,
+.case-known :is(dt, dd) {
+  display: inline;
+  margin: 0;
+}
+
 /* figures */
 .figure {
   padding: var(--figure-space) 0;
@@ -191,6 +207,7 @@ code {
   .site-footer,
   .brief-headline .vintage-line,
   .programs,
+  .case,
   .outreach {
     font-size: var(--print-text-size);
   }
@@ -202,6 +219,7 @@ code {
   .figure-name,
   .reading,
   .programs,
+  .case,
   .outreach {
     line-height: var(--print-line-height);
   }
@@ -318,6 +336,22 @@ code {
   .program-name {
     font-size: var(--print-text-size);
     margin: 0;
+  }
+
+  /* Columns keep the opening case short enough for the one page. */
+  .case {
+    columns: 3;
+    column-gap: var(--print-gap);
+  }
+
+  .case h2 {
+    column-span: all;
+    font-size: var(--print-text-size);
+  }
+
+  .case > :not(h2),
+  .case-source {
+    font-size: var(--print-citation-size);
   }
 
   .outreach table {

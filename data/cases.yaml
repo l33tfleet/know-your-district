@@ -1,0 +1,32 @@
+# Outreach cases shown at the top of the brief; validated by app/cases.py.
+# Fields: docs/agent-docs/benefit-outreach.md (workflow) and
+# docs/agent-docs/district-data-build-guide.md (findings 4–5). No numbers live here:
+# the card reads its figure from the fact table through app/snap.py.
+cases:
+  - id: snap_poverty_no_receipt
+    population: below_poverty_no_snap
+    program:
+      name: SNAP
+      agency: Hawaiʻi Department of Human Services
+      official_url: https://humanservices.hawaii.gov/bessd/snap/
+      rule_checked_on: 2026-10-28
+    failure:
+      kind: eligible_nonparticipation
+      note: not measured; survey receipt is an outreach signal
+    claim: >-
+      Households in this district with income under the Census poverty threshold reported
+      no SNAP receipt over the past 12 months, so SNAP information may help here.
+    known:
+      geography: published for this district, not shared out from a county
+      population: one published joint cell (B22003_006), not built from separate totals
+    unknown:
+      program: Hawaiʻi household, deduction and nonfinancial rules are not in the survey
+    action:
+      kind: targeted_information
+      note: where to apply and get free help applying
+      steps:
+        - label: Official SNAP page
+          url: https://humanservices.hawaii.gov/bessd/snap/
+        - label: Aloha United Way 211
+          url: https://auw211.org/
+    research: docs/research/benefit-program-access.md#snap-and-cofa

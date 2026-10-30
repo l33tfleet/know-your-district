@@ -131,6 +131,42 @@ sections:
       caution: "Use with caution; no comparison claim"
       missing: Comparable published estimates are not available
 
+  # The opening outreach case (data/cases.yaml); its figure is section 40's district reading.
+  case:
+    population: Households in poverty reporting no SNAP receipt
+    citation: "{source}, table {table_id}, {vintage}, {geography}; {method}"
+    why_lead: Why here
+    why: >-
+      {units} under the Census poverty threshold with no survey-reported receipt over the
+      past 12 months, an outreach signal, not current enrollment.
+    unavailable: >-
+      No published figure for this district yet. The next step below still applies.
+    evidence_heading: What we know / what we don't
+    problems:
+      geography: Geography
+      population: Population
+      program: Program
+    known: known
+    unknown: not known
+    gap_label: Kind of gap
+    gaps:
+      unused_appropriation: money set aside that goes unspent
+      eligible_nonparticipation: possible nonparticipation
+      application_or_renewal_barrier: an application or renewal barrier
+      underpayment: benefits paid below the amount due
+      redemption_or_expiration_loss: benefits issued but not used before they expire
+      service_capacity_or_fit: service capacity or fit
+    action_label: Action
+    actions:
+      targeted_information: targeted information
+      navigator_referral: navigator referral
+      outreach_planning_lead: outreach-planning lead
+      agency_follow_up: agency follow-up
+    next_label: Next step
+    outreach_label: DHS outreach providers
+    agency_note: The agency decides who gets SNAP.
+    evidence_link: County and state figures, and the source
+
   snap:
     heading: Households below poverty reporting no SNAP receipt
     units: households
