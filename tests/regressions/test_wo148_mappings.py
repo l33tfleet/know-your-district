@@ -241,9 +241,17 @@ def test_duplicate_mapping_fails(tmp_path: Path, mapping: dict[str, Any]) -> Non
         load_mappings(write_mappings(tmp_path, [mapping, mapping]))
 
 
-@pytest.mark.parametrize("content", ["[broken", "{}", "[]"])
-def test_invalid_yaml_or_document_fails(tmp_path: Path, content: str) -> None:
+def test_invalid_yaml_fails(tmp_path: Path) -> None:
+    path = tmp_path / "mappings.yaml"
+    path.write_text("[broken", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"^Invalid mappings YAML$"):
+        load_mappings(path)
+
+
+@pytest.mark.parametrize(("content", "error"), [("{}", "tuple_type"), ("[]", "too_short")])
+def test_invalid_document_fails(tmp_path: Path, content: str, error: str) -> None:
     path = tmp_path / "mappings.yaml"
     path.write_text(content, encoding="utf-8")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValidationError) as exc:
         load_mappings(path)
+    assert [(e["loc"], e["type"]) for e in exc.value.errors()] == [((), error)]
