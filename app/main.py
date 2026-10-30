@@ -43,6 +43,9 @@ def validate_startup() -> None:
             "each app/sections/NN_name.py needs templates/sections/NN-name.html"
         )
     validate_features()
+    from app import cases  # here, not at module top: start-up checks the cases, not import
+
+    cases.load_cases()
 
 
 @asynccontextmanager

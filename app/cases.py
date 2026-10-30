@@ -2,8 +2,8 @@
 
 Fields follow `docs/agent-docs/benefit-outreach.md` (workflow) and the district-data
 build guide (findings 4–5). Every case names what is known and unknown for the three
-evidence problems; gap types and actions are the research's closed lists. The shipped
-file is validated on import, so a bad record fails on the first brief, not mid-sentence.
+evidence problems; gap types and actions are the research's closed lists. Start-up
+validates the file (`app/main.py`), so a bad record stops the server before any request.
 """
 
 from datetime import date
@@ -98,9 +98,10 @@ class CaseFile(BaseModel):
     cases: Annotated[tuple[Case, ...], Field(min_length=1)]
 
 
-def load_cases(path: Path = CASES_PATH) -> tuple[Case, ...]:
+def load_cases(path: Path | None = None) -> tuple[Case, ...]:
     """Read and validate the cases; each population must exist in the registry."""
-    loaded = CaseFile.model_validate(yaml.safe_load(path.read_text(encoding="utf-8"))).cases
+    text = (path or CASES_PATH).read_text(encoding="utf-8")
+    loaded = CaseFile.model_validate(yaml.safe_load(text)).cases
     known = {population.id for population in load_populations().populations}
     seen: set[str] = set()
     for case in loaded:
