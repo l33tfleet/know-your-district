@@ -158,3 +158,48 @@ def test_invalid_numeric_evidence_fails(field: str, value: float) -> None:
     raw[field] = value
     with pytest.raises(ValidationError, match=field):
         Enrichment.model_validate({"stats": [raw]})
+
+
+def test_enrichment_rejects_control_characters() -> None:
+    raw = observation()
+    raw["label"] = "a\x01b"
+    with pytest.raises(ValidationError, match="control characters"):
+        Enrichment.model_validate({"stats": [raw]})
+
+
+def test_permission_licence_requires_permission_record() -> None:
+    raw = image()
+    raw.pop("licence_url")
+    raw["licence"] = "permission"
+    with pytest.raises(ValidationError, match="dated permission record"):
+        Enrichment.model_validate({"media": [raw]})
+
+
+def test_permission_record_replaces_licence_url() -> None:
+    raw = image()
+    raw["licence"] = "permission"
+    raw["permission"] = dict(
+        record_url="https://example.org/permission/record", date="2026-10-29", permits_reuse=True
+    )
+    with pytest.raises(ValidationError, match="instead of licence_url"):
+        Enrichment.model_validate({"media": [raw]})
+
+
+def test_cc_licence_cannot_use_permission_record() -> None:
+    raw = image()
+    raw["permission"] = dict(
+        record_url="https://example.org/permission/record", date="2026-10-29", permits_reuse=True
+    )
+    with pytest.raises(ValidationError, match="Use licence: permission"):
+        Enrichment.model_validate({"media": [raw]})
+
+
+def test_permission_record_must_grant_reuse() -> None:
+    raw = image()
+    raw.pop("licence_url")
+    raw["licence"] = "permission"
+    raw["permission"] = dict(
+        record_url="https://example.org/permission/record", date="2026-10-29", permits_reuse=False
+    )
+    with pytest.raises(ValidationError, match="permits_reuse"):
+        Enrichment.model_validate({"media": [raw]})
