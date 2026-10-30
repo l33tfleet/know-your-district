@@ -1,10 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
 {% set picker = copy.home.picker %}
+{% set question = copy.home.question %}
 <section class="intro">
   <h1>{{ copy.home.heading }}</h1>
   <p>{{ copy.home.intro }}</p>
 </section>
+<form class="question" action="/" method="get"
+      hx-get="/questions" hx-target="#question-answer" hx-swap="innerHTML">
+  <fieldset>
+    <legend>{{ question.legend }}</legend>
+    {% for value, text in question.options.items() %}
+    <p><label><input type="radio" name="q" value="{{ value }}"{% if (answer and answer.question == value) or (not answer and loop.first) %} checked{% endif %}> {{ text }}</label></p>
+    {% endfor %}
+    <button type="submit">{{ question.submit }}</button>
+  </fieldset>
+</form>
+<div id="question-answer" aria-live="polite">{% if answer %}{% include "partials/question_answer.html" %}{% endif %}</div>
 <form class="picker" action="/brief" method="get" hx-boost="true">
   <fieldset>
     <legend>{{ picker.legend }}</legend>
