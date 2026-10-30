@@ -115,7 +115,19 @@ def _count(db: sqlite3.Connection, query: str, params: tuple[object, ...] = ()) 
     return int(db.execute(query, params).fetchone()[0])
 
 
-def _migrate(db: sqlite3.Connection) -> None:
+def _require_ceiling(db: sqlite3.Connection, max_bytes: int) -> int:
+    """Set the cap inside the transaction; SQLite answers with the file's size if larger."""
+    pages = max_bytes // _count(db, "PRAGMA page_size")
+    effective = _count(db, f"PRAGMA max_page_count = {pages}")
+    if effective != pages:
+        raise CapacityError(
+            f"The folder store cannot enforce its database size limit of "
+            f"{max_bytes:,} bytes: the file already holds {effective:,} pages"
+        )
+    return pages
+
+
+def _migrate(db: sqlite3.Connection, max_bytes: int) -> None:
     latest = len(MIGRATIONS)
     if _count(db, "PRAGMA user_version") == latest:
         return
@@ -123,14 +135,12 @@ def _migrate(db: sqlite3.Connection) -> None:
     version = _count(db, "PRAGMA user_version")  # another process may have just migrated
     if version > latest:
         raise StoreConfigError(f"The folder store is at version {version}; this app has {latest}")
+    if version < latest:  # a migration is a write: SQLite then refuses growth past the cap
+        _require_ceiling(db, max_bytes)
     for number, script in enumerate(MIGRATIONS[version:], version + 1):
         db.executescript(script)
         db.execute(f"PRAGMA user_version = {number}")
     db.execute("COMMIT")
-
-
-def _ceiling_pages(db: sqlite3.Connection, max_bytes: int) -> int:
-    return max_bytes // _count(db, "PRAGMA page_size")
 
 
 def _open(path: Path, max_bytes: int) -> sqlite3.Connection:
@@ -142,9 +152,7 @@ def _open(path: Path, max_bytes: int) -> sqlite3.Connection:
         db.execute("PRAGMA foreign_keys = ON")
         if db.execute("PRAGMA journal_mode").fetchone()[0] != "wal":
             db.execute("PRAGMA journal_mode = WAL")
-        # SQLite itself then refuses growth past the cap, whichever statement causes it.
-        db.execute(f"PRAGMA max_page_count = {_ceiling_pages(db, max_bytes)}")
-        _migrate(db)
+        _migrate(db, max_bytes)
     except BaseException:
         db.close()
         raise
@@ -212,17 +220,6 @@ class FolderStore:
                 raise
             raise self._size_error() from exc
 
-    def _require_ceiling(self, db: sqlite3.Connection) -> int:
-        """Set the cap inside the transaction; SQLite answers with the file's size if larger."""
-        pages = _ceiling_pages(db, self._limits.max_db_bytes)
-        effective = _count(db, f"PRAGMA max_page_count = {pages}")
-        if effective != pages:
-            raise CapacityError(
-                f"The folder store cannot enforce its database size limit of "
-                f"{self._limits.max_db_bytes:,} bytes: the file already holds {effective:,} pages"
-            )
-        return pages
-
     def _check_reserve(self, db: sqlite3.Connection, pages: int) -> None:
         # Pages in use, not the file's length: pages a purge freed count as room again.
         used = _count(db, "PRAGMA page_count") - _count(db, "PRAGMA freelist_count")
@@ -238,7 +235,7 @@ class FolderStore:
         start = time.perf_counter()
         with self._size_refused(), closing(self._connect()) as db:
             db.execute("BEGIN IMMEDIATE")
-            pages = self._require_ceiling(db)
+            pages = _require_ceiling(db, self._limits.max_db_bytes)
             yield db
             if not deleting:
                 self._check_reserve(db, pages)

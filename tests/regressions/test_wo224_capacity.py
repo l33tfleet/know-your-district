@@ -5,6 +5,7 @@ nothing, and a limit SQLite cannot enforce on the file refuses writes instead of
 """
 
 import sqlite3
+import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from datetime import date, timedelta
@@ -209,6 +210,56 @@ def test_migration_past_the_ceiling_rolls_back_as_a_capacity_refusal(
         assert db.execute("PRAGMA user_version").fetchone()[0] == 1
         assert db.execute("SELECT 1 FROM sqlite_master WHERE name = 'bulky'").fetchall() == []
     assert db_bytes(db_path) <= LIMIT
+
+
+def oversized_with_free_pages(path: Path) -> tuple[FolderStore, str]:
+    """A file past `LIMIT` whose free pages could hold a migration; one folder stays live."""
+    roomy = capped(path, 2 * LIMIT)
+    keep, *rest = fill_with_folders(roomy)
+    for folder_id in rest:
+        roomy.delete_folder(folder_id)
+    roomy.purge_deleted(timedelta(0))
+    with closing(sqlite3.connect(path)) as db:
+        assert db.execute("PRAGMA freelist_count").fetchone()[0] > 8
+    assert db_bytes(path) > LIMIT
+    return roomy, keep
+
+
+def test_pending_migration_cannot_spend_free_pages_past_the_ceiling(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    roomy, keep = oversized_with_free_pages(db_path)
+    before, size = rows(db_path), db_bytes(db_path)
+    monkeypatch.setattr(
+        store, "MIGRATIONS", (*store.MIGRATIONS, "CREATE TABLE small (id INTEGER);")
+    )
+
+    with pytest.raises(CapacityError, match="cannot enforce"):
+        capped(db_path).get_folder(keep)
+
+    with closing(sqlite3.connect(db_path)) as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert db.execute("SELECT 1 FROM sqlite_master WHERE name = 'small'").fetchall() == []
+    assert rows(db_path) == before
+    assert db_bytes(db_path) == size
+
+    # Refused, not stuck: a limit that fits the file lets the same migration through.
+    assert roomy.get_folder(keep).id == keep
+    with closing(sqlite3.connect(db_path)) as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 2
+
+
+def test_read_that_loses_the_migration_race_is_not_refused(db_path: Path) -> None:
+    _, keep = oversized_with_free_pages(db_path)
+    with closing(sqlite3.connect(db_path, autocommit=True)) as winner:
+        winner.execute("PRAGMA user_version = 0")
+        winner.execute("BEGIN IMMEDIATE")
+        with ThreadPoolExecutor(1) as pool:
+            loser = pool.submit(capped(db_path).get_folder, keep)
+            time.sleep(0.5)  # the reader saw version 0 and now waits behind the winner
+            winner.execute("PRAGMA user_version = 1")
+            winner.execute("COMMIT")
+            assert loser.result().id == keep
 
 
 def test_ceiling_holds_under_concurrent_writers(db_path: Path) -> None:

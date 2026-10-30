@@ -22,4 +22,5 @@ Restores recheck the limits. To remove the feature, turn the flag off and delete
 The size limit is a ceiling on the database's pages. A quarter of it is kept for deletes and
 purges: other writes stop at three quarters, and the trash keeps its space until purged. A file
 already past the ceiling, say after lowering the limit, stays readable but refuses every write.
+A pending migration is a write, so such a file opens again only once the limit fits it.
 """
