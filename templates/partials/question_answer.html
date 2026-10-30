@@ -1,0 +1,21 @@
+<section class="question-answer" aria-labelledby="question-answer-heading">
+  <h2 id="question-answer-heading">{{ answer.text }}</h2>
+  <p class="question-finding">{{ answer.finding }}</p>
+  {% if answer.margins %}<p class="question-margins">{{ answer.margins }}</p>{% endif %}
+  {% if answer.left_out %}<p class="question-left-out">{{ answer.left_out }}</p>{% endif %}
+  {% if answer.rows %}
+  <ol>
+    {% for row in answer.rows %}
+    <li data-geography="{{ row.geography }}">
+      <a href="{{ row.href }}">{{ row.name }}</a>
+      <p class="reading">
+        <data class="value" value="{{ row.value }}">{{ row.value_text }}</data>
+        <span class="moe"><data value="{{ row.moe if row.moe is not none else '' }}">{{ row.moe_text }}</data></span>
+        <span class="reliability" data-reliability="{{ row.reliability }}">{{ row.word }}</span>
+      </p>
+      <small class="question-citation">{{ row.citation }}</small>
+    </li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+</section>

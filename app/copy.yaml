@@ -23,6 +23,31 @@ home:
       senate: Senate
     number_label: District number
     submit: Open the brief
+  # Fixed cross-district questions; keys match QUESTIONS in app/tools/rankings.py.
+  question:
+    legend: Compare all House districts
+    submit: Show the answer
+    options:
+      age_65_share: Which House districts have the highest share of residents age 65 and over?
+      median_household_income: Which House districts have the lowest median household income?
+    # One sentence each. Placeholders only: every number comes from a Fact.
+    findings:
+      age_65_share: >-
+        {district} has the highest estimated share of residents age 65 and over among
+        House districts with a published figure: {value} ({moe}, {word}).
+      median_household_income: >-
+        {district} has the lowest estimated median household income among House
+        districts with a published figure: {value} ({moe}, {word}).
+    overlap: >-
+      Close ranks may not differ meaningfully: the margins of error of neighboring
+      districts in this list overlap.
+    distinct: The margins of error of neighboring districts in this list do not overlap.
+    left_out: "House districts left out because no figure is published: {count}."
+    no_figures: No House district has a published figure for this question yet.
+    citation: >-
+      Source: {source}, table {table_id}, {vintage}, geography {geography}.
+      Method: {method}. Coefficient of variation: {cv}.
+    unknown: "Unknown question. Valid values: {valid}."
 
 not_found:
   title: Page not found
