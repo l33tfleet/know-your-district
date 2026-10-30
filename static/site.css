@@ -246,6 +246,7 @@ code {
 
   .brief h2 {
     font-size: var(--print-heading-size);
+    line-height: var(--print-line-height);
     margin: var(--print-space) 0;
   }
 
@@ -325,7 +326,8 @@ code {
   }
 
   /* The notes and readings sit under the opening case: same text, tighter set. */
-  .outreach :is(> p, caption) {
+  .outreach > p,
+  .outreach caption {
     font-size: var(--print-citation-size);
   }
 

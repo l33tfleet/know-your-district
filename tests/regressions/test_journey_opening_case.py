@@ -8,6 +8,7 @@ step, and never says "eligible", "qualify" or "not enrolled".
 
 import copy
 import importlib
+import re
 import shutil
 import sqlite3
 from collections.abc import Callable
@@ -308,8 +309,13 @@ def test_print_keeps_room_to_spare_on_one_page(
     """Variant B's system-ui differs per machine, so a tight local fit proves nothing:
     widened text stands in for a wider font, with no font name in the test."""
     open_page(page, shipped_facts + path + variant, 1440)
-    page.add_style_tag(content=".brief, .site-footer { letter-spacing: 0.005em; }")
+    page.add_style_tag(content=".brief, .site-footer { letter-spacing: 0.04em; }")
     assert pdf_pages(page) == 1
+
+
+def test_print_rules_for_the_outreach_notes_are_valid_selectors() -> None:
+    """A relative selector inside :is() is dropped silently, which printed the notes full size."""
+    assert not re.search(r":is\(\s*>", (ROOT / "static/site.css").read_text())
 
 
 # --- the record ---
