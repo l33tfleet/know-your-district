@@ -139,6 +139,39 @@ sections:
       caution: "Use with caution; no comparison claim"
       missing: Comparable published estimates are not available
 
+  # The opening outreach case (#286). The record's own words are in data/cases.yaml.
+  case:
+    title: "{population} · {program}"
+    citation: "Source: {source}, table {table_id}, {vintage}, geography {geography}. Method: {method}."
+    unavailable: >-
+      No published reading is available for {district}, so this card shows no count.
+      The next step still applies.
+    known_label: What we know
+    unknown_label: What we don't
+    problems:
+      geography: Geography
+      population: Population
+      program: Program
+    gap_label: Kind of gap
+    action_label: Action
+    gaps:
+      unused_appropriation: Unused appropriation
+      eligible_nonparticipation: Possible nonparticipation
+      application_or_renewal_barrier: Application or renewal barrier
+      underpayment: Underpayment
+      redemption_or_expiration_loss: Redemption or expiration loss
+      service_capacity_or_fit: Service capacity or fit
+    actions:
+      targeted_information: Targeted information
+      navigator_referral: Navigator referral
+      outreach_planning_lead: Outreach-planning lead
+      agency_follow_up: Agency follow-up
+    next_label: Next step
+    official_label: Official SNAP program page
+    outreach_label: DHS SNAP outreach providers
+    rule_checked: "Rule source checked {date}."
+    evidence_link: County and state figures, and the source
+
   snap:
     heading: Households below poverty reporting no SNAP receipt
     units: households
