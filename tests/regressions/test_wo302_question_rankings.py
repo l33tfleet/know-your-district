@@ -237,6 +237,33 @@ def test_no_published_values_is_an_answer_not_a_ranking(
     assert words()["distinct"] not in page.text
 
 
+def test_missing_database_fails_instead_of_reporting_unpublished_districts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "absent.db"
+    monkeypatch.setenv("KYD_FACTS_DB", str(path))
+    with pytest.raises(FileNotFoundError, match=re.escape(str(path))):
+        answer(AGE)
+
+
+@pytest.mark.parametrize("path", ["/", "/questions"])
+def test_missing_database_is_a_server_error_not_a_data_finding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, path: str
+) -> None:
+    monkeypatch.setenv("KYD_FACTS_DB", str(tmp_path / "absent.db"))
+    response = TestClient(app, raise_server_exceptions=False).get(path, params={"q": AGE})
+    assert response.status_code == 500
+    assert words()["no_figures"] not in response.text
+    assert "left out" not in response.text
+
+
+def test_existing_database_without_the_rows_is_a_data_finding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seed(tmp_path, monkeypatch, [row(INCOME, house(1), 90000.0, 5000.0)])
+    assert answer(AGE).left_out == 51
+
+
 @pytest.mark.parametrize("path", ["/", "/questions"])
 @pytest.mark.parametrize("q", ["", "age", "AGE_65_SHARE", "population", "../etc", "x\ny"])
 def test_unknown_question_is_an_error_not_a_guess(facts: None, path: str, q: str) -> None:

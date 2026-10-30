@@ -19,7 +19,11 @@ def answer(question: str) -> Ranking:
         raise ValueError(f"question must be one of: {', '.join(QUESTIONS)}")
     variable, descending = QUESTIONS[question]
     districts = all_districts("house")
-    facts = FactStore.default().get(((variable, d.fact_key) for d in districts), acs_config()[0])
+    store = FactStore.default()
+    # `get` reads a missing database as no rows; here that would publish 51 unpublished districts.
+    if not store.path.is_file():
+        raise FileNotFoundError(f"fact table not found: {store.path}")
+    facts = store.get(((variable, d.fact_key) for d in districts), acs_config()[0])
     found = {str(d.district): facts.get((variable, d.fact_key)) for d in districts}
     return rank(found, descending)
 
