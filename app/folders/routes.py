@@ -30,6 +30,8 @@ from app.folders.store import (
     Priority,
     Reason,
     Status,
+    StoreConfigError,
+    default_path,
 )
 from app.page_state import PageState, page_state
 from etl.boundaries import DISTRICT_COUNTS
@@ -59,18 +61,18 @@ def guard(preview: str | None) -> PageState:
 
 def open_store(state: PageState) -> FolderStore:
     path = os.environ.get("KYD_FOLDERS_DB")
-    if not path:
-        raise HTTPException(status_code=503, detail=load_copy()["folders"]["no_store"])
-    return FolderStore(Path(path), state)
+    return FolderStore(Path(path) if path else default_path(), state)
 
 
 @contextmanager
 def known_folder() -> Generator[None]:
-    """An unknown folder or card answers like any unknown page."""
+    """An unknown folder or card answers like any unknown page; a file refused at open, 503."""
     try:
         yield
     except FolderNotFoundError as exc:
         raise HTTPException(status_code=404) from exc
+    except StoreConfigError as exc:
+        raise HTTPException(status_code=503, detail=load_copy()["folders"]["no_store"]) from exc
 
 
 def folder_id_or_404(text: str) -> str:
@@ -178,9 +180,11 @@ async def create_folder(request: Request, preview: str | None = None) -> Redirec
     state = guard(preview)
     form = await form_fields(request)
     district = case_district(form).district
-    store = open_store(state)
     name = geography_name(district.fact_key)
-    folder_id = store.create_folder(name, form["case_id"], district.chamber, int(district.district))
+    with known_folder():
+        folder_id = open_store(state).create_folder(
+            name, form["case_id"], district.chamber, int(district.district)
+        )
     return RedirectResponse(folder_path(folder_id, state), status_code=303)
 
 

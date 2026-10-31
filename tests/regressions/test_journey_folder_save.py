@@ -6,8 +6,10 @@ only while the `folders` flag is on. Unknown ids answer 404, and nothing is writ
 is off.
 """
 
+import os
 import re
 import sqlite3
+import stat
 from collections.abc import Callable
 from contextlib import closing
 from pathlib import Path
@@ -64,6 +66,9 @@ def flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Flag:
         return TestClient(asgi_app, follow_redirects=False)
 
     monkeypatch.setenv("KYD_FOLDERS_DB", str(tmp_path / "folders.db"))
+    # No test reaches the real home, even one that clears `KYD_FOLDERS_DB`.
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+    monkeypatch.setenv("HOME", str(tmp_path))
     return write
 
 
@@ -560,8 +565,27 @@ def test_reason_is_escaped_on_the_page(client: TestClient) -> None:
     assert "<b>x" not in client.get(path).text
 
 
+SAVE = f"case_id={CASE}&chamber=house&district=22"
+STATE_DIR = "know-your-district"
+
+
+def tree(root: Path) -> set[Path]:
+    """Every path in the checkout except tool caches, which a test run may touch."""
+    skipped = {".git", ".venv", ".pytest_cache", ".ruff_cache", "__pycache__"}
+    return {
+        Path(parent) / name
+        for parent, directories, files in os.walk(root)
+        for name in [*directories, *files]
+        if not skipped.intersection(Path(parent).parts) and name not in skipped
+    }
+
+
+def mode_of(path: Path) -> int:
+    return stat.S_IMODE(path.stat().st_mode)
+
+
 @pytest.mark.parametrize("value", [None, ""], ids=["unset", "empty"])
-def test_store_path_is_mandatory_and_nothing_falls_back(
+def test_store_defaults_to_the_state_directory_outside_the_checkout(
     flag: Flag, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, value: str | None
 ) -> None:
     client = flag("on")
@@ -569,11 +593,88 @@ def test_store_path_is_mandatory_and_nothing_falls_back(
         monkeypatch.delenv("KYD_FOLDERS_DB")
     else:
         monkeypatch.setenv("KYD_FOLDERS_DB", value)
-    response = post(client, "/folders", f"case_id={CASE}&chamber=house&district=22")
+    before = tree(ROOT)
+    response = post(client, "/folders", SAVE)
+    assert response.status_code == 303
+    assert re.fullmatch(r"/f/[0-9a-f]{32}", response.headers["location"])
+
+    directory = tmp_path / STATE_DIR
+    assert mode_of(directory) == 0o700
+    assert mode_of(directory / "folders.db") == 0o600
+    assert not (tmp_path / "folders.db").exists()
+    assert tree(ROOT) == before
+    assert client.get(response.headers["location"]).status_code == 200
+
+
+@pytest.mark.parametrize("value", [None, ""], ids=["unset", "empty"])
+def test_with_no_xdg_state_home_the_default_is_under_the_home_directory(
+    flag: Flag, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, value: str | None
+) -> None:
+    client = flag("on")
+    monkeypatch.delenv("KYD_FOLDERS_DB")
+    if value is None:
+        monkeypatch.delenv("XDG_STATE_HOME")
+    else:
+        monkeypatch.setenv("XDG_STATE_HOME", value)
+    (tmp_path / ".local/state").mkdir(parents=True)
+    assert post(client, "/folders", SAVE).status_code == 303
+    assert (tmp_path / ".local/state" / STATE_DIR / "folders.db").exists()
+
+
+def test_a_named_store_path_never_creates_the_default(flag: Flag, tmp_path: Path) -> None:
+    assert post(flag("on"), "/folders", SAVE).status_code == 303
+    assert (tmp_path / "folders.db").exists()
+    assert not (tmp_path / STATE_DIR).exists()
+
+
+def test_a_default_path_inside_the_checkout_is_503_and_creates_nothing(
+    flag: Flag, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = flag("on")
+    monkeypatch.delenv("KYD_FOLDERS_DB")
+    monkeypatch.setenv("XDG_STATE_HOME", str(ROOT / "data"))
+    before = tree(ROOT)
+    response = post(client, "/folders", SAVE)
     assert response.status_code == 503
+    assert "could not be opened" in response.json()["detail"]
     assert "KYD_FOLDERS_DB" in response.json()["detail"]
     assert client.get(f"/f/{ABSENT}").status_code == 503
-    assert not (tmp_path / "folders.db").exists()
+    assert not (ROOT / "data" / STATE_DIR).exists()
+    assert tree(ROOT) == before
+
+
+def test_only_the_state_directory_itself_is_ever_created(
+    flag: Flag, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A missing state home stays the operator's to make: 503, and no directory made for it."""
+    client = flag("on")
+    monkeypatch.delenv("KYD_FOLDERS_DB")
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "missing"))
+    assert post(client, "/folders", SAVE).status_code == 503
+    assert not (tmp_path / "missing").exists()
+
+
+def test_a_store_file_refused_at_open_is_503_on_every_route(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = create(client)
+    card = card_id(client, path)
+    (tmp_path / "folders.db").chmod(0o644)
+    assert client.get(path).status_code == 503
+    assert post(client, "/folders", SAVE).status_code == 503
+    assert post(client, f"{path}/cases", SAVE).status_code == 503
+    assert post(client, f"{path}/cards/{card}/status", "status=done").status_code == 503
+    assert post(client, f"{path}/cards/{card}/priority", "priority=low&reason=x").status_code == 503
+
+
+def test_a_store_file_that_cannot_be_made_is_503(
+    flag: Flag, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    client = flag("on")
+    monkeypatch.setenv("KYD_FOLDERS_DB", str(tmp_path / "absent" / "folders.db"))
+    response = post(client, "/folders", SAVE)
+    assert response.status_code == 503
+    assert "could not be opened" in response.json()["detail"]
 
 
 # --- the store refuses bad input before touching SQLite ---
@@ -673,9 +774,10 @@ def test_schema_is_one_step_with_the_journey_status_words() -> None:
 def live_folders(
     config: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, shipped_facts: str
 ) -> str:
-    """The in-process server with the shipped `preview` flag and a private store file."""
+    """The in-process server as the Demo gets it: `preview` flag, no store setting at all."""
     config.write_text('outreach = "on"\nfolders = "preview"\n', encoding="utf-8")
-    monkeypatch.setenv("KYD_FOLDERS_DB", str(tmp_path / "folders.db"))
+    monkeypatch.delenv("KYD_FOLDERS_DB", raising=False)
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
     return shipped_facts
 
 
@@ -736,7 +838,7 @@ def test_copy_button_copies_the_folder_link(page: Page, live_folders: str) -> No
     assert page.evaluate("navigator.clipboard.readText()") == page.url
 
 
-def test_demo_steps_run_as_written(page: Page, live_folders: str) -> None:
+def test_demo_steps_run_as_written(page: Page, live_folders: str, tmp_path: Path) -> None:
     """The commit's `Demo:` block, step for step, on the shipped `preview` flag."""
     page.goto(f"{live_folders}/brief/house/22?preview=1")
     page.click("text=Save to folder")
@@ -751,6 +853,7 @@ def test_demo_steps_run_as_written(page: Page, live_folders: str) -> None:
     page.click("text=Reopen this folder's link")
     page.get_by_text("Priority: high").wait_for()
     page.get_by_text("Status: contacted").wait_for()
+    assert (tmp_path / STATE_DIR / "folders.db").exists()
 
 
 # --- the privacy note states the store as built ---
@@ -764,6 +867,8 @@ def privacy_note() -> str:
     "fact",
     [
         "KYD_FOLDERS_DB",
+        "know-your-district/folders.db",
+        "~/.local/state",
         "`app/folders/store.py`",
         "0600",
         "at most 200 characters",

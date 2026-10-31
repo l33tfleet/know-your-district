@@ -8,9 +8,10 @@ ACS tables) and local reference files. There are no accounts, individual
 records, person lookups or inferences about individuals. See
 [data and licences](data.md#data-licences).
 
-When the `folders` flag is on (`?preview=1` only today) and `KYD_FOLDERS_DB` is
-set, the app writes one SQLite file outside the checkout, only through
-`app/folders/store.py`, created with mode 0600. It holds folder name, district,
+When the `folders` flag is on (`?preview=1` only today), the app writes one
+SQLite file outside the checkout, only through `app/folders/store.py`, mode
+0600: `$XDG_STATE_HOME/know-your-district/folders.db` (else under
+`~/.local/state`), or `KYD_FOLDERS_DB` if set. It holds folder name, district,
 saved case ids, priority, status, timestamps and a reason of at most 200
 characters typed by the office. It holds no figures and no data about
 individuals; offices must also keep personal details out of reasons. Anyone with
@@ -26,7 +27,7 @@ with an optional API key; HTTP errors suppress keyed URLs.
 **Logs and secrets.** Access logs (Uvicorn's default, hosting, proxy) may keep
 client addresses and request URLs, including query strings; no log-retention
 policy exists. Keep personal information and secrets out of URLs, except folder
-links: log readers can open that folder. Git ignore patterns guard
+links, which log readers can open. Git ignore patterns guard
 environment files, private keys and `secrets/` against accidental staging only.
 
 **Planned changes.** Ask (#183) owns updates to this note when it lands,

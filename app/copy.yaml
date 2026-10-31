@@ -269,7 +269,7 @@ folders:
   unknown_priority: "Unknown priority {value!r}. Valid values: {valid}."
   unknown_status: "Unknown status {value!r}. Valid values: {valid}."
   bad_reason: A reason is one line of 1 to 200 characters.
-  no_store: Folders are not available here because KYD_FOLDERS_DB is not set.
+  no_store: Folders are not available here because the folder file could not be opened. Set KYD_FOLDERS_DB to choose another file outside the checkout.
 
 # Geography names, shared by the headline and the figures' citations.
 geography:

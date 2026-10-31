@@ -1,4 +1,6 @@
-"""Facade over the folder store (`KYD_FOLDERS_DB`), the only code that touches that file.
+"""Facade over the folder store, the only code that touches that file.
+
+The file is `KYD_FOLDERS_DB` when set, else `default_path()`, always outside the checkout.
 
 Every call checks the `folders` flag and opens its own short connection, which creates or
 upgrades the file in one transaction. Mirrors the read-only `app/facts.py` facade; SQLite shapes
@@ -117,6 +119,17 @@ def _checked_path(path: Path) -> Path:
     return resolved
 
 
+def default_path() -> Path:
+    """The XDG state location; makes its own directory and no other, never in the checkout."""
+    state_home = os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state"
+    path = _checked_path(Path(state_home) / "know-your-district/folders.db")
+    try:
+        path.parent.mkdir(mode=0o700, exist_ok=True)
+    except OSError as exc:
+        raise StoreConfigError(f"Cannot make the folder store's directory: {exc}") from exc
+    return path
+
+
 def _count(db: sqlite3.Connection, query: str) -> int:
     return int(db.execute(query).fetchone()[0])
 
@@ -208,7 +221,10 @@ class FolderStore:
         this process's POSIX locks, which SQLite relies on.
         """
         scratch = self.path.with_name(f".{self.path.name}.{secrets.token_hex(8)}")
-        os.close(os.open(scratch, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600))
+        try:
+            os.close(os.open(scratch, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600))
+        except OSError as exc:
+            raise StoreConfigError(f"Cannot make the folder store's file: {exc}") from exc
         try:
             _open(scratch, self._limits.max_db_bytes).close()
             os.link(scratch, self.path)
