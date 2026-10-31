@@ -751,3 +751,33 @@ def test_demo_steps_run_as_written(page: Page, live_folders: str) -> None:
     page.click("text=Reopen this folder's link")
     page.get_by_text("Priority: high").wait_for()
     page.get_by_text("Status: contacted").wait_for()
+
+
+# --- the privacy note states the store as built ---
+
+
+def privacy_note() -> str:
+    return " ".join((ROOT / "docs/security-privacy.md").read_text(encoding="utf-8").split())
+
+
+@pytest.mark.parametrize(
+    "fact",
+    [
+        "KYD_FOLDERS_DB",
+        "`app/folders/store.py`",
+        "0600",
+        "at most 200 characters",
+        "128-bit link",
+        "`deleted_at`",
+        "no automatic purge or retention period",
+        "../app/folders/store.py",
+        "../app/folders/schema.sql",
+    ],
+)
+def test_privacy_note_states_the_folder_store_facts(fact: str) -> None:
+    assert fact in privacy_note()
+
+
+@pytest.mark.parametrize("claim", ["no writable user store", "Neither capability is available"])
+def test_privacy_note_no_longer_denies_the_folder_store(claim: str) -> None:
+    assert claim not in privacy_note()
