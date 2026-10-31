@@ -492,6 +492,60 @@ def test_bad_card_form_is_refused_naming_the_rule(
     assert "Priority: normal" in client.get(path).text and "Status: idea" in client.get(path).text
 
 
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "%0Aa",
+        "%09a",
+        "a%0A",
+        "a%09",
+        "a%0D",
+        "a%0Db",
+        "%00a",
+        "a%7F",
+        "%C2%85a",
+        "a%C2%85",
+        "%E2%80%A8a",
+        "a%E2%80%A9",
+        "a%E2%80%A8b",
+    ],
+    ids=[
+        "leading-newline",
+        "leading-tab",
+        "trailing-newline",
+        "trailing-tab",
+        "trailing-return",
+        "inner-return",
+        "leading-nul",
+        "trailing-delete",
+        "leading-c1-next-line",
+        "trailing-c1-next-line",
+        "leading-line-separator",
+        "trailing-paragraph-separator",
+        "inner-line-separator",
+    ],
+)
+def test_a_control_character_anywhere_in_a_reason_is_refused(
+    client: TestClient, tmp_path: Path, reason: str
+) -> None:
+    path = create(client)
+    endpoint = f"{path}/cards/{card_id(client, path)}/priority"
+    post(client, endpoint, "priority=low&reason=Kept")
+    response = post(client, endpoint, f"priority=high&reason={reason}")
+    assert response.status_code == 422
+    assert "one line" in response.json()["detail"]
+    assert rows(tmp_path / "folders.db", "SELECT priority, reason FROM cards") == [("low", "Kept")]
+
+
+def test_spaces_around_a_reason_are_trimmed_and_count_for_nothing(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = create(client)
+    endpoint = f"{path}/cards/{card_id(client, path)}/priority"
+    post(client, endpoint, f"priority=low&reason=+{'x' * 200}+")
+    assert rows(tmp_path / "folders.db", "SELECT reason FROM cards") == [("x" * 200,)]
+
+
 def test_a_reason_of_exactly_200_characters_is_kept(client: TestClient) -> None:
     path = create(client)
     post(

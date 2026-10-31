@@ -17,7 +17,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, validate_call
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    validate_call,
+)
 
 from app.features import enabled, register_feature
 from app.page_state import PageState
@@ -44,12 +51,13 @@ CardId = Annotated[int, Field(ge=1)]
 District = Annotated[int, Field(ge=1)]
 Priority = Literal["high", "normal", "low"]
 Status = Literal["idea", "contacted", "planned", "done"]
-# No control characters, so a reason stays one line on the page.
+# No control characters or line separators, so a reason stays one line on the page. They are
+# checked before spaces are trimmed: trimming would remove them from the ends unseen.
 Reason = Annotated[
     str,
-    StringConstraints(
-        strip_whitespace=True, min_length=1, max_length=200, pattern=r"^[^\x00-\x1f\x7f]*$"
-    ),
+    StringConstraints(pattern=r"^[^\x00-\x1f\x7f-\x9f\u2028\u2029]*$"),
+    AfterValidator(str.strip),
+    StringConstraints(min_length=1, max_length=200),
 ]
 
 
