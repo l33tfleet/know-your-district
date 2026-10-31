@@ -1,6 +1,7 @@
 -- Version 1 of the folder store. Applied by app/folders/store.py inside one transaction.
 -- Keys and office state only: no figures, and no column for anything about a person.
 -- A set deleted_at is the trash: ordinary reads skip the row until restore or purge.
+-- A card's status runs idea, contacted, planned, done.
 
 CREATE TABLE folders (
     id TEXT PRIMARY KEY,
@@ -16,7 +17,7 @@ CREATE TABLE cards (
     card_key TEXT NOT NULL,
     chamber TEXT NOT NULL CHECK (chamber IN ('house', 'senate')),
     district INTEGER NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('new', 'in_progress', 'done', 'set_aside')),
+    status TEXT NOT NULL CHECK (status IN ('idea', 'contacted', 'planned', 'done')),
     priority TEXT NOT NULL CHECK (priority IN ('high', 'normal', 'low')),
     reason TEXT CHECK (length(reason) <= 200),
     created_at TEXT NOT NULL,

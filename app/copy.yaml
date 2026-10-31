@@ -196,6 +196,7 @@ sections:
     outreach_label: DHS SNAP outreach providers
     rule_checked: "Rule source checked {date}."
     evidence_link: County and state figures, and the source
+    save_label: Save to folder
 
   snap:
     heading: Households below poverty reporting no SNAP receipt
@@ -235,6 +236,40 @@ sections:
     heading: Programs that may help
     official_link: Official program page
     referral_link: Aloha United Way 211
+
+# A district folder (#288). Its figures come from the case card, re-read on each render.
+folders:
+  title: "{name} · Know Your District"
+  notice: Anyone with this link can open and edit this folder
+  link_label: Link to this folder
+  copy_link: Copy link
+  copied: Link copied
+  reopen: Reopen this folder's link
+  empty: This folder has no saved cases.
+  district_label: "Saved for {district}"
+  priority_label: Priority
+  reason_label: Reason, one line
+  reason_hint: Up to 200 characters. Do not name or describe a person.
+  set_priority: Set priority
+  status_label: Status
+  set_status: Set status
+  summary: "Priority: {priority}{reason}. Status: {status}."
+  summary_reason: " ({reason})"
+  priorities:
+    high: high
+    normal: normal
+    low: low
+  statuses:
+    idea: idea
+    contacted: contacted
+    planned: planned
+    done: done
+  unknown_case: "Unknown case {value!r}. Valid values: {valid}."
+  unknown_district: "Unknown district. Valid chambers: {valid}, each with its own district numbers."
+  unknown_priority: "Unknown priority {value!r}. Valid values: {valid}."
+  unknown_status: "Unknown status {value!r}. Valid values: {valid}."
+  bad_reason: A reason is one line of 1 to 200 characters.
+  no_store: Folders are not available here because the folder file could not be opened. Set KYD_FOLDERS_DB to choose another file outside the checkout.
 
 # Geography names, shared by the headline and the figures' citations.
 geography:

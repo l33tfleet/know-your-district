@@ -19,6 +19,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.brief import discover, render_section
 from app.copy import geography_name, load_copy
 from app.features import validate_features
+from app.folders import routes as folders
 from app.page_state import page_state
 from app.tools.rankings import QUESTIONS, answer, present
 from app.web import snap
@@ -59,6 +60,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
 app = FastAPI(title="Know Your District", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 app.include_router(snap.router)
+app.include_router(folders.router)
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
