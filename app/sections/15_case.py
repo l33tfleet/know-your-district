@@ -5,21 +5,25 @@ Reads the same SNAP result as section 40, which stays as the evidence. No new nu
 no arithmetic, no model call.
 """
 
+from markupsafe import Markup
+
 from app import snap
 from app.cases import PROBLEMS, case
 from app.copy import section_copy
-from app.features import load_features
+from app.features import enabled, load_features
+from app.folders.store import FEATURE as FOLDERS
 from app.page_state import PageState
 
 PRINT = True
 CASE_ID = "snap_no_receipt"
 
 
-def context(state: PageState) -> dict[str, object]:
+def case_card(state: PageState, case_id: str) -> dict[str, object]:
+    """One case for one district, read fresh; the brief and a saved folder both render this."""
     # Mirrors section 40: the same flag hides both, before anything loads.
     if not load_features().outreach:
         return {}
-    record = case(CASE_ID)
+    record = case(case_id)
     result = snap.load_result(state.district)
     reading = result.district
     copy = section_copy("case")
@@ -58,4 +62,31 @@ def context(state: PageState) -> dict[str, object]:
         "action": copy["actions"][record.action.kind],
         "checked": copy["rule_checked"].format(date=record.program.rule_checked.isoformat()),
         "links": links,
+        "heading_id": "case-heading",
+        "evidence_href": "#outreach-heading",
     }
+
+
+def save_control(state: PageState, case_id: str) -> Markup:
+    """The brief's form that starts a folder; the form carries only the case and its district."""
+    district = state.district
+    return Markup(
+        '<form method="post" action="/folders{query}">'
+        '<input type="hidden" name="case_id" value="{case_id}">'
+        '<input type="hidden" name="chamber" value="{chamber}">'
+        '<input type="hidden" name="district" value="{district}">'
+        '<button type="submit">{label}</button></form>'
+    ).format(
+        query="?preview=1" if state.preview else "",
+        case_id=case_id,
+        chamber=district.chamber,
+        district=district.district,
+        label=section_copy("case")["save_label"],
+    )
+
+
+def context(state: PageState) -> dict[str, object]:
+    card = case_card(state, CASE_ID)
+    if card and enabled(FOLDERS, state):
+        card["save_control"] = save_control(state, CASE_ID)
+    return card

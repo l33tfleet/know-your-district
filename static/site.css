@@ -193,6 +193,47 @@ code {
   overflow-wrap: anywhere;
 }
 
+/* district folder */
+.folder-notice {
+  font-weight: var(--weight-bold);
+}
+
+.folder-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--picker-gap);
+  align-items: center;
+}
+
+.folder-link input {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.folder-card form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--picker-gap);
+  align-items: end;
+  margin: var(--headline-space) 0;
+}
+
+.folder-card label {
+  display: block;
+}
+
+.folder-card .folder-reason {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.folder-card .folder-hint {
+  margin: 0;
+  font-size: var(--size-small);
+}
+
 /* brief notes */
 .screen-only-note,
 .section-failure {
@@ -391,6 +432,10 @@ code {
 
   .outreach-citation dt {
     font-weight: var(--weight-bold);
+  }
+
+  .case-save {
+    display: none;
   }
 
   /* Four balanced columns of tiny type: the case must leave real room on the one page. */

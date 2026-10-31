@@ -1,0 +1,42 @@
+{# One saved case. An htmx response is this whole partial; each form selects only the summary. #}
+{% set query = "?preview=1" if preview else "" %}
+{% set base = "/f/" ~ folder_id ~ "/cards/" ~ card.id %}
+<div class="folder-card" id="card-{{ card.id }}">
+  <p class="folder-district">{{ district_line }}</p>
+  {{ card_html }}
+  <div class="folder-live" id="live-{{ card.id }}" role="status">
+    <p class="folder-summary" id="summary-{{ card.id }}">{{ summary }}</p>
+  </div>
+  <form method="post" action="{{ base }}/priority{{ query }}"
+        hx-post="{{ base }}/priority{{ query }}" hx-target="#live-{{ card.id }}"
+        hx-select="#summary-{{ card.id }}" hx-swap="innerHTML">
+    <div>
+      <label for="priority-{{ card.id }}">{{ words.priority_label }}</label>
+      <select id="priority-{{ card.id }}" name="priority">
+        {% for value, label in words.priorities.items() %}
+        <option value="{{ value }}"{% if value == card.priority %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="folder-reason">
+      <label for="reason-{{ card.id }}">{{ words.reason_label }}</label>
+      <input id="reason-{{ card.id }}" name="reason" type="text" required maxlength="200"
+             aria-describedby="reason-hint-{{ card.id }}" value="{{ card.reason or '' }}">
+      <p class="folder-hint" id="reason-hint-{{ card.id }}">{{ words.reason_hint }}</p>
+    </div>
+    <button type="submit">{{ words.set_priority }}</button>
+  </form>
+  <form method="post" action="{{ base }}/status{{ query }}"
+        hx-post="{{ base }}/status{{ query }}" hx-target="#live-{{ card.id }}"
+        hx-select="#summary-{{ card.id }}" hx-swap="innerHTML">
+    <div>
+      <label for="status-{{ card.id }}">{{ words.status_label }}</label>
+      <select id="status-{{ card.id }}" name="status">
+        {% for value, label in words.statuses.items() %}
+        <option value="{{ value }}"{% if value == card.status %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit">{{ words.set_status }}</button>
+  </form>
+</div>
