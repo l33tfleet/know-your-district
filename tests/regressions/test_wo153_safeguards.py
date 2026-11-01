@@ -994,3 +994,72 @@ def test_contact_blocking_cannot_be_bypassed_on_create_or_edit(
     with pytest.raises(ValidationError, match="Personal phone numbers, emails and addresses"):
         db.edit_note(folder_id, note, text, True)
     assert bodies(db, folder_id) == [NOTE]
+
+
+REVIEW_CONTACTS = [
+    "808–555–0123",
+    "(808) 555–0123",
+    "808\u2011555\u20110123",
+    "808/555/0123",
+    "cell808-555-0123",
+    "1010 6th Ave",
+    "3650 16th Ave",
+]
+
+
+@pytest.mark.parametrize("text", REVIEW_CONTACTS)
+def test_formatted_phones_and_numbered_streets_cannot_be_saved(
+    db: store.FolderStore, folders: FolderService, text: str
+) -> None:
+    folder_id, card = new_folder(db)
+    note = add_note(folders, folder_id, card)
+    token = pii.confirmation_token(SECRET, folder_id, text)
+    assert pii.find(text)
+    with pytest.raises(service.PiiBlockedError):
+        folders.confirmation(folder_id, text)
+    with pytest.raises(service.PiiBlockedError):
+        folders.add_note(folder_id, card, text, token, IP)
+    with pytest.raises(service.PiiBlockedError):
+        folders.edit_note(folder_id, note, text, token, IP)
+    with pytest.raises(ValidationError):
+        db.add_note(folder_id, card, text, True)
+    with pytest.raises(ValidationError):
+        db.edit_note(folder_id, note, text, True)
+    with pytest.raises(ValidationError):
+        db.set_priority(folder_id, card, "high", text)
+    assert bodies(db, folder_id) == [NOTE]
+
+
+@pytest.mark.parametrize("separator", ["\u2010", "\u2011", "\u2012", "–", "—", "―", "\u2212", "/"])
+@pytest.mark.parametrize("prefix", ["", "cell", "tel:"])
+def test_phone_separator_and_prefix_variants_are_blocked(separator: str, prefix: str) -> None:
+    assert pii.find(f"{prefix}808{separator}555{separator}0123") == ("phone",)
+    assert pii.find(f"{prefix}555{separator}0123") == ("phone",)
+
+
+@pytest.mark.parametrize("ordinal", ["1st", "2nd", "3rd", "6th", "16TH"])
+def test_numbered_streets_are_blocked_in_all_cases(ordinal: str) -> None:
+    assert pii.find(f"1010 {ordinal} ave") == ("address",)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "We have 3 programs in place",
+        "2 staff are on the way",
+        "5 families drive",
+        "10 kupuna asked about the court",
+        "12 people came and the place was full and the way was clear",
+        "3 programs are at a place near the court",
+    ],
+)
+def test_ordinary_sentences_can_be_saved_as_notes_and_reasons(
+    db: store.FolderStore, folders: FolderService, text: str
+) -> None:
+    assert pii.find(text) == ()
+    folder_id, card = new_folder(db)
+    note = add_note(folders, folder_id, card, text)
+    folders.edit_note(folder_id, note, text, folders.confirmation(folder_id, text), IP)
+    db.set_priority(folder_id, card, "high", text)
+    assert bodies(db, folder_id) == [text]
+    assert db.get_folder(folder_id).cards[0].reason == text

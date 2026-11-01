@@ -13,14 +13,21 @@ from typing import Literal
 
 Kind = Literal["phone", "email", "address"]
 
-_STREET = r"(?<![\w-])\d{1,6}(?:-\d{1,4})?[A-Za-z]?\s+(?:[^\W\d][\w'.-]*\s+){1,4}?"  # number, name
+# A street name may be lowercase or ordinal. Ordinary sentence words and counted
+# groups are not name evidence (for example, "3 programs in place" or "5 families drive").
+_STREET_WORD = (
+    r"(?!(?:in|on|the|a|at|are|is|was|were|and|of|to|for|about|asked|have|has|came"
+    r"|people|families|staff|programs|kupuna|kūpuna)\b)"
+    r"(?:\d+(?:st|nd|rd|th)|[^\W\d][\w'.-]*)"
+)
+_STREET = r"(?<![\w-])\d{1,6}(?:-\d{1,4})?[A-Za-z]?\s+" + rf"(?:{_STREET_WORD}\s+){{1,4}}?"
 _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
     (
         "phone",
         re.compile(
-            r"(?<![\w.])(?:\+?1[\s.-]*)?(?:\(\d{3}\)|\d{3})[\s.-]*\d{3}[\s.-]*\d{4}(?!\d)"  # US
-            r"|(?<![\w.-])\d{3}[\s.-]\d{4}(?![\d-])"  # local, as Hawaiʻi offices write it
-            r"|(?<![\w.])\+\d[\d\s().-]{6,}\d"  # international
+            r"(?<!\d)(?:\+?1[\s./-]*)?(?:\(\d{3}\)|\d{3})[\s./-]*\d{3}[\s./-]*\d{4}(?!\d)"  # US
+            r"|(?<![\d.-])\d{3}[\s./-]\d{4}(?![\d-])"  # local, as Hawaiʻi offices write it
+            r"|(?<!\d)\+\d[\d\s()./-]{6,}\d"  # international
         ),
     ),
     (
@@ -52,7 +59,11 @@ _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
 
 def _canonical(text: str) -> str:
     folded = unicodedata.normalize("NFKC", text)
-    return "".join(char for char in folded if unicodedata.category(char) != "Cf")
+    return "".join(
+        "-" if unicodedata.category(char) == "Pd" or char == "\u2212" else char
+        for char in folded
+        if unicodedata.category(char) != "Cf"
+    )
 
 
 def find(text: str) -> tuple[Kind, ...]:
