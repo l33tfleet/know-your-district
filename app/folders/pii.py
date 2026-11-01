@@ -15,12 +15,15 @@ Kind = Literal["phone", "email", "address"]
 
 # Candidate detection must include every street word: even "A" and "Kupuna" can name
 # a street. Only a complete candidate in a narrow office-prose context is exempt.
-_STREET_WORD = r"(?:\d+(?:st|nd|rd|th)|[^\W\d][\w'.-]*)"
-_STREET = r"(?<![\w-])\d{1,6}(?:-\d{1,4})?[A-Za-z]?\s+" + rf"(?:{_STREET_WORD}\s+){{1,4}}?"
+_STREET_WORD = r"(?:\d+(?:st|nd|rd|th)|'?[^\W\d][\w'.-]*)"
+_STREET = r"(?<![\w-])\d{1,6}(?:-\d{1,4})?(?:-?[A-Za-z])?\s+" + rf"(?:{_STREET_WORD}\s+){{1,4}}?"
+# Year-shaped house numbers are still addresses: exempt only the established lowercase
+# event prose. Kūpuna can name a street, so it is never exempt before a bare "Drive".
 _OFFICE_PROSE = re.compile(
-    r"(?:(?:19|20)\d{2}\s+(?:food\s+drive|district\s+court)"
+    r"(?:(?:19|20)\d{2}\s+(?-i:food\s+drive|district\s+court)"
+    r"|\d+\s+(?:people|families|parents|staff|programs)\s+drive"
     r"|\d+\s+(?:people|families|parents|staff|programs|kupuna|kūpuna)\s+"
-    r"(?:drive|in\s+place|are\s+(?:at\s+a\s+place|on\s+the\s+way)"
+    r"(?:in\s+place|are\s+(?:at\s+a\s+place|on\s+the\s+way)"
     r"|asked\s+about\s+the\s+court|came\s+and\s+the\s+place))",
     re.IGNORECASE,
 )

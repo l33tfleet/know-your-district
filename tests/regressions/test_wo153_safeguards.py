@@ -1283,3 +1283,63 @@ def test_rotation_rolls_back_after_insertion_and_card_movement(
     assert bodies(db, old) == [NOTE]
     with pytest.raises(store.FolderNotFoundError):
         db.get_folder(replacement)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"{number} {street.format(quote=quote)}"
+        for quote in ("ʻ", "\u2018", "\u2019", "\u02bc", "'")
+        for number, street in (
+            ("123", "{quote}Alewa Dr"),
+            ("45", "{quote}Ohana Place"),
+            ("12", "{quote}Iolani Ave"),
+            ("98-123", "{quote}Aiea Heights Dr"),
+            ("123", "Ala {quote}Ohana Place"),
+        )
+    ]
+    + [
+        "1234-A Kapiolani Blvd",
+        "94-1234-B Waipahu St",
+        "1234a Kapiolani Blvd",
+        "94-1234b Waipahu St",
+        "1234 Kupuna Drive",
+        "12 Kūpuna Drive",
+        "1234 kupuna drive",
+        "12 kūpuna drive",
+        "2026 Food Drive",
+        "2025 District Court",
+        "2026 FOOD DRIVE",
+        "2025 DISTRICT COURT",
+    ],
+)
+@pytest.mark.parametrize("operation", [*NOTE_OPERATIONS, "folder-create", "service-folder-create"])
+def test_address_variants_are_blocked_on_every_write(
+    db: store.FolderStore, folders: FolderService, text: str, operation: str
+) -> None:
+    folder_id, card = new_folder(db)
+    note = db.add_note(folder_id, card, NOTE, True)
+    token = pii.confirmation_token(SECRET, folder_id, text)
+    if operation in ("service-create", "service-edit"):
+        with pytest.raises(service.PiiBlockedError):
+            if operation == "service-create":
+                folders.add_note(folder_id, card, text, token, IP)
+            else:
+                folders.edit_note(folder_id, note, text, token, IP)
+    else:
+        with pytest.raises(ValidationError, match="Personal phone numbers, emails and addresses"):
+            if operation == "store-create":
+                db.add_note(folder_id, card, text, True)
+            elif operation == "store-edit":
+                db.edit_note(folder_id, note, text, True)
+            elif operation == "folder-create":
+                db.create_folder(text, CASE, "house", 22)
+            elif operation == "service-folder-create":
+                folders.create_folder(text, CASE, "house", 22, IP)
+            else:
+                db.set_priority(folder_id, card, "high", text)
+    assert pii.find(text) == ("address",)
+    with pytest.raises(service.PiiBlockedError):
+        folders.confirmation(folder_id, text)
+    assert bodies(db, folder_id) == [NOTE]
+    assert db.get_folder(folder_id).cards[0].reason is None
