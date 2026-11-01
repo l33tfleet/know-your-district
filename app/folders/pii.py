@@ -58,7 +58,11 @@ _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
 
 
 def _canonical(text: str) -> str:
-    folded = unicodedata.normalize("NFKC", text)
+    # Word processors substitute curly quotes for apostrophes and the ʻokina.
+    # Fold these only in the screening copy; stored and confirmed text stays exact.
+    folded = unicodedata.normalize("NFKC", text).translate(
+        str.maketrans("\u2018\u2019\u02bc\u02bb", "''''")
+    )
     return "".join(
         "-" if unicodedata.category(char) == "Pd" or char == "\u2212" else char
         for char in folded

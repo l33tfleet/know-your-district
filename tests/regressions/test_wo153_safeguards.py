@@ -147,6 +147,69 @@ def test_a_note_edit_cannot_reach_a_missing_note(db: store.FolderStore) -> None:
         db.edit_note(folder_id, 999, NOTE, True)
 
 
+def test_list_notes_hides_a_trashed_note(db: store.FolderStore, db_path: Path) -> None:
+    folder_id, card = new_folder(db)
+    note = db.add_note(folder_id, card, NOTE, True)
+    with closing(sqlite3.connect(db_path)) as raw, raw:
+        raw.execute("UPDATE notes SET deleted_at = ? WHERE id = ?", (store.now(), note))
+    assert bodies(db, folder_id) == []
+
+
+def test_list_notes_hides_notes_of_a_trashed_card(db: store.FolderStore, db_path: Path) -> None:
+    folder_id, card = new_folder(db)
+    db.add_note(folder_id, card, NOTE, True)
+    with closing(sqlite3.connect(db_path)) as raw, raw:
+        raw.execute("UPDATE cards SET deleted_at = ? WHERE id = ?", (store.now(), card))
+    assert bodies(db, folder_id) == []
+
+
+def test_add_note_refuses_a_trashed_card(db: store.FolderStore, db_path: Path) -> None:
+    folder_id, card = new_folder(db)
+    with closing(sqlite3.connect(db_path)) as raw, raw:
+        raw.execute("UPDATE cards SET deleted_at = ? WHERE id = ?", (store.now(), card))
+    with pytest.raises(store.FolderNotFoundError):
+        db.add_note(folder_id, card, NOTE, True)
+    assert rows(db_path, "SELECT COUNT(*) FROM notes") == [(0,)]
+
+
+def test_edit_note_refuses_a_trashed_note(db: store.FolderStore, db_path: Path) -> None:
+    folder_id, card = new_folder(db)
+    note = db.add_note(folder_id, card, NOTE, True)
+    with closing(sqlite3.connect(db_path)) as raw, raw:
+        raw.execute("UPDATE notes SET deleted_at = ? WHERE id = ?", (store.now(), note))
+    with pytest.raises(store.FolderNotFoundError):
+        db.edit_note(folder_id, note, "Changed words", True)
+    assert rows(db_path, "SELECT body FROM notes") == [(NOTE,)]
+
+
+def test_edit_note_refuses_a_note_of_a_trashed_card(db: store.FolderStore, db_path: Path) -> None:
+    folder_id, card = new_folder(db)
+    note = db.add_note(folder_id, card, NOTE, True)
+    with closing(sqlite3.connect(db_path)) as raw, raw:
+        raw.execute("UPDATE cards SET deleted_at = ? WHERE id = ?", (store.now(), card))
+    with pytest.raises(store.FolderNotFoundError):
+        db.edit_note(folder_id, note, "Changed words", True)
+    assert rows(db_path, "SELECT body FROM notes") == [(NOTE,)]
+
+
+@pytest.mark.parametrize(
+    ("limit", "window", "field", "error_type"),
+    [
+        (0, 1, "limit", "greater_than_equal"),
+        (1, 0, "window_seconds", "greater_than_equal"),
+        (1, store.RATE_BUCKET_TTL_SECONDS + 1, "window_seconds", "less_than_equal"),
+    ],
+)
+def test_rate_rules_reject_invalid_bounds(
+    limit: int, window: int, field: str, error_type: str
+) -> None:
+    with pytest.raises(ValidationError) as error:
+        store.RateRule(scope="test", limit=limit, window_seconds=window)
+    assert [(item["loc"], item["type"]) for item in error.value.errors()] == [
+        ((field,), error_type)
+    ]
+
+
 # --- rotating the link ---
 
 
@@ -264,6 +327,10 @@ BLOCKED = [
     ("address", "7 Pali Highway"),
     ("address", "12 Pualani Way"),
     ("address", "300 Kaʻahumanu Place"),
+    ("address", "1234 Kalaniana\u2018ole Hwy"),
+    ("address", "1234 Kalaniana\u2019ole Hwy"),
+    ("address", "1234 Kalaniana\u02bcole Hwy"),
+    ("address", "1234 Kalaniana\u02bbole Hwy"),
     ("address", "PO Box 1234"),
     ("address", "P.O. Box 77"),
     ("address", "Apt 12"),
@@ -348,6 +415,21 @@ def test_the_store_refuses_a_note_edit_with_personal_details(db: store.FolderSto
     note = db.add_note(folder_id, card, NOTE, True)
     with pytest.raises(ValidationError):
         db.edit_note(folder_id, note, "Call 808-555-0123", True)
+
+
+@pytest.mark.parametrize(("kind", "text"), BLOCKED)
+@pytest.mark.parametrize("operation", ["create", "edit"])
+def test_every_personal_detail_is_blocked_on_every_store_note_write(
+    db: store.FolderStore, kind: str, text: str, operation: str
+) -> None:
+    folder_id, card = new_folder(db)
+    note = db.add_note(folder_id, card, NOTE, True)
+    with pytest.raises(ValidationError, match="Personal phone numbers, emails and addresses"):
+        if operation == "create":
+            db.add_note(folder_id, card, text, True)
+        else:
+            db.edit_note(folder_id, note, text, True)
+    assert bodies(db, folder_id) == [NOTE]
 
 
 # --- confirmation ---
