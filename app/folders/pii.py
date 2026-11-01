@@ -19,7 +19,7 @@ _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
         "phone",
         re.compile(
             r"(?<![\w.])(?:\+?1[\s.-]*)?(?:\(\d{3}\)|\d{3})[\s.-]*\d{3}[\s.-]*\d{4}(?!\d)"  # US
-            r"|(?<![\w.-])\d{3}[.-]\d{4}(?![\d-])"  # local, as Hawaiʻi offices write it
+            r"|(?<![\w.-])\d{3}[\s.-]\d{4}(?![\d-])"  # local, as Hawaiʻi offices write it
             r"|(?<![\w.])\+\d[\d\s().-]{6,}\d"  # international
         ),
     ),
@@ -31,20 +31,13 @@ _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
             re.IGNORECASE,
         ),
     ),
-    # Suffixes that are rarely ordinary words, in any case.
+    # Capitalization is not evidence that an address is safe to store.
     (
         "address",
         re.compile(
-            _STREET + r"(?:street|st|avenue|ave|road|rd|boulevard|blvd|highway|hwy|parkway|pkwy)\b",
+            _STREET + r"(?:street|st|avenue|ave|road|rd|boulevard|blvd|highway|hwy|parkway|pkwy"
+            r"|way|place|pl|court|ct|drive|dr|lane|ln|loop|circle|cir|terrace|ter)\b",
             re.IGNORECASE,
-        ),
-    ),
-    # Suffixes that are also ordinary words: only a capitalized street name counts.
-    (
-        "address",
-        re.compile(
-            r"(?<![\w-])\d{1,6}(?:-\d{1,4})?[A-Za-z]?\s+(?:[A-Z][\w'.-]*\s+){1,4}?"
-            r"(?:Way|Place|Pl|Court|Ct|Drive|Dr|Lane|Ln|Loop|Circle|Cir|Terrace|Ter)\b"
         ),
     ),
     (

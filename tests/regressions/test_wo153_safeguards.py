@@ -941,3 +941,56 @@ def test_the_store_has_no_contact_column(db_path: Path, db: store.FolderStore) -
     for table in ("folders", "cards", "notes"):
         columns = [str(row[1]) for row in rows(db_path, f"PRAGMA table_info({table})")]
         assert not any("contact" in column or "phone" in column for column in columns)
+
+
+@pytest.mark.parametrize(
+    "suffix",
+    [
+        "way",
+        "place",
+        "pl",
+        "court",
+        "ct",
+        "drive",
+        "dr",
+        "lane",
+        "ln",
+        "loop",
+        "circle",
+        "cir",
+        "terrace",
+        "ter",
+    ],
+)
+@pytest.mark.parametrize("street", ["pualani", "PUALANI", "Pualani"])
+def test_personal_addresses_are_blocked_regardless_of_capitalization(
+    street: str,
+    suffix: str,
+) -> None:
+    assert pii.find(f"12 {street} {suffix}") == ("address",)
+
+
+def test_a_space_separated_local_phone_is_blocked() -> None:
+    assert pii.find("Call 555 0123 tomorrow") == ("phone",)
+
+
+@pytest.mark.parametrize("text", ["12 pualani way", "Call 555 0123 tomorrow"])
+def test_contact_blocking_cannot_be_bypassed_on_create_or_edit(
+    db: store.FolderStore,
+    folders: FolderService,
+    text: str,
+) -> None:
+    folder_id, card = new_folder(db)
+    note = add_note(folders, folder_id, card)
+    token = pii.confirmation_token(SECRET, folder_id, text)
+    with pytest.raises(service.PiiBlockedError):
+        folders.confirmation(folder_id, text)
+    with pytest.raises(service.PiiBlockedError):
+        folders.add_note(folder_id, card, text, token, IP)
+    with pytest.raises(service.PiiBlockedError):
+        folders.edit_note(folder_id, note, text, token, IP)
+    with pytest.raises(ValidationError, match="Personal phone numbers, emails and addresses"):
+        db.add_note(folder_id, card, text, True)
+    with pytest.raises(ValidationError, match="Personal phone numbers, emails and addresses"):
+        db.edit_note(folder_id, note, text, True)
+    assert bodies(db, folder_id) == [NOTE]
