@@ -5,6 +5,10 @@ The file is `KYD_FOLDERS_DB` when set, else `default_path()`, always outside the
 Every call checks the `folders` flag and opens its own short connection, which creates or
 upgrades the file in one transaction. Mirrors the read-only `app/facts.py` facade; SQLite shapes
 stay here.
+
+The folder link is the credential: errors and reprs never carry a folder id or a note, and text
+that holds personal details is refused here, whichever caller wrote it. A folder's last write
+sets when it expires (`app/folders/retention.py`).
 """
 
 import logging
@@ -29,6 +33,8 @@ from pydantic import (
 )
 
 from app.features import enabled, register_feature
+from app.folders import pii
+from app.folders.retention import Purged, expiry_cutoff
 from app.page_state import PageState
 from etl.boundaries import Chamber
 
@@ -37,19 +43,44 @@ FEATURE = "folders"
 BUSY_TIMEOUT_MS = 5000
 # One entry per schema version, in order; each runs once, inside one transaction.
 MIGRATIONS: tuple[str, ...] = (Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"),)
-LIVE_FOLDER = "SELECT id, name FROM folders WHERE id = ? AND deleted_at IS NULL"
+LIVE_FOLDER = "SELECT id, name FROM folders WHERE id = ? AND deleted_at IS NULL AND updated_at > ?"
 LIVE_CARDS = (
     "SELECT id, card_key AS case_id, chamber, district, priority, reason, status FROM cards"
     " WHERE folder_id = ? AND deleted_at IS NULL ORDER BY id"
 )
+LIVE_NOTES = (
+    "SELECT notes.id, notes.card_id, notes.dated, notes.body FROM notes"
+    " JOIN cards ON cards.id = notes.card_id"
+    " WHERE cards.folder_id = ? AND cards.deleted_at IS NULL AND notes.deleted_at IS NULL"
+    " ORDER BY notes.id"
+)
+RATE_BUCKET_TTL_SECONDS = 24 * 60 * 60  # no rule's window may be longer
 log = logging.getLogger(__name__)
 
 register_feature(FEATURE)
+# Refused input never appears in the error, where a log or error report could keep it.
+checked = validate_call(config=ConfigDict(hide_input_in_errors=True))
+
+
+def _no_personal_details(text: str) -> str:
+    if pii.find(text):
+        raise ValueError("Personal phone numbers, emails and addresses are not kept here.")
+    return text
+
+
+def _not_blank(text: str) -> str:
+    if not text.strip():
+        raise ValueError("A note needs words.")
+    return text
+
 
 FolderId = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{32}$")]
-FolderName = Annotated[str, StringConstraints(min_length=1, max_length=120)]
+FolderName = Annotated[
+    str, StringConstraints(min_length=1, max_length=120), AfterValidator(_no_personal_details)
+]
 CaseId = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]*$")]
 CardId = Annotated[int, Field(ge=1)]
+NoteId = Annotated[int, Field(ge=1)]
 District = Annotated[int, Field(ge=1)]
 Priority = Literal["high", "normal", "low"]
 Status = Literal["idea", "contacted", "planned", "done"]
@@ -60,7 +91,17 @@ Reason = Annotated[
     StringConstraints(pattern=r"^[^\x00-\x1f\x7f-\x9f\u2028\u2029]*$"),
     AfterValidator(str.strip),
     StringConstraints(min_length=1, max_length=200),
+    AfterValidator(_no_personal_details),
 ]
+# Kept exactly as submitted, line breaks and spaces included: a confirmation covers these words.
+NoteText = Annotated[
+    str,
+    StringConstraints(
+        pattern=r"^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u2028\u2029]*$", max_length=1000
+    ),
+    AfterValidator(_not_blank),
+]
+NoteBody = Annotated[NoteText, AfterValidator(_no_personal_details)]
 
 
 class FoldersDisabledError(Exception):
@@ -77,6 +118,23 @@ class CapacityError(Exception):
 
 class FolderNotFoundError(Exception):
     """No live folder has this id, or no live card of that folder has this card id."""
+
+
+class RateLimitedError(Exception):
+    """A request limit refused the call; no counter moved."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__(f"Try again in {retry_after_seconds} seconds")
+        self.retry_after_seconds = retry_after_seconds
+
+
+class RateRule(BaseModel):
+    """At most `limit` hits per `window_seconds` for one scope; a scope never holds a raw IP."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    scope: str
+    limit: Annotated[int, Field(ge=1)]
+    window_seconds: Annotated[int, Field(ge=1, le=RATE_BUCKET_TTL_SECONDS)]
 
 
 class Limits(BaseModel):
@@ -99,9 +157,19 @@ class Folder(BaseModel):
     """Keys and office state; figures are re-read from the fact table on every render."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-    id: str
+    id: str = Field(repr=False)
     name: str
     cards: tuple[Card, ...]
+
+
+class Note(BaseModel):
+    """Office words: read only through `list_notes`, so no folder read carries them onward."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    id: int
+    card_id: int
+    dated: str
+    body: str = Field(repr=False)
 
 
 def new_folder_id() -> str:
@@ -160,9 +228,16 @@ def _migrate(db: sqlite3.Connection, max_bytes: int) -> None:
     db.execute("COMMIT")
 
 
-def _require_folder(db: sqlite3.Connection, folder_id: str) -> None:
-    if db.execute(LIVE_FOLDER, (folder_id,)).fetchone() is None:
-        raise FolderNotFoundError(folder_id)
+def _require_folder(db: sqlite3.Connection, folder_id: str) -> sqlite3.Row:
+    row = db.execute(LIVE_FOLDER, (folder_id, expiry_cutoff(now()))).fetchone()
+    if row is None:
+        raise FolderNotFoundError
+    return row
+
+
+def _touch(db: sqlite3.Connection, folder_id: str) -> None:
+    """Every write to a folder's contents restarts its retention clock."""
+    db.execute("UPDATE folders SET updated_at = ? WHERE id = ?", (now(), folder_id))
 
 
 def _insert_card(
@@ -189,7 +264,8 @@ def _update_card(
         (*values, now(), card_id, folder_id),
     )
     if changed.rowcount != 1:
-        raise FolderNotFoundError(folder_id)
+        raise FolderNotFoundError
+    _touch(db, folder_id)
 
 
 def _open(path: Path, max_bytes: int) -> sqlite3.Connection:
@@ -199,6 +275,7 @@ def _open(path: Path, max_bytes: int) -> sqlite3.Connection:
         db.row_factory = sqlite3.Row
         db.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
         db.execute("PRAGMA foreign_keys = ON")
+        db.execute("PRAGMA secure_delete = ON")  # removed notes leave no bytes in free pages
         if db.execute("PRAGMA journal_mode").fetchone()[0] != "wal":
             db.execute("PRAGMA journal_mode = WAL")
         _migrate(db, max_bytes)
@@ -269,7 +346,7 @@ class FolderStore:
             self._connect().close()
         log.info("folder store ready in %.1f ms", (time.perf_counter() - start) * 1000)
 
-    @validate_call
+    @checked
     def create_folder(
         self, name: FolderName, case_id: CaseId, chamber: Chamber, district: District
     ) -> str:
@@ -284,7 +361,7 @@ class FolderStore:
             _insert_card(db, folder_id, case_id, chamber, district)
         return folder_id
 
-    @validate_call
+    @checked
     def save_case(
         self, folder_id: FolderId, case_id: CaseId, chamber: Chamber, district: District
     ) -> None:
@@ -292,24 +369,124 @@ class FolderStore:
         with self._write() as db:
             _require_folder(db, folder_id)
             _insert_card(db, folder_id, case_id, chamber, district)
+            _touch(db, folder_id)
 
-    @validate_call
+    @checked
     def set_priority(
         self, folder_id: FolderId, card_id: CardId, priority: Priority, reason: Reason
     ) -> None:
         with self._write() as db:
             _update_card(db, folder_id, card_id, "priority = ?, reason = ?", priority, reason)
 
-    @validate_call
+    @checked
     def set_status(self, folder_id: FolderId, card_id: CardId, status: Status) -> None:
         with self._write() as db:
             _update_card(db, folder_id, card_id, "status = ?", status)
 
-    @validate_call
+    @checked
     def get_folder(self, folder_id: FolderId) -> Folder:
         with closing(self._connect()) as db:
-            row = db.execute(LIVE_FOLDER, (folder_id,)).fetchone()
-            if row is None:
-                raise FolderNotFoundError(folder_id)
+            row = _require_folder(db, folder_id)
             cards = db.execute(LIVE_CARDS, (folder_id,)).fetchall()
         return Folder(id=row["id"], name=row["name"], cards=tuple(Card(**dict(c)) for c in cards))
+
+    @checked
+    def rotate_link(self, folder_id: FolderId) -> str:
+        """Move everything to a new id in one transaction; the old link is then simply unknown."""
+        new_id = new_folder_id()
+        with self._write() as db:
+            _require_folder(db, folder_id)
+            db.execute(
+                "INSERT INTO folders (id, name, created_at, updated_at)"
+                " SELECT ?, name, created_at, ? FROM folders WHERE id = ?",
+                (new_id, now(), folder_id),
+            )
+            db.execute("UPDATE cards SET folder_id = ? WHERE folder_id = ?", (new_id, folder_id))
+            db.execute("DELETE FROM folders WHERE id = ?", (folder_id,))
+        return new_id
+
+    @checked
+    def add_note(
+        self, folder_id: FolderId, card_id: CardId, body: NoteBody, confirmed: Literal[True]
+    ) -> int:
+        """A note on a live card of this folder; `confirmed` is the office's word, always true."""
+        with self._write() as db:
+            _require_folder(db, folder_id)
+            stamp = now()
+            added = db.execute(
+                "INSERT INTO notes (card_id, dated, body, confirmed, created_at, updated_at)"
+                " SELECT id, ?, ?, ?, ?, ? FROM cards"
+                " WHERE id = ? AND folder_id = ? AND deleted_at IS NULL RETURNING id",
+                (stamp[:10], body, confirmed, stamp, stamp, card_id, folder_id),
+            ).fetchall()
+            if not added:
+                raise FolderNotFoundError
+            _touch(db, folder_id)
+        return int(added[0]["id"])
+
+    @checked
+    def edit_note(
+        self, folder_id: FolderId, note_id: NoteId, body: NoteBody, confirmed: Literal[True]
+    ) -> None:
+        with self._write() as db:
+            _require_folder(db, folder_id)
+            changed = db.execute(
+                "UPDATE notes SET body = ?, confirmed = ?, updated_at = ?"
+                " WHERE id = ? AND deleted_at IS NULL AND card_id IN"
+                " (SELECT id FROM cards WHERE folder_id = ? AND deleted_at IS NULL)",
+                (body, confirmed, now(), note_id, folder_id),
+            )
+            if changed.rowcount != 1:
+                raise FolderNotFoundError
+            _touch(db, folder_id)
+
+    @checked
+    def list_notes(self, folder_id: FolderId) -> tuple[Note, ...]:
+        with closing(self._connect()) as db:
+            _require_folder(db, folder_id)
+            notes = db.execute(LIVE_NOTES, (folder_id,)).fetchall()
+        return tuple(Note(**dict(note)) for note in notes)
+
+    @checked
+    def spend_rate(self, rules: tuple[RateRule, ...]) -> None:
+        """Count one hit on every rule, or on none: one refusal leaves all counters as they were."""
+        with self._write() as db:
+            moment = int(datetime.fromisoformat(now()).timestamp())
+            for rule in rules:
+                row = db.execute(
+                    "SELECT window_start, hits FROM rate_buckets WHERE scope = ?", (rule.scope,)
+                ).fetchone()
+                if row is None or moment - row["window_start"] >= rule.window_seconds:
+                    start, hits = moment, 0
+                else:
+                    start, hits = row["window_start"], row["hits"]
+                if hits >= rule.limit:
+                    raise RateLimitedError(start + rule.window_seconds - moment)
+                db.execute(
+                    "INSERT INTO rate_buckets (scope, window_start, hits) VALUES (?, ?, ?)"
+                    " ON CONFLICT (scope) DO UPDATE SET"
+                    " window_start = excluded.window_start, hits = excluded.hits",
+                    (rule.scope, start, hits + 1),
+                )
+
+    def purge_expired(self, *, dry_run: bool = False) -> Purged:
+        """Hard-delete what has expired. Deleting only frees space, so no size ceiling applies."""
+        with self._capacity(), closing(self._connect()) as db:
+            db.execute("BEGIN IMMEDIATE")
+            stamp = now()
+            cutoff = expiry_cutoff(stamp)
+            stale = int(datetime.fromisoformat(stamp).timestamp()) - RATE_BUCKET_TTL_SECONDS
+            purged = Purged(
+                folders=db.execute(
+                    "DELETE FROM folders WHERE updated_at <= ? OR deleted_at <= ?", (cutoff, cutoff)
+                ).rowcount,
+                cards=db.execute("DELETE FROM cards WHERE deleted_at <= ?", (cutoff,)).rowcount,
+                notes=db.execute("DELETE FROM notes WHERE deleted_at <= ?", (cutoff,)).rowcount,
+                rate_buckets=db.execute(
+                    "DELETE FROM rate_buckets WHERE window_start <= ?", (stale,)
+                ).rowcount,
+            )
+            db.execute("ROLLBACK" if dry_run else "COMMIT")
+            if not dry_run:
+                db.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()  # the WAL held copies
+        return purged
