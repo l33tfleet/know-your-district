@@ -13,14 +13,23 @@ from typing import Literal
 
 Kind = Literal["phone", "email", "address"]
 
-# A street name may be lowercase or ordinal. Ordinary sentence words and counted
-# groups are not name evidence (for example, "3 programs in place" or "5 families drive").
-_STREET_WORD = (
-    r"(?!(?:in|on|the|a|at|are|is|was|were|and|of|to|for|about|asked|have|has|came"
-    r"|people|families|staff|programs|kupuna|kūpuna)\b)"
-    r"(?:\d+(?:st|nd|rd|th)|[^\W\d][\w'.-]*)"
-)
+# Candidate detection must include every street word: even "A" and "Kupuna" can name
+# a street. Only a complete candidate in a narrow office-prose context is exempt.
+_STREET_WORD = r"(?:\d+(?:st|nd|rd|th)|[^\W\d][\w'.-]*)"
 _STREET = r"(?<![\w-])\d{1,6}(?:-\d{1,4})?[A-Za-z]?\s+" + rf"(?:{_STREET_WORD}\s+){{1,4}}?"
+_OFFICE_PROSE = re.compile(
+    r"(?:(?:19|20)\d{2}\s+(?:food\s+drive|district\s+court)"
+    r"|\d+\s+(?:people|families|parents|staff|programs|kupuna|kūpuna)\s+"
+    r"(?:drive|in\s+place|are\s+(?:at\s+a\s+place|on\s+the\s+way)"
+    r"|asked\s+about\s+the\s+court|came\s+and\s+the\s+place))",
+    re.IGNORECASE,
+)
+# A local-number-shaped bill/year pair is safe only within an explicit reference.
+# Compare exact spans below, so neither a longer phone nor a second contact is hidden.
+_LEGISLATIVE_REFERENCE = re.compile(
+    r"(?<!\w)(?:HB|SB|Act)\s+(?P<pair>\d{3}[\s./-](?:19|20)\d{2})(?!\w)",
+    re.IGNORECASE,
+)
 _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
     (
         "phone",
@@ -73,7 +82,16 @@ def _canonical(text: str) -> str:
 def find(text: str) -> tuple[Kind, ...]:
     """The kinds of personal detail in `text`, phone first; empty when there are none."""
     canonical = _canonical(text)
-    found: list[Kind] = [kind for kind, pattern in _PATTERNS if pattern.search(canonical)]
+    references = {match.span("pair") for match in _LEGISLATIVE_REFERENCE.finditer(canonical)}
+    found: list[Kind] = []
+    for kind, pattern in _PATTERNS:
+        for match in pattern.finditer(canonical):
+            if kind == "phone" and match.span() in references:
+                continue
+            if kind == "address" and _OFFICE_PROSE.fullmatch(match.group()):
+                continue
+            found.append(kind)
+            break
     return tuple(dict.fromkeys(found))
 
 

@@ -1145,3 +1145,141 @@ def test_ordinary_sentences_can_be_saved_as_notes_and_reasons(
     db.set_priority(folder_id, card, "high", text)
     assert bodies(db, folder_id) == [text]
     assert db.get_folder(folder_id).cards[0].reason == text
+
+
+# Context exceptions apply to individual candidates, never to a whole note.
+CONTEXT_ALLOWED = [
+    "The 2026 food drive",
+    "2025 district court",
+    "3 parents drive",
+    "HB 123 2026 session",
+    "SB 850/2026",
+    "Act 123-1900",
+    "hb 123 2099",
+    "\uff28\uff22 \uff11\uff12\uff13 \uff12\uff10\uff12\uff16 session",
+    "We have 3 programs in place",
+    "2 staff are on the way",
+    "10 kupuna asked about the court",
+]
+CONTEXT_BLOCKED = [
+    "1234 Kupuna Loop",
+    "12 Kūpuna Way",
+    "100 A St",
+    "2026 Pualani Drive",
+    "2026 pualani drive",
+    "1234 The Loop",
+    "12 Food Drive",
+    "123 2026 session",
+    "HB 123 1899",
+    "SB 850/2100",
+    "XHB 123 2026",
+    "HB 123 2026; call 555 0123",
+    "SB 850/2026; office@example.org",
+    "Act 123 2026; 1234 Kupuna Loop",
+    "3 parents drive; 100 A St",
+    "The 2026 food drive; 2026 Pualani Drive",
+    "HB 123 2026; SB 850/2026; 808-555-0123",
+    "HB 123 2026 555 0123",
+]
+NOTE_OPERATIONS = ["service-create", "service-edit", "store-create", "store-edit", "priority"]
+
+
+@pytest.mark.parametrize("text", CONTEXT_ALLOWED)
+@pytest.mark.parametrize("operation", NOTE_OPERATIONS)
+def test_contextual_office_prose_can_be_saved(
+    db: store.FolderStore, folders: FolderService, text: str, operation: str
+) -> None:
+    folder_id, card = new_folder(db)
+    note = db.add_note(folder_id, card, NOTE, True)
+    if operation == "service-create":
+        add_note(folders, folder_id, card, text)
+    elif operation == "service-edit":
+        folders.edit_note(folder_id, note, text, folders.confirmation(folder_id, text), IP)
+    elif operation == "store-create":
+        db.add_note(folder_id, card, text, True)
+    elif operation == "store-edit":
+        db.edit_note(folder_id, note, text, True)
+    else:
+        db.set_priority(folder_id, card, "high", text)
+    if operation == "priority":
+        assert db.get_folder(folder_id).cards[0].reason == text
+    else:
+        assert text in bodies(db, folder_id)
+
+
+@pytest.mark.parametrize("text", CONTEXT_BLOCKED)
+@pytest.mark.parametrize("operation", [*NOTE_OPERATIONS, "folder-create"])
+def test_context_exceptions_never_hide_contact_details(
+    db: store.FolderStore, folders: FolderService, text: str, operation: str
+) -> None:
+    folder_id, card = new_folder(db)
+    note = db.add_note(folder_id, card, NOTE, True)
+    token = pii.confirmation_token(SECRET, folder_id, text)
+    if operation.startswith("service"):
+        with pytest.raises(service.PiiBlockedError):
+            if operation == "service-create":
+                folders.add_note(folder_id, card, text, token, IP)
+            else:
+                folders.edit_note(folder_id, note, text, token, IP)
+    else:
+        with pytest.raises(ValidationError, match="Personal phone numbers, emails and addresses"):
+            if operation == "store-create":
+                db.add_note(folder_id, card, text, True)
+            elif operation == "store-edit":
+                db.edit_note(folder_id, note, text, True)
+            elif operation == "folder-create":
+                db.create_folder(text, CASE, "house", 22)
+            else:
+                db.set_priority(folder_id, card, "high", text)
+    assert bodies(db, folder_id) == [NOTE]
+    assert db.get_folder(folder_id).cards[0].reason is None
+
+
+def test_edit_is_refused_when_the_write_budget_is_exhausted(
+    db: store.FolderStore, folders: FolderService, clock: Clock
+) -> None:
+    folder_id, card = new_folder(db)
+    note = db.add_note(folder_id, card, NOTE, True)
+    for _ in range(service.WRITE_PER_IP.limit):
+        folders.throttle_write(IP)
+    text = "Changed office prose"
+    with pytest.raises(store.RateLimitedError):
+        folders.edit_note(folder_id, note, text, folders.confirmation(folder_id, text), IP)
+    assert bodies(db, folder_id) == [NOTE]
+
+
+def test_rotation_is_refused_when_the_write_budget_is_exhausted(
+    db: store.FolderStore, folders: FolderService, db_path: Path, clock: Clock
+) -> None:
+    old, card = new_folder(db)
+    db.add_note(old, card, NOTE, True)
+    for _ in range(service.WRITE_PER_IP.limit):
+        folders.throttle_write(IP)
+    with pytest.raises(store.RateLimitedError):
+        folders.rotate_link(old, IP)
+    assert db.get_folder(old).cards[0].id == card
+    assert bodies(db, old) == [NOTE]
+    assert rows(db_path, "SELECT id FROM folders") == [(old,)]
+
+
+def test_rotation_rolls_back_after_insertion_and_card_movement(
+    db: store.FolderStore, db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    old, card = new_folder(db)
+    db.add_note(old, card, NOTE, True)
+    db.set_status(old, card, "contacted")
+    replacement = "b" * 32
+    monkeypatch.setattr(store, "new_folder_id", lambda: replacement)
+    with closing(sqlite3.connect(db_path)) as raw, raw:
+        raw.execute(
+            "CREATE TRIGGER refuse_folder_deletion BEFORE DELETE ON folders "
+            "BEGIN SELECT RAISE(ABORT, 'late rotation failure'); END"
+        )
+    with pytest.raises(sqlite3.IntegrityError, match="late rotation failure"):
+        db.rotate_link(old)
+    assert rows(db_path, "SELECT id FROM folders") == [(old,)]
+    assert rows(db_path, "SELECT folder_id FROM cards") == [(old,)]
+    assert [(c.id, c.status) for c in db.get_folder(old).cards] == [(card, "contacted")]
+    assert bodies(db, old) == [NOTE]
+    with pytest.raises(store.FolderNotFoundError):
+        db.get_folder(replacement)
