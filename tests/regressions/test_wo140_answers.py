@@ -478,3 +478,25 @@ def test_ask_percentages_still_compare_county_and_state(
     html = render({"kind": "routed", "indicator_id": indicator, "confidence": 0.9}, rows)
     assert "compared with Honolulu County: Clearly higher" in html
     assert "compared with State of Hawaiʻi: Clearly lower" in html
+
+
+@pytest.mark.parametrize("geography", [DISTRICT, COUNTY, STATE])
+def test_present_fact_from_unpinned_vintage_is_rejected(geography: str) -> None:
+    from app.facts import acs_config
+
+    row = fact(geography, 123, 7, "B01003_001E", "Total population").model_copy(
+        update={"vintage": "2019–2023"}
+    )
+    assert row.vintage != acs_config()[0]
+    # The exact referenced row is present, in scope, and has a supported unit.
+    # Only the pinned-vintage check can reject it.
+    with pytest.raises(ValueError, match=r"^unknown fact reference$"):
+        render(
+            {
+                "kind": "routed",
+                "indicator_id": "population",
+                "confidence": 0.9,
+                "references": [reference(row)],
+            },
+            [row],
+        )
