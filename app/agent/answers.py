@@ -268,7 +268,12 @@ class AnswerRenderer:
             None,
         )
         for other in facts:
-            if other.geography == self.geographies[0] or other.variable != variable:
+            # Whole county/state counts are context, not a per-district basis.
+            if (
+                self.units[variable] not in {"percent", "dollars"}
+                or other.geography == self.geographies[0]
+                or other.variable != variable
+            ):
                 continue
             group = compare_facts(district, other)
             html += _paragraph(

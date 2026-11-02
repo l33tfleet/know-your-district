@@ -424,3 +424,57 @@ def test_untrusted_reference_identifiers_rejected(geography: str) -> None:
                 ],
             }
         )
+
+
+@pytest.mark.parametrize(
+    "indicator,variable,label",
+    [
+        ("population", "B01003_001E", "Total population"),
+        ("older_living_alone", "B11007_003E", "Households with a person 65+ living alone"),
+        ("social_security_households", "B19055_002E", "Households with Social Security income"),
+        ("retirement_households", "B19059_002E", "Households with retirement income"),
+        ("below_poverty_no_snap", "B22003_006E", "Households below poverty reporting no SNAP"),
+    ],
+)
+@pytest.mark.parametrize("explicit_references", [False, True])
+def test_ask_count_totals_are_context_without_cross_geography_comparisons(
+    indicator: str, variable: str, label: str, explicit_references: bool
+) -> None:
+    rows = [
+        fact(geography, value, 100, variable, label)
+        for geography, value in [(DISTRICT, 10000), (COUNTY, 100000), (STATE, 200000)]
+    ]
+    record: dict[str, object] = {"kind": "routed", "indicator_id": indicator, "confidence": 0.9}
+    if explicit_references:
+        record["references"] = [reference(row) for row in reversed(rows)]
+    html = render(record, rows)
+    assert "compared with" not in html
+    assert "Clearly lower" not in html and "Clearly higher" not in html
+    for row, geography in zip(
+        rows,
+        ["Hawaiʻi State House District 22", "Honolulu County", "State of Hawaiʻi"],
+        strict=True,
+    ):
+        assert row.value is not None
+        assert f"{label} · {geography}: {row.value:,.0f}" in html
+        assert row.geography in html and row.method in html
+    assert "±100" in html and "reliable" in html
+
+
+@pytest.mark.parametrize(
+    "indicator,variable,label",
+    [
+        ("age_65_share", "DP05_0024PE", "Share of residents age 65 and over"),
+        ("poverty_65_rate", "S1701_C03_010E", "Poverty rate, age 65 and over"),
+    ],
+)
+def test_ask_percentages_still_compare_county_and_state(
+    indicator: str, variable: str, label: str
+) -> None:
+    rows = [
+        fact(geography, value, 2, variable, label)
+        for geography, value in [(DISTRICT, 20), (COUNTY, 17), (STATE, 23)]
+    ]
+    html = render({"kind": "routed", "indicator_id": indicator, "confidence": 0.9}, rows)
+    assert "compared with Honolulu County: Clearly higher" in html
+    assert "compared with State of Hawaiʻi: Clearly lower" in html
