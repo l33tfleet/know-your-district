@@ -6,11 +6,14 @@ from app.analysis.intervals import interval_layout
 from app.brief_facts import FORMATS, STATE, BriefFacts, citation, reading
 from app.copy import geography_name, section_copy
 from app.counties import load_mapping
+from app.features import enabled
 from app.page_state import PageState
+from app.source_links import MAPPING_URL, evidence_link, source_links
 
 
 def context(state: PageState) -> dict[str, object]:
     copy = section_copy("figures")
+    checks_enabled = enabled("source_links", state)
     selected = BriefFacts(state.district, load_mapping()[state.district.fact_key])
     district = selected.district
     shares = selected.shares
@@ -45,7 +48,11 @@ def context(state: PageState) -> dict[str, object]:
                     }
                     for mark in interval_layout(found)
                 ],
-                "citations": [citation(f, fmt, copy) for f in found if f is not None],
+                "citations": [
+                    citation(f, fmt, copy) | {"links": source_links(f) if checks_enabled else ()}
+                    for f in found
+                    if f is not None
+                ],
             }
         )
     return {
@@ -56,4 +63,11 @@ def context(state: PageState) -> dict[str, object]:
             for s in shares
         ],
         "mapping": shares[0],
+        "mapping_links": [
+            evidence_link(shares[0].district_source, "district_source"),
+            evidence_link(shares[0].county_source, "county_source"),
+            evidence_link(MAPPING_URL, "mapping_file"),
+        ]
+        if checks_enabled
+        else [],
     }

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<article class="folder">
+  <h1>{{ folder.name }}</h1>
+  <p class="folder-notice" id="folder-notice">{{ words.notice }}</p>
+  <div class="folder-link">
+    <label for="folder-link">{{ words.link_label }}</label>
+    <input id="folder-link" type="text" readonly value="{{ link }}" aria-describedby="folder-notice">
+    <button type="button" class="copy-link" data-copied="{{ words.copied }}"
+            hx-on:click="const button = this; navigator.clipboard.writeText(location.href).then(function () { button.nextElementSibling.textContent = button.dataset.copied })">{{ words.copy_link }}</button>
+    <span id="copy-status" role="status"></span>
+  </div>
+  <p><a href="{{ reopen }}">{{ words.reopen }}</a></p>
+  {% for card in cards %}
+  {{ card }}
+  {% else %}
+  <p>{{ words.empty }}</p>
+  {% endfor %}
+</article>
+{% endblock %}

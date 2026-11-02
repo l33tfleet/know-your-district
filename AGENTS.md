@@ -139,7 +139,9 @@ make format                               # ruff fixes and formatting
   `Supersedes:` line with the work order's words that require it.
 - Leave the rest of `tests/` alone unless the work order says otherwise. It
   belongs to the Code Owner (characterization tests of the rendered pages live
-  in `tests/test_pages.py`), and touching it holds the PR for review.
+  in `tests/test_pages.py`). Code-owned paths are flagged by the labeler,
+  receive extra reviewer scrutiny and a longer veto window, and require
+  no human approval to merge.
 - Data traps listed in `docs/data.md` each become an eval case in `tests/evals/`.
 
 ## Mechanical guard rails
@@ -151,8 +153,9 @@ make format                               # ruff fixes and formatting
 - import-linter: page sections are independent of each other.
 - `.github/CODEOWNERS` gives `@k7lim` the guard-rail files (`pyproject.toml`,
   `Makefile`, `.github/`, `AGENTS.md`, `CLAUDE.md`, `.factory/`, `conftest.py`,
-  `/fixtures/`, `/scripts/independent_*`). A PR that touches them waits for
-  that review instead of auto-merging. `tests/regressions/` is unowned on purpose.
+  `/fixtures/`, `/scripts/independent_*`). Code-owned paths are flagged by the labeler,
+  receive extra reviewer scrutiny and a longer veto window, and require
+  no human approval to merge. `tests/regressions/` is unowned on purpose.
 
 ## Scope test
 

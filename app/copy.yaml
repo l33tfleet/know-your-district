@@ -23,6 +23,31 @@ home:
       senate: Senate
     number_label: District number
     submit: Open the brief
+  # Fixed cross-district questions; keys match QUESTIONS in app/tools/rankings.py.
+  question:
+    legend: Compare all House districts
+    submit: Show the answer
+    options:
+      age_65_share: Which House districts have the highest share of residents age 65 and over?
+      median_household_income: Which House districts have the lowest median household income?
+    # One sentence each. Placeholders only: every number comes from a Fact.
+    findings:
+      age_65_share: >-
+        {district} has the highest estimated share of residents age 65 and over among
+        House districts with a published figure: {value} ({moe}, {word}).
+      median_household_income: >-
+        {district} has the lowest estimated median household income among House
+        districts with a published figure: {value} ({moe}, {word}).
+    overlap: >-
+      Close ranks may not differ meaningfully: the margins of error of neighboring
+      districts in this list overlap.
+    distinct: The margins of error of neighboring districts in this list do not overlap.
+    left_out: "House districts left out because no figure is published: {count}."
+    no_figures: No House district has a published figure for this question yet.
+    citation: >-
+      Source: {source}, table {table_id}, {vintage}, geography {geography}.
+      Method: {method}. Coefficient of variation: {cv}.
+    unknown: "Unknown question. Valid values: {valid}."
 
 not_found:
   title: Page not found
@@ -103,6 +128,14 @@ sections:
         missing:
           lead: "comparable published estimates are not available; no comparison claim with"
     source_summary: Source and uncertainty
+    check_figure: Check this figure
+    check_links:
+      table: Published table on data.census.gov
+      api: Census API query (may require an API key)
+      evidence: Recorded source evidence (see method above)
+      district_source: District boundary source
+      county_source: County boundary source
+      mapping_file: Committed county area mapping (see method above)
     fields:
       source: Source
       table_id: Table
@@ -130,6 +163,40 @@ sections:
       lower: Clearly lower than the state average per district
       caution: "Use with caution; no comparison claim"
       missing: Comparable published estimates are not available
+
+  # The opening outreach case (#286). The record's own words are in data/cases.yaml.
+  case:
+    title: "{population} · {program}"
+    citation: "Source: {source}, table {table_id}, {vintage}, geography {geography}. Method: {method}."
+    unavailable: >-
+      No published reading is available for {district}, so this card shows no count.
+      The next step still applies.
+    known_label: What we know
+    unknown_label: What we don't
+    problems:
+      geography: Geography
+      population: Population
+      program: Program
+    gap_label: Kind of gap
+    action_label: Action
+    gaps:
+      unused_appropriation: Unused appropriation
+      eligible_nonparticipation: Possible nonparticipation
+      application_or_renewal_barrier: Application or renewal barrier
+      underpayment: Underpayment
+      redemption_or_expiration_loss: Redemption or expiration loss
+      service_capacity_or_fit: Service capacity or fit
+    actions:
+      targeted_information: Targeted information
+      navigator_referral: Navigator referral
+      outreach_planning_lead: Outreach-planning lead
+      agency_follow_up: Agency follow-up
+    next_label: Next step
+    official_label: Official SNAP program page
+    outreach_label: DHS SNAP outreach providers
+    rule_checked: "Rule source checked {date}."
+    evidence_link: County and state figures, and the source
+    save_label: Save to folder
 
   snap:
     heading: Households below poverty reporting no SNAP receipt
@@ -169,6 +236,40 @@ sections:
     heading: Programs that may help
     official_link: Official program page
     referral_link: Aloha United Way 211
+
+# A district folder (#288). Its figures come from the case card, re-read on each render.
+folders:
+  title: "{name} · Know Your District"
+  notice: Anyone with this link can open and edit this folder
+  link_label: Link to this folder
+  copy_link: Copy link
+  copied: Link copied
+  reopen: Reopen this folder's link
+  empty: This folder has no saved cases.
+  district_label: "Saved for {district}"
+  priority_label: Priority
+  reason_label: Reason, one line
+  reason_hint: Up to 200 characters. Do not name or describe a person.
+  set_priority: Set priority
+  status_label: Status
+  set_status: Set status
+  summary: "Priority: {priority}{reason}. Status: {status}."
+  summary_reason: " ({reason})"
+  priorities:
+    high: high
+    normal: normal
+    low: low
+  statuses:
+    idea: idea
+    contacted: contacted
+    planned: planned
+    done: done
+  unknown_case: "Unknown case {value!r}. Valid values: {valid}."
+  unknown_district: "Unknown district. Valid chambers: {valid}, each with its own district numbers."
+  unknown_priority: "Unknown priority {value!r}. Valid values: {valid}."
+  unknown_status: "Unknown status {value!r}. Valid values: {valid}."
+  bad_reason: A reason is one line of 1 to 200 characters.
+  no_store: Folders are not available here because the folder file could not be opened. Set KYD_FOLDERS_DB to choose another file outside the checkout.
 
 # Geography names, shared by the headline and the figures' citations.
 geography:

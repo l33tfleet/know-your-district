@@ -3,8 +3,9 @@
 
 from app import snap
 from app.copy import section_copy
-from app.features import load_features
+from app.features import enabled, load_features
 from app.page_state import PageState
+from app.source_links import source_links
 
 PRINT = True
 
@@ -13,12 +14,19 @@ def context(state: PageState) -> dict[str, object]:
     if not load_features().outreach:
         return {}
     result = snap.load_result(state.district)
+    readings = (result.district, *result.counties, result.state)
+    checks_enabled = enabled("source_links", state)
     return {
         "result": result,
         # Keep the brief's neutral wording while preserving the canonical measure.
         "heading": result.heading.replace("below poverty", "in poverty"),
         "measure_note": result.measure_note.replace("below poverty", "under the poverty threshold"),
-        "readings": (result.district, *result.counties, result.state),
+        "readings": readings,
+        "source_links": {
+            r.geography: source_links(r.fact)
+            for r in readings
+            if checks_enabled and r.fact is not None
+        },
         # Preserve the canonical caveat without the page's prohibited "eligible for" wording.
         "poverty_note": result.poverty_note.replace(
             "households eligible for SNAP but not enrolled",

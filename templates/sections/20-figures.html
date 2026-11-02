@@ -27,6 +27,9 @@
     <p>{{ section.mapping.method }}</p>
     <p>{{ section.mapping.district_source }}</p>
     <p>{{ section.mapping.county_source }}</p>
+    {% for link in section.mapping_links %}
+    <p><a href="{{ link.url }}">{{ copy.check_links[link.kind] }}</a></p>
+    {% endfor %}
   </details>
   {% endif %}
   {% for f in section.figures %}
@@ -76,6 +79,10 @@
         <dd data-field="cv"><data value="{{ raw(c.fact.cv) }}">{{ c.cv_text }}</data></dd>
         <dt>{{ copy.fields.endpoint }}</dt>
         <dd data-field="endpoint">{{ c.fact.endpoint }}</dd>
+        {% if c.links %}
+        <dt>{{ copy.check_figure }}</dt>
+        <dd>{% for link in c.links %}<a href="{{ link.url }}">{{ copy.check_links[link.kind] }}</a>{% if not loop.last %}<br />{% endif %}{% endfor %}</dd>
+        {% endif %}
       </dl>
       {% else %}
       <p class="missing">{{ copy.no_row }}</p>

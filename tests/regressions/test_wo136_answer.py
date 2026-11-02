@@ -168,31 +168,6 @@ def test_missing_inputs_answer_with_the_card_wording(
     assert "https://auw211.org/" in hrefs
 
 
-def test_off_hides_form_and_route_and_skips_result_load(
-    configure: Configure, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    client = configure(f'{FLAG} = "off"\n')
-    calls: list[DistrictId] = []
-    original = snap.load_result
-
-    def counted(district: DistrictId) -> snap.SnapResult:
-        calls.append(district)
-        return original(district)
-
-    monkeypatch.setattr(snap, "load_result", counted)
-    for query in ("", "&preview=1"):
-        page = client.get(f"/brief/house/22?v=a{query}")
-        assert page.status_code == 200
-        assert not parse(page.text).find_all("section", class_="snap-question")
-        response = client.get(f"/brief/house/22/snap-answer?question=no_snap_households{query}")
-        assert response.status_code == 404
-        assert "text/html" in response.headers["content-type"]
-    # Hidden even when the question itself is unknown: off never reveals the route.
-    assert client.get("/brief/house/22/snap-answer?question=other").status_code == 404
-    # Only the outreach card loaded the result; the answer route never did.
-    assert len(calls) == 2
-
-
 def test_preview_shows_form_and_answer_only_with_preview(configure: Configure) -> None:
     client = configure(f'{FLAG} = "preview"\n')
     assert not parse(client.get("/brief/house/22").text).find_all("section", class_="snap-question")

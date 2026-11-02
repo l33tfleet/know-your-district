@@ -1,0 +1,18 @@
+# Offline relevance mappings, pending program-expert review. No eligibility model
+# or comparable participation evidence is supplied, so no stronger claim is made.
+# Population IDs resolve to the measure contract in populations.yaml; program IDs
+# resolve to programs.yaml. The catalog retains official sources and the 211 route.
+- population_id: below_poverty_no_snap
+  program_id: snap
+  relevance: >-
+    SNAP may help with food costs. The published joint poverty/nonreceipt measure
+    is an outreach signal, not a count of eligible nonparticipants. The agency
+    decides eligibility; official information and Aloha United Way 211 are in the catalog.
+  observed_conditions:
+    - Households below national Census poverty thresholds reporting no SNAP in the past 12 months.
+  unobserved_conditions:
+    - Current income under applicable Hawaiʻi guidelines and allowed deductions.
+    - SNAP assistance-unit composition and nonfinancial conditions.
+    - Current receipt; self-reported past receipt is undercounted.
+  claim: relevant_need
+  review_status: pending
