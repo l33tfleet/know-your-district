@@ -1,4 +1,8 @@
 # Priorities
+
+**Why people use this tool.** They want to serve people, to get benefits delivered more efficiently, and to tell the story of government helping people. Nobody comes to be quizzed on statistics: a figure earns its place by helping someone act for a population. The demo story: type a place → its brief → ask about a group (for example kūpuna) → a cited, justified program match → save and prioritise it → reopen and see what needs attention.
+The demo story in .factory/story.md drives the work: a change serves the priorities when it makes a story step work, or clearer or faster for the person in it. Work orders name their **Story step:**.
+
 Know Your District (KevinPlusAgents, DBEDT). Cites: S=Scoring, R=Rules, U=Use case PDF+page.
 
 ## Phases
