@@ -12,7 +12,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.analysis.reliability import Z90
 from app.copy import section_copy
 from app.facts import acs_config
 from app.models import Fact
@@ -47,7 +46,8 @@ class OutreachRows(BaseModel):
     programs: tuple[Program, ...]
 
 
-def _group(district: Fact | None, state: Fact | None) -> Group:
+def compare_facts(district: Fact | None, state: Fact | None) -> Group:
+    """Compare two whole facts; callers prepare any explicit derived basis first."""
     if (
         district is None
         or state is None
@@ -59,11 +59,11 @@ def _group(district: Fact | None, state: Fact | None) -> Group:
     if district.reliability == "caution" or state.reliability == "caution":
         return "caution"
     assert district.moe is not None and state.moe is not None
-    # #30's reviewed rule: |a-b| / sqrt(MOEa² + MOEb²) > 1.645.
+    # Census rule (#181): |a-b| / sqrt(MOEa² + MOEb²) > 1.
     # Squared Decimal arithmetic preserves the strict boundary and zero-MOE case.
     difference = Decimal(str(district.value)) - Decimal(str(state.value))
     variance = Decimal(str(district.moe)) ** 2 + Decimal(str(state.moe)) ** 2
-    if difference**2 <= Z90**2 * variance:
+    if difference**2 <= variance:
         return "indeterminate"
     return "higher" if difference > 0 else "lower"
 
@@ -99,7 +99,7 @@ def build_rows(
     for number in range(1, count + 1):
         geography = f"{chamber}:15:{number:03}:2022"
         fact = facts.get((VARIABLE, geography))
-        group = _group(fact, basis)
+        group = compare_facts(fact, basis)
         rows.append(
             OutreachRow(
                 geography=geography,

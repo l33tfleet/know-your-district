@@ -231,6 +231,51 @@ sections:
     official_label: Official SNAP program page
     referral_label: Aloha United Way 211
 
+  ask:
+    heading: Ask about this district
+    label: Ask about this district
+    placeholder: What would you like to understand about this district?
+    submit: Ask
+    working: Looking for published evidence…
+    answer_label: Answer
+    paused: Ask is paused. The published brief is still available.
+    clarify: Which population did you mean?
+    fixed_income: >-
+      No published measure defines fixed income. Choose a separately measured population.
+      Social Security and retirement income populations overlap; they are never added
+      together and do not identify kūpuna or income adequacy.
+    unavailable: "{label} · {geography}: not available. No published figure in the fact table yet."
+    reading: "{label} · {geography}: {value} ({moe}; {reliability})."
+    citation: "Source: {source}, table {table_id}, variable {variable}, {vintage}, geography {geography}. Method: {method}."
+    moe: "margin of error (90%): ±{value}"
+    percentage_moe: "margin of error (90%): ±{value} percentage points"
+    geography_labels:
+      published: Published for district
+      estimated: Estimated for district
+      context: County/state context
+    comparison: "{label} · {district} compared with {reference}: {conclusion}."
+    comparisons:
+      higher: Clearly higher
+      lower: Clearly lower
+      indeterminate: No clear difference within the margins of error
+      caution: Use with caution; no comparison claim
+      missing: Comparable published estimates are not available
+    refusals:
+      individual: I can describe district populations, but cannot look up or infer information about a person.
+      partisan: I can provide nonpartisan population evidence, but cannot give opinions on candidates, parties, votes or bills.
+      eligibility: I cannot determine eligibility. Programs may help; the agency decides eligibility. Use the official program page or Aloha United Way 211 for assistance.
+      unsupported: The published evidence does not support that claim. No count or eligibility estimate is available here.
+      out_of_scope: I can help with the published district populations and outreach cases shown in this brief. Please choose one of those topics.
+    options:
+      population: Total population
+      age_65_share: Share of residents age 65 and over
+      median_household_income: Median household income
+      poverty_65_rate: Poverty rate, age 65 and over
+      older_living_alone: Households with a person age 65 and over living alone
+      social_security_households: Households with Social Security income
+      retirement_households: Households with retirement income
+      below_poverty_no_snap: Households below poverty reporting no SNAP
+
   # Names, agencies, purposes and links come from data/programs.yaml.
   programs:
     heading: Programs that may help
@@ -282,3 +327,6 @@ counties:
   "003": Honolulu County
   "007": Kauaʻi County
   "009": Maui County
+
+# Ask uses recorded typed decisions here; live routing belongs to #184.
+# No upstream prose, values, labels or comparison claims reach the renderer.

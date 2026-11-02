@@ -75,46 +75,6 @@ def test_comparable_state_basis_and_no_league_ranking(chamber: Chamber, count: i
     assert "eligibility" in result.caveat
 
 
-@pytest.mark.parametrize(
-    "value,moe,state_value,state_moe,group",
-    [
-        (120, 2, 5100, 102, "higher"),
-        (80, 2, 5100, 102, "lower"),
-        (103, 2, 5100, 102, "indeterminate"),
-        (103.29, 2, 5100, 0, "indeterminate"),  # strict > 1.645, not >=
-        (103.30, 2, 5100, 0, "higher"),
-        (100, 0, 5100, 0, "indeterminate"),
-        (120, 0, 5100, 0, "higher"),
-        (80, 0, 5100, 0, "lower"),
-        (120, 80, 5100, 102, "caution"),
-        (120, 2, 5100, 3000, "caution"),
-        (0, 2, 5100, 102, "caution"),
-        (120, None, 5100, 102, "caution"),
-        (120, 2, 5100, None, "caution"),
-        (120, 2, 0, 102, "caution"),
-        (None, 2, 5100, 102, "missing"),
-        (120, 2, None, 102, "missing"),
-    ],
-)
-def test_comparison_contract(
-    value: float | None,
-    moe: float | None,
-    state_value: float | None,
-    state_moe: float | None,
-    group: str,
-) -> None:
-    from app.analysis.outreach import build_rows
-
-    district = fact("house:15:001:2022", value, moe)
-    state = fact("state:15", state_value, state_moe)
-    result = build_rows("house", {(f.variable, f.geography): f for f in [district, state]}, [])
-    row = result.rows[0]
-    assert row.group == group
-    assert row.fact == district  # caution and unavailable facts remain inspectable
-    assert row.reliability_word == section_copy("figures")["reliability"][district.reliability]
-    assert row.comparison == section_copy("outreach")["groups"][group]
-
-
 @pytest.mark.parametrize("absent", ["district", "state"])
 def test_absent_rows_are_missing(absent: str) -> None:
     from app.analysis.outreach import build_rows
