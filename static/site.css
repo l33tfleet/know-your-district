@@ -79,7 +79,7 @@ code {
 
 .district-outline svg {
   display: block;
-  width: 100%;
+  width: var(--outline-full-width);
   height: auto;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
@@ -325,8 +325,24 @@ code {
     font-size: var(--print-headline-size);
   }
 
+  .brief-headline {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--outline-print-width);
+    column-gap: var(--space-gap);
+  }
+
+  .headline-title {
+    display: contents;
+  }
+
   .district-outline {
-    flex-basis: var(--outline-print-width);
+    grid-column: 2;
+    grid-row: 1 / 4;
+    align-self: center;
+  }
+
+  .brief-headline :is(h1, .vintage-line, .boundary-source) {
+    grid-column: 1;
   }
 
   .boundary-source {

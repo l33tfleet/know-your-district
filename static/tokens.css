@@ -30,6 +30,7 @@
   --headline-space: 0.25rem;
   --outline-width: clamp(4.5rem, 18vw, 7rem);
   --outline-print-width: 4rem;
+  --outline-full-width: 100%;
   --outline-coast: var(--color-muted);
   --outline-coast-opacity: 0.2;
   --outline-district: var(--interval-accent);
@@ -67,7 +68,7 @@
   --print-program-columns: repeat(2, minmax(0, 1fr));
   --print-line-height: 1.15;
   --print-gap: 0.75rem;
-  --print-space: 0.15rem;
+  --print-space: 0.1rem;
   --print-heading-size: 0.95rem;
   --print-headline-size: 1.3rem;
   --print-value-size: 1rem;

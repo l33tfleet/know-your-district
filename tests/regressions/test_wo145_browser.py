@@ -17,8 +17,30 @@ from tests.regressions.test_wo122_browser_checks import (
     open_page,
     page,
 )
+from tests.regressions.test_wo143_integration import config, live_config, shipped_facts
 
-__all__ = ["base_url", "browser", "page"]
+__all__ = ["base_url", "browser", "config", "live_config", "page", "shipped_facts"]
+
+
+@pytest.mark.parametrize("chamber,number", [("house", 22), ("senate", 5)])
+@pytest.mark.parametrize("variant", ["", "?v=a", "?v=b"])
+def test_outline_keeps_complete_brief_on_one_printed_page(
+    page: Page,
+    shipped_facts: str,
+    live_config: Path,
+    chamber: str,
+    number: int,
+    variant: str,
+    tmp_path: Path,
+) -> None:
+    """The outline and attribution leave room for full facts, even with wider text."""
+    open_page(page, f"{shipped_facts}/brief/{chamber}/{number}{variant}", 1440)
+    page.add_style_tag(content=".brief, .site-footer { letter-spacing: 0.04em; }")
+    page.emulate_media(media="print")
+    assert page.locator(".district-outline svg").is_visible()
+    assert page.locator(".boundary-source").is_visible()
+    pdf = page.pdf(path=str(tmp_path / "brief.pdf"), prefer_css_page_size=True)
+    assert len(re.findall(rb"/Type\s*/Page(?!s)", pdf)) == 1
 
 
 @pytest.mark.parametrize("chamber,number", [("house", 22), ("senate", 8)])
