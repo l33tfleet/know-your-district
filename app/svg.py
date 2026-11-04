@@ -19,6 +19,8 @@ def _polygons(shape: Polygon | MultiPolygon) -> list[Rings]:
 def _label(value: str) -> str:
     if any(ord(char) < 32 or ord(char) == 127 for char in value):
         raise ValueError("SVG labels must not contain ASCII control characters or DEL")
+    if any(0xD800 <= ord(char) <= 0xDFFF or ord(char) in {0xFFFE, 0xFFFF} for char in value):
+        raise ValueError("SVG labels must not contain XML-forbidden characters")
     return escape(value, quote=True)
 
 

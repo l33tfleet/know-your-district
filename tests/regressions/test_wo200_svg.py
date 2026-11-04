@@ -197,3 +197,25 @@ def test_ordered_islands_and_multipolygon_coastline_share_the_district_projectio
     assert [p.attrib["aria-label"] for p in layers] == ["Kauaʻi", "Oʻahu", "House 22"]
     assert points(layers[0])[:5] == points(layers[1]) == points(layers[2])
     assert "Niʻihau" in ET.fromstring(svg).attrib["aria-label"]
+
+
+@pytest.mark.parametrize("character", ["\ud800", "\udfff", "\ufffe", "\uffff"])
+@pytest.mark.parametrize("island_label", [False, True])
+def test_reject_xml_forbidden_label_characters(character: str, island_label: bool) -> None:
+    shape = polygon(rectangle(0, 0, 1, 1))
+    with pytest.raises(ValueError, match="XML-forbidden"):
+        render(
+            shape,
+            "district" if island_label else character,
+            ((character, shape),) if island_label else (),
+        )
+
+
+def test_rendered_island_labels_round_trip_without_markup_injection() -> None:
+    shape = polygon(rectangle(-158, 20, -157, 21))
+    label = 'Oʻahu & "<island>" 🏝'
+    root = ET.fromstring(render(shape, islands=((label, shape),)))
+    assert root.attrib["role"] == "img"
+    assert label in root.attrib["aria-label"]
+    assert [path.attrib["aria-label"] for path in root.iter(f"{NS}path")] == [label, "House 22"]
+    assert len(list(root)) == 2
