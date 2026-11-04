@@ -5,15 +5,12 @@
 <section class="intro">
   <h1>{{ find.heading }}</h1>
   {% if places %}
-  <h2>{{ find.results.format(q=q) }}</h2>
-  <ul class="find-results">
+  <p>{{ find.results.format(q=q) }}</p>
+  <ul>
     {% for p in places %}
-    <li class="find-result"><strong>{{ p.place }}</strong>, {{ find.island.format(island=p.island) }}
-      <a href="/brief/house/{{ p.house }}">{{ find.house_link.format(number=p.house) }}</a> ·
-      <a href="/brief/senate/{{ p.senate }}">{{ find.senate_link.format(number=p.senate) }}</a></li>
+    <li>{{ p.place }}, {{ p.island }}: <a href="/brief/house/{{ p.house }}">{{ find.house_link.format(number=p.house) }}</a></li>
     {% endfor %}
   </ul>
-  <p class="find-scope">{{ find.scope }}</p>
   {% elif q %}
   <p>{{ find.none.format(q=q) }}</p>
   {% if suggestions %}

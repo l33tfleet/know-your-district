@@ -27,9 +27,6 @@ home:
   find:
     label: Find a district by place
     submit: Find
-    options_label: Matching places
-    # One suggestion as you type; the option's name is the place alone.
-    option_detail: "{island} · House District {house}"
   # Fixed cross-district questions; keys match QUESTIONS in app/tools/rankings.py.
   question:
     legend: Compare all House districts
@@ -66,19 +63,12 @@ find:
   title: "Find a district by place · Know Your District"
   heading: Find a district by place
   # {q} is what was typed, shown as typed.
-  results: "Places matching “{q}”"
-  island: "{island}:"
+  results: "Oʻahu places matching “{q}”:"
   house_link: House District {number}
-  senate_link: Senate District {number}
-  scope: >-
-    Each place is matched to the districts at one point inside it. A place near a
-    district line may reach into a neighbouring district.
   none: "No Oʻahu place matches “{q}”. Only Oʻahu places are listed so far."
   suggest: "Close spellings:"
   picker_hint: Or choose the district by its number.
   empty: Type the name of a place on Oʻahu, such as Kāneʻohe or Mōʻiliʻili.
-  too_long: "A place name has at most {max} characters."
-  control: A place name cannot contain control characters.
 
 brief:
   # {district} is the district's full name, e.g. "Hawaiʻi State House District 22".

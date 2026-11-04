@@ -56,7 +56,7 @@ code {
   font-weight: var(--weight-bold);
 }
 
-/* home: the picker and the place search side by side, stacked when narrow */
+/* home: the place search beside the picker, stacked when narrow */
 .finders {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(calc(var(--measure) / 3), 1fr));
@@ -64,7 +64,7 @@ code {
   align-items: start;
 }
 
-.place-search-box {
+.place-search {
   display: flex;
   flex-wrap: wrap;
   gap: var(--picker-gap);
@@ -73,18 +73,8 @@ code {
   border: var(--rule-width) solid var(--color-rule);
 }
 
-.place-search-box label {
+.place-search label {
   font-weight: var(--weight-bold);
-}
-
-.place-search-box input {
-  flex-grow: 1;
-  min-width: 0;
-}
-
-.place-options a {
-  display: block;
-  padding: var(--picker-gap);
 }
 
 /* headline */

@@ -138,47 +138,21 @@ def pick(chamber: str = "", n: str = "") -> RedirectResponse:
     return RedirectResponse(f"/brief/{district.chamber}/{district.district}", status_code=303)
 
 
-FIND_MAX = 100
-FIND_OPTIONS = 8
+@app.get("/find", response_model=None)
+def find_place(request: Request, q: str = "") -> HTMLResponse | RedirectResponse:
+    """The place search's no-JavaScript target (WO #263, step 1: House only).
 
-
-def place_query(q: str) -> str:
-    """The typed place name, or a 400 before any matching: too long, or control characters."""
-    copy = load_copy()["find"]
-    if len(q) > FIND_MAX:
-        too_long: str = copy["too_long"]
-        raise HTTPException(status_code=400, detail=too_long.format(max=FIND_MAX))
-    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in q):
-        control: str = copy["control"]
-        raise HTTPException(status_code=400, detail=control)
-    return q.strip()
-
-
-@app.get("/find", response_class=HTMLResponse)
-def find_place(request: Request, q: str = "") -> HTMLResponse:
-    """The place search's no-JavaScript target: results, a no-match page or a prompt.
-
-    Always a page, never a redirect, so even one match shows its island and both chambers.
+    One match goes straight to its House brief; several are listed; none says so, suggests
+    close spellings and keeps the number picker.
     """
-    q = place_query(q)
+    q = q.strip()[:100]
     found = places.find(q)
+    state = page_state("house", str(found[0].house)) if len(found) == 1 else None
+    if state is not None:
+        return RedirectResponse(f"/brief/house/{state.district.district}", status_code=303)
     context = page_context() | district_numbers("house", None)
-    context |= {
-        "q": q,
-        "places": found,
-        "suggestions": places.close_spellings(q) if q and not found else [],
-    }
+    context |= {"q": q, "places": found, "suggestions": [] if found else places.close_spellings(q)}
     return templates.TemplateResponse(request, "find.html", context)
-
-
-@app.get("/find/options", response_class=HTMLResponse)
-def find_options(q: str = "") -> HTMLResponse:
-    """htmx partial: the listbox options as you type; each opens its House brief."""
-    found = places.find(place_query(q))[:FIND_OPTIONS]
-    picker = templates.get_template("partials/picker.html")
-    block = picker.blocks["place_options"]
-    html = "".join(block(picker.new_context({"copy": load_copy(), "options": found})))
-    return HTMLResponse(html)
 
 
 @dataclass(frozen=True)
