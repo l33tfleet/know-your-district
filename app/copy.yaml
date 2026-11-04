@@ -73,6 +73,9 @@ sections:
     boundary_source: "District outline: State of Hawaiʻi Office of Elections; Hawaiʻi Statewide GIS Program"
     boundary_line: "{vintage}. Method: {method} Retrieved {retrieved_on}."
     outline_label: "{district}; {islands}"
+    map_label: District map
+    map_table_label: District map as a table
+    islands_label: Islands touched
 
   figures:
     heading: Who lives here

@@ -18,6 +18,7 @@ def context(state: PageState) -> dict[str, object]:
     source = boundary.attribution.provenance
     return {
         "heading": heading,
+        "island_names": "; ".join(island.name for island in boundary.islands),
         "vintage_line": line.format(vintage=vintage, plan=plan),
         "outline": render_svg(
             boundary.geometry,

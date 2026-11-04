@@ -77,6 +77,21 @@ code {
   flex: 0 0 var(--outline-width);
 }
 
+.district-map-table {
+  border-collapse: collapse;
+  font-size: var(--size-small);
+  margin-bottom: var(--headline-space);
+}
+
+.district-map-table th {
+  text-align: left;
+  padding-right: var(--space-gap);
+}
+
+.district-map-table :is(th, td) {
+  vertical-align: top;
+}
+
 .district-outline svg {
   display: block;
   width: var(--outline-full-width);
@@ -337,16 +352,21 @@ code {
 
   .district-outline {
     grid-column: 2;
-    grid-row: 1 / 4;
+    grid-row: 1 / 5;
     align-self: center;
   }
 
-  .brief-headline :is(h1, .vintage-line, .boundary-source) {
+  .brief-headline :is(h1, .district-map-table, .vintage-line, .boundary-source) {
     grid-column: 1;
   }
 
   .boundary-source {
     font-size: var(--print-citation-size);
+  }
+
+  .district-map-table {
+    font-size: var(--print-citation-size);
+    margin-bottom: var(--print-space);
   }
 
   .brief h2 {

@@ -22,6 +22,25 @@ from tests.regressions.test_wo143_integration import config, live_config, shippe
 __all__ = ["base_url", "browser", "config", "live_config", "page", "shipped_facts"]
 
 
+@pytest.mark.parametrize("chamber,number", [("house", 22), ("senate", 8), ("house", 13)])
+def test_story_glance_map_has_a_visible_table_twin(
+    page: Page, base_url: str, chamber: str, number: int
+) -> None:
+    open_page(page, f"{base_url}/brief/{chamber}/{number}", 390)
+    region = page.get_by_role("region", name="District map", exact=True)
+    assert region.is_visible()
+    assert region.get_by_role("img").is_visible()
+    table = region.get_by_role("table", name="District map as a table", exact=True)
+    assert table.is_visible()
+    boundary = load_boundaries().district(f"{chamber}:15:{number:03}:2022")
+    assert table.get_by_role("rowheader", name="Islands touched", exact=True).is_visible()
+    assert table.get_by_role("cell").inner_text() == "; ".join(i.name for i in boundary.islands)
+    assert axe_problems(page) == []
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    page.emulate_media(media="print")
+    assert region.is_visible() and table.is_visible()
+
+
 @pytest.mark.parametrize("chamber,number", [("house", 22), ("senate", 5)])
 @pytest.mark.parametrize("variant", ["", "?v=a", "?v=b"])
 def test_outline_keeps_complete_brief_on_one_printed_page(

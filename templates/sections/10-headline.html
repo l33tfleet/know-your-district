@@ -1,3 +1,4 @@
+<section aria-label="{{ copy.map_label }}">
 <header class="brief-headline">
   <div class="headline-title">
     <h1>{{ section.heading }}</h1>
@@ -5,6 +6,10 @@
       <div aria-hidden="true">{{ section.outline | safe }}</div>
     </div>
   </div>
+  <table class="district-map-table" aria-label="{{ copy.map_table_label }}">
+    <tbody><tr><th scope="row">{{ copy.islands_label }}</th><td>{{ section.island_names }}</td></tr></tbody>
+  </table>
   <p class="vintage-line">{{ section.vintage_line }}</p>
   <p class="boundary-source"><a href="{{ section.boundary_url }}">{{ copy.boundary_source }}</a>. {{ section.boundary_line }}</p>
 </header>
+</section>
