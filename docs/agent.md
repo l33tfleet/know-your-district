@@ -24,6 +24,13 @@ unused capacity for conservative accounting. The lock is released before the
 provider runs. The first admission on a new UTC day clears counters; calls
 already in flight remain charged to their admission day.
 
+Only `TimeoutError` and the facade's explicit `ProviderUnavailableError` return
+`Paused`. The facade must translate upstream transport/HTTP failures and invalid
+upstream responses to `ProviderUnavailableError` at that boundary. Local mapping,
+validation and programming errors fail the operation as a fresh `RuntimeError`
+carrying only the original exception type name, with its chain suppressed.
+The runtime never logs provider exceptions or includes their messages in results.
+
 Deploy with **one worker and one shared Runtime instance**. Counters and IPs
 live only in memory until UTC rollover or process exit. Restarts reset every
 limit; multiple workers/replicas multiply allowances. This is not a persistent

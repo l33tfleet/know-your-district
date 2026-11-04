@@ -3,13 +3,55 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from threading import Event, Lock
+from traceback import format_exception
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.agent.answers import Answer, AnswerRenderer, Paused, Refuse
 from app.copy import section_copy
 from etl.boundaries import DistrictId
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        TypeError("sensitive-test-credential"),
+        AttributeError("sensitive-test-credential"),
+        FileNotFoundError("sensitive-test-credential"),
+        RuntimeError("sensitive-test-credential"),
+        ValidationError.from_exception_data("sensitive-test-credential", []),
+    ],
+)
+def test_provider_bugs_fail_without_publishing_paused_or_leaking_secrets(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, error: Exception
+) -> None:
+    from app.agent.runtime import Runtime
+
+    monkeypatch.setenv("TYPESAFE_API_KEY", "sensitive-test-credential")
+
+    def broken(key: str) -> Answer:
+        raise error
+
+    with pytest.raises(RuntimeError, match=f"^{type(error).__name__}$") as caught:
+        Runtime().run("192.0.2.1", broken)
+    assert "sensitive-test-credential" not in "".join(format_exception(caught.value)) + caplog.text
+
+
+def test_declared_upstream_failure_pauses_without_leaking_secrets(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    from app.agent.runtime import ProviderUnavailableError, Runtime
+
+    monkeypatch.setenv("TYPESAFE_API_KEY", "sensitive-test-credential")
+
+    def unavailable(key: str) -> Answer:
+        raise ProviderUnavailableError(key)
+
+    result = Runtime().run("192.0.2.1", unavailable)
+    assert isinstance(result, Paused)
+    assert "sensitive-test-credential" not in repr(result) + caplog.text
 
 
 def test_missing_key_pauses_without_provider_and_app_starts(
@@ -34,7 +76,7 @@ def test_missing_key_pauses_without_provider_and_app_starts(
 def test_key_stays_out_of_logs_and_results(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    from app.agent.runtime import Runtime
+    from app.agent.runtime import ProviderUnavailableError, Runtime
 
     secret = "test-only-sensitive-key"
     monkeypatch.setenv("TYPESAFE_API_KEY", secret)
@@ -45,7 +87,7 @@ def test_key_stays_out_of_logs_and_results(
         return Refuse(kind="refuse", reason="out_of_scope")
 
     def failure(key: str) -> Answer:
-        raise RuntimeError(f"provider error containing {key}")
+        raise ProviderUnavailableError(f"provider error containing {key}")
 
     results = [runtime.run("192.0.2.1", p) for p in (success, failure)]
     renderer = AnswerRenderer(DistrictId(chamber="house", district=22), [])

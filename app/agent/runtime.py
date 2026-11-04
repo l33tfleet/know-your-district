@@ -17,6 +17,14 @@ from app.agent.answers import Answer, Paused
 PositiveInt = Annotated[int, Field(strict=True, gt=0)]
 
 
+class ProviderUnavailableError(Exception):
+    """Facade-declared upstream transport, HTTP or response-validation failure.
+
+    Only translate failures at the upstream boundary; local mapping and programming
+    errors must propagate instead. Messages may contain secrets and are never logged.
+    """
+
+
 class Settings(BaseModel):
     """Nonsecret provider settings; each call reserves its full input allowance."""
 
@@ -91,6 +99,8 @@ class Runtime:
             self._tokens += reservation
         try:
             return provider(key)
-        except Exception:
-            # Upstream exception messages can include credentials and request bodies.
+        except (TimeoutError, ProviderUnavailableError):
             return Paused(kind="paused")
+        except Exception as exc:
+            # Fail loudly without exposing credentials in exception messages/chains.
+            raise RuntimeError(type(exc).__name__) from None

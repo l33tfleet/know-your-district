@@ -15,7 +15,8 @@ user content, chat history or profiles persist.
 
 **Ask guards.** The runtime reads `TYPESAFE_API_KEY` from the process environment
 (systemd `EnvironmentFile` outside the repo), never TOML. Missing keys pause
-without provider calls; exceptions are suppressed without logging secrets.
+without provider calls. Timeouts and facade-declared upstream failures pause;
+other errors fail with only their type name, suppressing messages and chains.
 In-memory trusted-IP counters allow 10/minute and 100/UTC day. Atomic global
 daily input-token reservations precede calls; failures retain reservations.
 One shared runtime, one worker only: replicas multiply limits; restarts reset
