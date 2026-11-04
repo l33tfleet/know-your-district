@@ -250,3 +250,46 @@ def test_keyboard_only_through_the_listbox(page: Page, base_url: str) -> None:
         pytest.fail("the option is not reachable by Tab from the searchbox")
     page.keyboard.press("Enter")
     page.wait_for_url(base_url + "/brief/house/22")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        ROW,
+        "place\talias\thouse\tlon\n" + ROW,
+        "Place\tAlias\tHouse\tLon\tLat\n" + ROW,
+        "alias\tplace\thouse\tlon\tlat\n" + ROW,
+    ],
+    ids=["empty", "no-header", "missing-column", "wrong-case", "wrong-order"],
+)
+def test_loader_rejects_a_missing_or_wrong_header(tmp_path: Path, text: str) -> None:
+    path = tmp_path / "places.tsv"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ValueError, match="header must be"):
+        load_places(path)
+
+
+CONTROL_QUERIES = [
+    "Kaneohe\x00",
+    "\x1fKaneohe",
+    "Kane\nohe",
+    "Kaneohe\t",
+    "\x07",
+    " \r",
+    "Kaneohe\x7f",
+]
+
+
+@pytest.mark.parametrize("path", ["/find", "/find/options"])
+@pytest.mark.parametrize("q", CONTROL_QUERIES)
+def test_search_rejects_control_characters(path: str, q: str) -> None:
+    response = client.get(path, params={"q": q})
+    assert response.status_code == 400
+    assert "location" not in response.headers
+    assert 'role="option"' not in response.text
+
+
+@pytest.mark.parametrize("path", ["/find", "/find/options"])
+def test_search_still_accepts_plain_spaces(path: str) -> None:
+    assert client.get(path, params={"q": "  Kaneohe  "}).status_code in (200, 303)

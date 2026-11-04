@@ -138,6 +138,13 @@ def pick(chamber: str = "", n: str = "") -> RedirectResponse:
     return RedirectResponse(f"/brief/{district.chamber}/{district.district}", status_code=303)
 
 
+def search_query(q: str) -> str:
+    """The place search's text, checked at the edge: control characters are a 400, not a match."""
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in q):
+        raise HTTPException(status_code=400)
+    return q.strip()[:100]
+
+
 @app.get("/find", response_model=None)
 def find_place(request: Request, q: str = "") -> HTMLResponse | RedirectResponse:
     """The place search's no-JavaScript target (WO #263, step 1: House only).
@@ -145,7 +152,7 @@ def find_place(request: Request, q: str = "") -> HTMLResponse | RedirectResponse
     One match goes straight to its House brief; several are listed; none says so, suggests
     close spellings and keeps the number picker.
     """
-    q = q.strip()[:100]
+    q = search_query(q)
     found = places.find(q)
     state = page_state("house", str(found[0].house)) if len(found) == 1 else None
     if state is not None:
@@ -161,7 +168,7 @@ FIND_OPTIONS = 8
 @app.get("/find/options", response_class=HTMLResponse)
 def find_options(q: str = "") -> HTMLResponse:
     """htmx partial: the listbox options as you type (story step 1); each opens its House brief."""
-    found = places.find(q.strip()[:100])[:FIND_OPTIONS]
+    found = places.find(search_query(q))[:FIND_OPTIONS]
     picker = templates.get_template("partials/picker.html")
     block = picker.blocks["place_options"]
     return HTMLResponse("".join(block(picker.new_context({"copy": load_copy(), "options": found}))))
