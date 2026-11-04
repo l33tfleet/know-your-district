@@ -28,6 +28,11 @@
   /* headline */
   --headline-size: 1.6rem;
   --headline-space: 0.25rem;
+  --outline-width: clamp(4.5rem, 18vw, 7rem);
+  --outline-print-width: 4rem;
+  --outline-coast: var(--color-muted);
+  --outline-coast-opacity: 0.2;
+  --outline-district: var(--interval-accent);
 
   /* figures */
   --interval-accent: #175b73;

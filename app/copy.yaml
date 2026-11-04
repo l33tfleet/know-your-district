@@ -70,6 +70,9 @@ sections:
     vintage_line: >-
       U.S. Census Bureau, American Community Survey 5-year estimates, {vintage}.
       District lines from the {plan} plan.
+    boundary_source: "District outline: State of Hawaiʻi Office of Elections; Hawaiʻi Statewide GIS Program"
+    boundary_line: "{vintage}. Method: {method} Retrieved {retrieved_on}."
+    outline_label: "{district}; {islands}"
 
   figures:
     heading: Who lives here

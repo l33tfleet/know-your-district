@@ -1,4 +1,10 @@
 <header class="brief-headline">
-  <h1>{{ section.heading }}</h1>
+  <div class="headline-title">
+    <h1>{{ section.heading }}</h1>
+    <div class="district-outline" role="img" aria-label="{{ section.outline_label }}">
+      <div aria-hidden="true">{{ section.outline | safe }}</div>
+    </div>
+  </div>
   <p class="vintage-line">{{ section.vintage_line }}</p>
+  <p class="boundary-source"><a href="{{ section.boundary_url }}">{{ copy.boundary_source }}</a>. {{ section.boundary_line }}</p>
 </header>
