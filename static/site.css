@@ -77,6 +77,16 @@ code {
   font-weight: var(--weight-bold);
 }
 
+/* the as-you-type listbox: one option per line, full width under the searchbox */
+.place-options {
+  flex: 1 1 var(--measure); /* wider than the form, so it wraps onto its own line */
+}
+
+.place-options a {
+  display: block;
+  padding-block: var(--picker-gap);
+}
+
 /* headline */
 .brief-headline {
   border-bottom: var(--rule-heavy) solid var(--color-rule);

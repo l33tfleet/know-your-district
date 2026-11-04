@@ -155,6 +155,18 @@ def find_place(request: Request, q: str = "") -> HTMLResponse | RedirectResponse
     return templates.TemplateResponse(request, "find.html", context)
 
 
+FIND_OPTIONS = 8
+
+
+@app.get("/find/options", response_class=HTMLResponse)
+def find_options(q: str = "") -> HTMLResponse:
+    """htmx partial: the listbox options as you type (story step 1); each opens its House brief."""
+    found = places.find(q.strip()[:100])[:FIND_OPTIONS]
+    picker = templates.get_template("partials/picker.html")
+    block = picker.blocks["place_options"]
+    return HTMLResponse("".join(block(picker.new_context({"copy": load_copy(), "options": found}))))
+
+
 @dataclass(frozen=True)
 class BriefPart:
     """One section as the brief template shows it."""

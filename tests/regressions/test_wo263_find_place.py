@@ -193,3 +193,60 @@ def test_keyboard_search_opens_the_brief(page: Page, base_url: str) -> None:
     page.keyboard.type("Kaneohe")
     page.keyboard.press("Enter")
     page.wait_for_url(base_url + "/brief/house/48")
+
+
+# --- story step 1: the as-you-type listbox (.factory/story.journey) ---
+
+
+def test_options_go_straight_to_the_brief() -> None:
+    html = client.get("/find/options", params={"q": "Moiliili"}).text
+    assert re.search(r'<a role="option" href="/brief/house/22"[^>]*aria-label="Mōʻiliʻili"', html)
+    assert "/brief/senate/" not in html
+
+
+def test_options_are_capped_and_empty_for_no_match() -> None:
+    assert client.get("/find/options", params={"q": "wai"}).text.count('role="option"') == 8
+    assert 'role="option"' not in client.get("/find/options", params={"q": "zzzz"}).text
+
+
+def test_home_searchbox_controls_an_always_present_listbox() -> None:
+    html = client.get("/").text
+    assert re.search(
+        r'<input type="search" id="q" name="q"[^>]*aria-controls="place-options"', html
+    )
+    assert re.search(
+        r'id="place-options"[^>]*role="listbox"[^>]*aria-label="Matching places"', html
+    )
+
+
+def test_story_step_1(page: Page, base_url: str) -> None:
+    """As the story runner plays it: fill, find the one listbox at once, pick the option."""
+    open_page(page, base_url + "/", 1440)
+    page.get_by_role("searchbox", name="Find a district by place").fill("Mōʻiliʻili")
+    assert page.get_by_role("listbox").count() == 1
+    page.get_by_role("listbox").get_by_role("option", name="Mōʻiliʻili", exact=True).click()
+    page.get_by_role("heading", name="Hawaiʻi State House District 22").wait_for(timeout=8000)
+    assert page.url == base_url + "/brief/house/22"
+
+
+def test_open_listbox_axe_clean(page: Page, base_url: str) -> None:
+    open_page(page, base_url + "/", 390)
+    page.get_by_role("searchbox", name="Find a district by place").fill("valley")
+    page.get_by_role("listbox").get_by_role("option").first.wait_for()
+    assert axe_violations(page) == []
+
+
+def test_keyboard_only_through_the_listbox(page: Page, base_url: str) -> None:
+    open_page(page, base_url + "/", 1440)
+    page.get_by_role("searchbox", name="Find a district by place").focus()
+    page.keyboard.type("Moiliili")
+    option = page.get_by_role("option", name="Mōʻiliʻili", exact=True)
+    option.wait_for()
+    for _ in range(3):  # past the submit button to the first option
+        page.keyboard.press("Tab")
+        if option.evaluate("e => e === document.activeElement"):
+            break
+    else:
+        pytest.fail("the option is not reachable by Tab from the searchbox")
+    page.keyboard.press("Enter")
+    page.wait_for_url(base_url + "/brief/house/22")

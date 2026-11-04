@@ -27,6 +27,9 @@ home:
   find:
     label: Find a district by place
     submit: Find
+    options_label: Matching places
+    # One suggestion as you type; the option's name is the place alone.
+    option_detail: "{island} · House District {house}"
   # Fixed cross-district questions; keys match QUESTIONS in app/tools/rankings.py.
   question:
     legend: Compare all House districts
