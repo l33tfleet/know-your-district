@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ copy.find.title }}{% endblock %}
+{% block content %}
+{% set find = copy.find %}
+<section class="intro">
+  <h1>{{ find.heading }}</h1>
+  {% if places %}
+  <h2>{{ find.results.format(q=q) }}</h2>
+  <ul class="find-results">
+    {% for p in places %}
+    <li class="find-result"><strong>{{ p.place }}</strong>, {{ find.island.format(island=p.island) }}
+      <a href="/brief/house/{{ p.house }}">{{ find.house_link.format(number=p.house) }}</a> ·
+      <a href="/brief/senate/{{ p.senate }}">{{ find.senate_link.format(number=p.senate) }}</a></li>
+    {% endfor %}
+  </ul>
+  <p class="find-scope">{{ find.scope }}</p>
+  {% elif q %}
+  <p>{{ find.none.format(q=q) }}</p>
+  {% if suggestions %}
+  <p>{{ find.suggest }}
+    {% for p in suggestions %}<a href="/find?q={{ p.place | urlencode }}">{{ p.place }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+  <p>{{ find.picker_hint }}</p>
+  {% else %}
+  <p>{{ find.empty }}</p>
+  {% endif %}
+</section>
+<div class="finders">
+{% include "partials/picker.html" %}
+{% if not places %}
+{# Mirrors the picker form in home.html; change both. #}
+{% set picker = copy.home.picker %}
+<form class="picker" action="/brief" method="get" hx-boost="true">
+  <fieldset>
+    <legend>{{ picker.legend }}</legend>
+    <label for="chamber">{{ picker.chamber_label }}</label>
+    <select id="chamber" name="chamber"
+            hx-get="/picker/numbers" hx-trigger="change" hx-include="#district-number"
+            hx-target="#district-number" hx-swap="outerHTML">
+      {% for value, name in picker.chambers.items() %}
+      <option value="{{ value }}">{{ name }}</option>
+      {% endfor %}
+    </select>
+    <label for="district-number">{{ picker.number_label }}</label>
+    {% include "partials/district_number.html" %}
+    <button type="submit">{{ picker.submit }}</button>
+  </fieldset>
+</form>
+{% endif %}
+</div>
+{% endblock %}

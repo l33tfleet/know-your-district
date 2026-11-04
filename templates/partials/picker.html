@@ -1,0 +1,21 @@
+{# Picking a district by place name: the search form and its as-you-type listbox.
+   Shared by home.html (beside the number picker) and find.html. The block place_options
+   is also rendered alone by GET /find/options (htmx) to fill the listbox. #}
+{% set find = copy.home.find %}
+<form class="place-search" role="search" action="/find" method="get">
+  <div class="place-search-box">
+    <label for="place">{{ find.label }}</label>
+    <input type="search" id="place" name="q" value="{{ q or '' }}" autocomplete="off"
+           aria-controls="place-options"
+           hx-get="/find/options" hx-trigger="input changed delay:200ms, search"
+           hx-target="#place-options" hx-swap="innerHTML">
+    <button type="submit">{{ find.submit }}</button>
+  </div>
+  <div id="place-options" class="place-options" role="listbox" aria-label="{{ find.options_label }}">
+    {%- block place_options %}
+    {%- for p in options %}
+    <a role="option" href="/brief/house/{{ p.house }}" aria-label="{{ p.place }}" aria-describedby="place-option-{{ loop.index }}">{{ p.place }} <span id="place-option-{{ loop.index }}">{{ copy.home.find.option_detail.format(island=p.island, house=p.house) }}</span></a>
+    {%- endfor %}
+    {%- endblock %}
+  </div>
+</form>

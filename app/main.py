@@ -16,6 +16,7 @@ from markupsafe import Markup
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app import places
 from app.brief import discover, render_section
 from app.copy import geography_name, load_copy
 from app.features import validate_features
@@ -135,6 +136,49 @@ def pick(chamber: str = "", n: str = "") -> RedirectResponse:
         raise HTTPException(status_code=404)
     district = state.district
     return RedirectResponse(f"/brief/{district.chamber}/{district.district}", status_code=303)
+
+
+FIND_MAX = 100
+FIND_OPTIONS = 8
+
+
+def place_query(q: str) -> str:
+    """The typed place name, or a 400 before any matching: too long, or control characters."""
+    copy = load_copy()["find"]
+    if len(q) > FIND_MAX:
+        too_long: str = copy["too_long"]
+        raise HTTPException(status_code=400, detail=too_long.format(max=FIND_MAX))
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in q):
+        control: str = copy["control"]
+        raise HTTPException(status_code=400, detail=control)
+    return q.strip()
+
+
+@app.get("/find", response_class=HTMLResponse)
+def find_place(request: Request, q: str = "") -> HTMLResponse:
+    """The place search's no-JavaScript target: results, a no-match page or a prompt.
+
+    Always a page, never a redirect, so even one match shows its island and both chambers.
+    """
+    q = place_query(q)
+    found = places.find(q)
+    context = page_context() | district_numbers("house", None)
+    context |= {
+        "q": q,
+        "places": found,
+        "suggestions": places.close_spellings(q) if q and not found else [],
+    }
+    return templates.TemplateResponse(request, "find.html", context)
+
+
+@app.get("/find/options", response_class=HTMLResponse)
+def find_options(q: str = "") -> HTMLResponse:
+    """htmx partial: the listbox options as you type; each opens its House brief."""
+    found = places.find(place_query(q))[:FIND_OPTIONS]
+    picker = templates.get_template("partials/picker.html")
+    block = picker.blocks["place_options"]
+    html = "".join(block(picker.new_context({"copy": load_copy(), "options": found})))
+    return HTMLResponse(html)
 
 
 @dataclass(frozen=True)
