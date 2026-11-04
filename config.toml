@@ -112,3 +112,9 @@ model = "jev-latest"
 timeout_seconds = 8
 request_input_tokens = 8192
 daily_input_tokens = 100000
+
+[ask_routing]
+confidence_threshold = 0.6
+individual_threshold = 0.8
+compare_threshold = 0.6
+alternative_threshold = 0.15
