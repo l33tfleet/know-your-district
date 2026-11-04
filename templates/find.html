@@ -13,10 +13,6 @@
   </ul>
   {% elif q %}
   <p>{{ find.none.format(q=q) }}</p>
-  {% if suggestions %}
-  <p>{{ find.suggest }}
-    {% for p in suggestions %}<a href="/find?q={{ p.place | urlencode }}">{{ p.place }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>
-  {% endif %}
   <p>{{ find.picker_hint }}</p>
   {% else %}
   <p>{{ find.empty }}</p>

@@ -28,7 +28,7 @@ home:
     label: Find a district by place
     submit: Find
     options_label: Matching places
-    # One suggestion as you type; the option's name is the place alone.
+    # One listbox option as you type; the option's name is the place alone.
     option_detail: "{island} · House District {house}"
   # Fixed cross-district questions; keys match QUESTIONS in app/tools/rankings.py.
   question:
@@ -69,7 +69,6 @@ find:
   results: "Oʻahu places matching “{q}”:"
   house_link: House District {number}
   none: "No Oʻahu place matches “{q}”. Only Oʻahu places are listed so far."
-  suggest: "Close spellings:"
   picker_hint: Or choose the district by its number.
   empty: Type the name of a place on Oʻahu, such as Kāneʻohe or Mōʻiliʻili.
 

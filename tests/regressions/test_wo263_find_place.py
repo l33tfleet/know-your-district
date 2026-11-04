@@ -144,12 +144,14 @@ def test_several_matches_are_listed_with_spelling_island_and_links() -> None:
         assert client.get(href).status_code == 200
 
 
-def test_no_match_says_so_suggests_and_keeps_the_picker() -> None:
+def test_no_match_says_so_and_keeps_the_picker_without_suggestions() -> None:
+    # Spelling suggestions are a later order (§16 amendment, 2026-11-04).
     response = client.get("/find", params={"q": "Kanehoe"})
     assert response.status_code == 200
     html = response.text
     assert "No Oʻahu place matches" in html
-    assert 'href="/find?q=K%C4%81ne%CA%BBohe"' in html
+    assert 'href="/find?q=' not in html
+    assert "Close spellings" not in html
     assert 'class="picker" action="/brief"' in html
     assert "/brief/house/" not in html
 

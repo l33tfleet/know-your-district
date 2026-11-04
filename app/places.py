@@ -6,7 +6,6 @@ regression test that checks the district by point-in-polygon). Matching ignores 
 kahakō and case; results keep the file's spelling. No addresses, no geocoding.
 """
 
-import difflib
 import unicodedata
 from functools import cache
 from pathlib import Path
@@ -84,9 +83,3 @@ def find(q: str) -> list[Place]:
     if exact or len(key) < 3:
         return exact
     return sorted((p for p, (name, _) in names.items() if key in name), key=lambda p: p.place)
-
-
-def close_spellings(q: str, limit: int = 3) -> list[Place]:
-    """Places whose folded name is close to `q`, closest first."""
-    by_key = {fold(p.place): p for p in curated()}
-    return [by_key[k] for k in difflib.get_close_matches(fold(q), by_key, n=limit, cutoff=0.7)]

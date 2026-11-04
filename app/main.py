@@ -149,8 +149,8 @@ def search_query(q: str) -> str:
 def find_place(request: Request, q: str = "") -> HTMLResponse | RedirectResponse:
     """The place search's no-JavaScript target (WO #263, step 1: House only).
 
-    One match goes straight to its House brief; several are listed; none says so, suggests
-    close spellings and keeps the number picker.
+    One match goes straight to its House brief; several are listed; none says so and keeps
+    the number picker.
     """
     q = search_query(q)
     found = places.find(q)
@@ -158,7 +158,7 @@ def find_place(request: Request, q: str = "") -> HTMLResponse | RedirectResponse
     if state is not None:
         return RedirectResponse(f"/brief/house/{state.district.district}", status_code=303)
     context = page_context() | district_numbers("house", None)
-    context |= {"q": q, "places": found, "suggestions": [] if found else places.close_spellings(q)}
+    context |= {"q": q, "places": found}
     return templates.TemplateResponse(request, "find.html", context)
 
 
