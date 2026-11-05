@@ -350,6 +350,26 @@ folders:
   unknown_status: "Unknown status {value!r}. Valid values: {valid}."
   bad_reason: A reason is one line of 1 to 200 characters.
   no_store: Folders are not available here because the folder file could not be opened. Set KYD_FOLDERS_DB to choose another file outside the checkout.
+  # Notes on a saved case (#289). A personal detail is always refused; no confirmation lifts it.
+  notes_heading: Notes
+  note_label: Add a note
+  note_hint: Notes are about outreach and populations, not individual residents.
+  add_note: Add note
+  edit_note: Edit note
+  edit_label: Edit this note
+  update_note: Update note
+  delete_note: Delete note
+  confirm_statement: This note is about outreach and populations, not individual residents.
+  save_note: Save note
+  cancel_note: Cancel
+  no_notes: No notes yet.
+  note_too_long: "A note is at most {limit:,} characters; this one has {count:,}. Shorten it to save."
+  note_blank: A note needs words.
+  note_control: A note cannot hold control characters. Remove them to save.
+  note_personal: Personal phone numbers, emails and addresses are not kept here. Remove them to save.
+  note_unconfirmed: This note was not confirmed as written. Check it again, then save.
+  note_rate: "Too many changes in a short time. Try again in {seconds} seconds."
+  no_secret: Notes are not available here because KYD_FOLDERS_SECRET is not set to at least 32 bytes.
 
 # Geography names, shared by the headline and the figures' citations.
 geography:

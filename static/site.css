@@ -309,6 +309,54 @@ code {
   font-size: var(--size-small);
 }
 
+/* notes on a saved case */
+.folder-notes .note-form,
+.folder-notes .note-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--picker-gap);
+  align-items: start;
+  margin: var(--headline-space) 0;
+}
+
+.folder-notes textarea {
+  align-self: stretch;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.folder-notes .folder-hint {
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+.folder-notes .note-error {
+  margin: 0;
+  font-weight: var(--weight-bold);
+}
+
+.folder-notes .note-list {
+  padding-left: 0;
+  list-style: none;
+}
+
+.folder-notes .note {
+  margin: var(--headline-space) 0;
+}
+
+.folder-notes .note-date {
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+.folder-notes :is(.note-body, .note-echo) {
+  overflow-wrap: anywhere;
+}
+
+.folder-notes .note-echo {
+  margin: 0;
+}
+
 /* brief notes */
 .ask form {
   display: flex;
@@ -572,6 +620,10 @@ code {
   }
 
   .case-save {
+    display: none;
+  }
+
+  .folder-notes :is(form, details) {
     display: none;
   }
 
