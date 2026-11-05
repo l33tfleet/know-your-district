@@ -35,6 +35,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
 runtime = Runtime()
 STORY_PATH = Path(__file__).resolve().parents[2] / "data/ask/story.json"
+RECORDING_COPY_PATH = Path(__file__).resolve().parents[2] / "data/ask/copy.json"
 
 
 class _Recording(BaseModel):
@@ -93,6 +94,8 @@ def answer_context(state: PageState, fields: dict[str, str], address: str) -> di
         )
     copy = section_copy("ask")
     context: dict[str, object] = {"copy": copy, "comparisons": [], "recorded_on": recorded_on}
+    if recorded_on is not None:
+        context["recording_label"] = json.loads(RECORDING_COPY_PATH.read_text())["recording_label"]
     if isinstance(answer, Clarify):
         context["clarify"] = copy["fixed_income" if answer.reason == "fixed_income" else "clarify"]
         context["options"] = [

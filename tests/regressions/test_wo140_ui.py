@@ -348,3 +348,21 @@ def test_recorded_story_rereads_fact_rows(
     assert "±321" in response.text
     assert "updated test method" in response.text
     assert not offline
+
+
+def test_recording_notice_uses_feature_copy(
+    offline: list[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The recorded-answer notice is editable copy, never literal template wording."""
+    web = importlib.import_module("app.web.ask")
+    copy_path = tmp_path / "copy.json"
+    copy_path.write_text(json.dumps({"recording_label": "Recorded notice test marker"}))
+    monkeypatch.setattr(web, "RECORDING_COPY_PATH", copy_path, raising=False)
+    monkeypatch.delenv("TYPESAFE_API_KEY")
+    with TestClient(app, client=("192.0.2.1", 1234)) as client:
+        response = client.post(POST, data={"question": RECORDINGS[0].question})
+    assert response.status_code == 200
+    assert "Recorded notice test marker" in response.text
+    assert "Recorded answer, not live" not in response.text
+    assert "2026-11-05" in response.text
+    assert not offline
