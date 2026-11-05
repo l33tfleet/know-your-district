@@ -608,3 +608,36 @@ code {
     overflow-wrap: var(--content-wrap);
   }
 }
+
+/* Optional, screen-only program profiles. */
+.program-profile {
+  border-top: var(--rule-width) solid var(--color-rule-light);
+  padding-block: var(--space-gap);
+  overflow-wrap: anywhere;
+}
+
+.profile-rules,
+.profile-review {
+  display: grid;
+  grid-template-columns: minmax(0, var(--profile-label-width)) minmax(0, 1fr);
+  gap: var(--citation-gap);
+}
+
+.program-profile dt {
+  font-weight: var(--weight-bold);
+}
+
+.program-profile dd,
+.program-profile dd p {
+  margin: 0;
+}
+
+.profile-media img {
+  display: block;
+  max-width: var(--profile-media-width);
+  height: auto;
+}
+
+.profile-media figcaption {
+  font-size: var(--size-small);
+}

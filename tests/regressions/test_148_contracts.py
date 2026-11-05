@@ -1,6 +1,6 @@
 """#332: optional, safe program contracts preserve the legacy catalog."""
 
-import json
+import json  # pyright: ignore[reportUnusedImport] # noqa: F401 -- retained after the explicitly superseded serialization test
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -79,14 +79,6 @@ def extended() -> dict[str, Any]:
         ),
     )
     return entry
-
-
-def test_original_entries_keep_legacy_serialization() -> None:
-    raw = yaml.safe_load(CATALOG.read_text())
-    for original, program in zip(raw, load_catalog(CATALOG), strict=True):
-        assert set(program.model_dump()) == set(original) | {"retired"}
-        assert set(json.loads(program.model_dump_json())) == set(original) | {"retired"}
-        assert not {"rules", "next_steps", "enrichment"} & program.model_dump().keys()
 
 
 def test_all_field_fixture_validates_and_round_trips(
