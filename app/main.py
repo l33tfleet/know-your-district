@@ -22,7 +22,7 @@ from app.copy import geography_name, load_copy
 from app.features import validate_features
 from app.folders import routes as folders
 from app.page_state import page_state
-from app.web import snap
+from app.web import ask, snap
 from etl.boundaries import DISTRICT_COUNTS
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -60,6 +60,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
 app = FastAPI(title="Know Your District", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 app.include_router(snap.router)
+app.include_router(ask.router)
 app.include_router(folders.router)
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 

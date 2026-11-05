@@ -1,4 +1,20 @@
 <header class="brief-headline">
-  <h1>{{ section.heading }}</h1>
-  <p class="vintage-line">{{ section.vintage_line }}</p>
+  <div class="headline-title" role="region" aria-label="{{ section.map_label }}">
+    <div class="headline-copy">
+      <h1>{{ section.heading }}</h1>
+      <p class="vintage-line">{{ section.vintage_line }}
+        <span class="boundary-source">{{ section.boundary_source }}{% if section.coastline_source %} {{ section.coastline_source }}{% endif %}</span>
+      </p>
+      <table class="headline-map-table" aria-label="{{ section.map_table_caption }}">
+        <tbody>
+          <tr><th scope="row">{{ section.map_district_heading }}</th><td>{{ section.heading }}</td></tr>
+          <tr><th scope="row">{{ section.map_islands_heading }}</th><td>{{ section.map_islands }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    {# Expose one named image; the renderer’s individual paths are decorative within it. #}
+    <div class="headline-map" role="img" aria-label="{{ section.boundary_label }}">
+      <div aria-hidden="true">{{ section.boundary_svg }}</div>
+    </div>
+  </div>
 </header>

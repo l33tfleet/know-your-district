@@ -1,7 +1,7 @@
 {% if section.result %}
 {% set record = section.record %}
 {% set reading = section.reading %}
-<section class="case" aria-labelledby="{{ section.heading_id }}">
+<section class="case" aria-label="{{ record.program.name }}">
   <h2 id="{{ section.heading_id }}">{{ section.title }}</h2>
   {% if section.citation %}
   <div class="case-figure">
