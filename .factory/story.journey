@@ -1,0 +1,45 @@
+# Know Your District demo story (.factory/story.md; planning decisions §13). Each "# N." section is story step N. A section
+# that starts with goto begins a new segment (story.py runs segments separately, so a later step counts even while an
+# earlier one is unbuilt); within a segment the steps run in order. Accessible names are the contract for unbuilt UI.
+journey kyd-story
+goal A House 22 staffer finds the district, asks about food assistance, saves the SNAP case and finds it again
+fixture data as committed; a fresh, empty demo folder (#233)
+start /
+
+# 1. Find by place name
+goto /
+fill searchbox "Find a district by place" "Mōʻiliʻili"
+act option "Mōʻiliʻili" in listbox
+checkpoint find ready visible heading "Hawaiʻi State House District 22" timeout 8000 expect "The House District 22 brief, opened from the place name" assert url "/brief/house/22"
+
+# 2. Map and case at a glance
+goto /brief/house/22
+checkpoint glance ready visible region "District map" expect "The district's outline on a map with a table version beside it, and the opening case card with a cited figure and its margin" assert visible table "District map as a table"
+
+# 3. Ask in their own words
+goto /brief/house/22
+fill textbox "Ask about this district" "Where could food-assistance outreach help here?"
+act button "Ask"
+checkpoint ask ready visible region "Answer" timeout 15000 expect "The page brings the SNAP case for households in poverty not receiving SNAP to the top, with figures from the tools" assert text region "Answer" "SNAP"
+
+# 4. Justified match
+goto /brief/house/22
+checkpoint match expect "The SNAP case shows why here, the households in poverty not receiving SNAP with their margin, that this is not eligibility, and an official next-step link" assert visible link "official next step" in region "SNAP"
+
+# 5. Save with priority
+goto /brief/house/22
+act button "Save to folder" in region "SNAP"
+choose combobox "Priority" "High"
+choose combobox "Status" "Planned"
+checkpoint save expect "The case is saved to the office folder as High, Planned" assert text "Saved"
+
+# 6. Note
+fill textbox "Add a note" "Table at Mōʻiliʻili meeting 11/8"
+act button "Add note"
+checkpoint note expect "The note shows on the saved case with today's date" assert text "Table at Mōʻiliʻili meeting 11/8"
+
+# 7. Come back
+act link "Open the office folder"
+reload
+act button "What needs attention?"
+checkpoint attention ready visible region "Needs attention" timeout 15000 expect "The saved SNAP case is listed, and the attention answer names it from its priority, status and note" assert text region "Needs attention" "SNAP"

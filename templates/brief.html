@@ -2,8 +2,17 @@
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
 <article class="brief" data-geography="{{ state.district.fact_key }}">
-  {% for html in sections %}
-  {{ html }}
+  {% for part in sections %}
+  {% if part.failure_note %}
+  <p class="section-failure">{{ part.failure_note }}</p>
+  {% elif part.printable %}
+  {{ part.html }}
+  {% else %}
+  <div class="screen-only">
+    <p class="screen-only-note">{{ copy.brief.screen_only }}</p>
+    {{ part.html }}
+  </div>
+  {% endif %}
   {% endfor %}
 </article>
 {% endblock %}

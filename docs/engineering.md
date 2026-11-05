@@ -185,3 +185,40 @@ Never route file bytes through model tokens (base64 in arguments, pasted content
 Model-relayed bytes corrupt silently: every layer reports success while the payload is wrong.
 
 ---
+
+## Feature flags and brief sections (this repo)
+
+How #143 applies principles 7 and 17 to the brief. `app/features.py` reads the policy; `app/brief.py` finds sections;
+`app/main.py` checks both at startup and renders the brief.
+
+**Adding a flag.** A page section declares it with a literal at the top of its module, `FEATURE = "my_part"`
+(lowercase letter, then lowercase letters, digits or `_`). A route or other page part calls
+`register_feature("my_part")` at import time. Several declarations may share one flag. Then set its status in
+`features.toml`: `"on"` for everyone, `"off"` to leave it out, `"preview"` for `?preview=1` only. An unlisted flag
+is off, including in preview.
+
+**Guards.** A flagged section is left out before its module is imported. A flagged route calls
+`require_feature("my_part", state)` first, so a disabled route answers 404 the same as an unknown page. A smaller
+part inside a template uses `enabled("my_part", state)`. If a flagged section fails (import, `context` or
+template), it is logged and left out, and the brief still returns 200 with the other sections. With `?preview=1`
+the brief shows the `brief.section_failed` note from `app/copy.yaml` in its place. If an unflagged section fails,
+the request still fails.
+
+**Print.** Flagged sections stay off the printout unless they declare `PRINT = True`. Unflagged sections print
+unless they declare `PRINT = False`. A section that is not printed shows the `brief.screen_only` note ("Not on the
+printout") on screen, so screen and print never differ silently. With every printable section on, House 22 must
+print on one Letter page (`tests/regressions/test_wo143_integration.py` checks this in Chromium). A section that
+does not fit stays screen-only.
+
+**Startup, restarts and switching.** At startup the app discovers every section (which registers its flag and
+checks its `FEATURE`/`PRINT` literals), checks that each section has its template, and validates `features.toml`.
+An unknown name, a bad status or a malformed declaration stops `uvicorn` with a message listing the valid names or
+statuses. `features.toml` is read again on every request, so changing a flag between on, off and preview takes
+effect on the next page load with no restart. New code (a new flag, section or route) needs a restart, so that
+startup validates it before anything is served. A bad edit to `features.toml` on a running server is not ignored:
+brief requests fail with a server error naming the problem until the file is fixed. Restart after editing to check it.
+
+**Separate feature data files.** A feature reads its own data files in its own directory under `data/` (for
+example `data/snap/` and `data/outreach/`). It never adds tables or columns to the shared `data/facts.db`.
+Switching a feature off then leaves the shared facts untouched. To remove a feature, delete its flag entry, its
+section or route, and its data directory.

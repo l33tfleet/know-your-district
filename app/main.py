@@ -1,5 +1,11 @@
-"""ASGI entry point: `uvicorn app.main:app`."""
+"""ASGI entry point: `uvicorn app.main:app`.
 
+Startup validates section declarations, their templates and features.toml before serving.
+"""
+
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -10,18 +16,53 @@ from markupsafe import Markup
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.brief import discover, render_context
+from app import places
+from app.brief import discover, render_section
 from app.copy import geography_name, load_copy
+from app.features import validate_features
+from app.folders import routes as folders
 from app.page_state import page_state
+from app.tools.rankings import QUESTIONS, answer, present
+from app.web import snap
 from etl.boundaries import DISTRICT_COUNTS
 
 ROOT = Path(__file__).resolve().parent.parent
 HTMX_VERSION = "2.0.11"
 SITE_URL = "https://district.hawaiitechmentors.org"
 
-app = FastAPI(title="Know Your District", docs_url=None, redoc_url=None)
+TEMPLATES_DIR = ROOT / "templates"
+
+
+def validate_startup() -> None:
+    """Fail before serving on a malformed section, a missing template or an unknown flag.
+
+    Discovery registers every section's FEATURE first, so features.toml may name them;
+    any other name fails with the list of valid names.
+    """
+    missing = [s.template for s in discover() if not (TEMPLATES_DIR / s.template).is_file()]
+    if missing:
+        raise ValueError(
+            f"Missing section templates: {', '.join(missing)}; "
+            "each app/sections/NN_name.py needs templates/sections/NN-name.html"
+        )
+    validate_features()
+    # Local: sections import at render time, so only this call runs it before serving.
+    from app.cases import load_cases
+
+    load_cases()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
+    validate_startup()
+    yield
+
+
+app = FastAPI(title="Know Your District", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
-templates = Jinja2Templates(directory=ROOT / "templates")
+app.include_router(snap.router)
+app.include_router(folders.router)
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
 def page_context() -> dict[str, object]:
@@ -53,10 +94,28 @@ def district_numbers(chamber: str, n: str | None) -> dict[str, object]:
     return {"numbers": numbers, "selected": selected}
 
 
+def question_answer(q: str | None) -> dict[str, object]:
+    """The answer to a fixed question; anything else is an error, never a default question."""
+    copy = load_copy()
+    if q not in QUESTIONS:
+        unknown: str = copy["home"]["question"]["unknown"]
+        raise HTTPException(status_code=400, detail=unknown.format(valid=", ".join(QUESTIONS)))
+    return present(q, answer(q), copy)
+
+
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request) -> HTMLResponse:
+def home(request: Request, q: str | None = None) -> HTMLResponse:
     context = page_context() | district_numbers("house", None)
+    if q is not None:
+        context["answer"] = question_answer(q)
     return templates.TemplateResponse(request, "home.html", context)
+
+
+@app.get("/questions", response_class=HTMLResponse)
+def questions(request: Request, q: str | None = None) -> HTMLResponse:
+    """htmx partial: the answer block alone; the form's no-JavaScript target is `/`."""
+    context = {"answer": question_answer(q)}
+    return templates.TemplateResponse(request, "partials/question_answer.html", context)
 
 
 @app.get("/picker/numbers", response_class=HTMLResponse)
@@ -79,17 +138,77 @@ def pick(chamber: str = "", n: str = "") -> RedirectResponse:
     return RedirectResponse(f"/brief/{district.chamber}/{district.district}", status_code=303)
 
 
+def search_query(q: str) -> str:
+    """The place search's text, checked at the edge: control characters are a 400, not a match."""
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in q):
+        raise HTTPException(status_code=400)
+    return q.strip()[:100]
+
+
+@app.get("/find", response_model=None)
+def find_place(request: Request, q: str = "") -> HTMLResponse | RedirectResponse:
+    """The place search's no-JavaScript target (WO #263, step 1: House only).
+
+    One match goes straight to its House brief; several are listed; none says so and keeps
+    the number picker.
+    """
+    q = search_query(q)
+    found = places.find(q)
+    state = page_state("house", str(found[0].house)) if len(found) == 1 else None
+    if state is not None:
+        return RedirectResponse(f"/brief/house/{state.district.district}", status_code=303)
+    context = page_context() | district_numbers("house", None)
+    context |= {"q": q, "places": found}
+    return templates.TemplateResponse(request, "find.html", context)
+
+
+FIND_OPTIONS = 8
+
+
+@app.get("/find/options", response_class=HTMLResponse)
+def find_options(q: str = "") -> HTMLResponse:
+    """htmx partial: the listbox options as you type (story step 1); each opens its House brief."""
+    found = places.find(search_query(q))[:FIND_OPTIONS]
+    picker = templates.get_template("partials/picker.html")
+    block = picker.blocks["place_options"]
+    return HTMLResponse("".join(block(picker.new_context({"copy": load_copy(), "options": found}))))
+
+
+@dataclass(frozen=True)
+class BriefPart:
+    """One section as the brief template shows it."""
+
+    html: Markup | None
+    printable: bool
+    failure_note: str | None = None
+
+
+def render_template(template: str, values: dict[str, object]) -> str:
+    return templates.get_template(template).render(values)
+
+
 @app.get("/brief/{chamber}/{n}", response_class=HTMLResponse)
-def brief(request: Request, chamber: str, n: str, v: str | None = None) -> HTMLResponse:
-    state = page_state(chamber, n, v)
+def brief(
+    request: Request, chamber: str, n: str, v: str | None = None, preview: str | None = None
+) -> HTMLResponse:
+    if preview not in (None, "0", "1"):
+        raise HTTPException(status_code=404)
+    state = page_state(chamber, n, v, preview=preview == "1")
     if state is None:
         raise HTTPException(status_code=404)
-    sections = [
-        Markup(templates.get_template(section.template).render(render_context(section, state)))
-        for section in discover()
-    ]
+    copy = load_copy()
+    failed: str = copy["brief"]["section_failed"]
+    sections: list[BriefPart] = []
+    for rendered in (render_section(s, state, render_template) for s in discover(state)):
+        section = rendered.section
+        if rendered.html is not None:
+            sections.append(BriefPart(Markup(rendered.html), section.printable))
+        elif state.preview:
+            # Only preview readers learn that a flagged section failed; others see it omitted.
+            note = failed.format(name=section.name.replace("_", " "))
+            sections.append(BriefPart(None, False, note))
     context = page_context()
-    title: str = load_copy()["brief"]["title"]
+    title: str = copy["brief"]["title"]
     context |= {
         "state": state,
         "sections": sections,

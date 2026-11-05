@@ -23,6 +23,38 @@ home:
       senate: Senate
     number_label: District number
     submit: Open the brief
+  # The place search beside the picker, on the home page and on /find.
+  find:
+    label: Find a district by place
+    submit: Find
+    options_label: Matching places
+    # One listbox option as you type; the option's name is the place alone.
+    option_detail: "{island} · House District {house}"
+  # Fixed cross-district questions; keys match QUESTIONS in app/tools/rankings.py.
+  question:
+    legend: Compare all House districts
+    submit: Show the answer
+    options:
+      age_65_share: Which House districts have the highest share of residents age 65 and over?
+      median_household_income: Which House districts have the lowest median household income?
+    # One sentence each. Placeholders only: every number comes from a Fact.
+    findings:
+      age_65_share: >-
+        {district} has the highest estimated share of residents age 65 and over among
+        House districts with a published figure: {value} ({moe}, {word}).
+      median_household_income: >-
+        {district} has the lowest estimated median household income among House
+        districts with a published figure: {value} ({moe}, {word}).
+    overlap: >-
+      Close ranks may not differ meaningfully: the margins of error of neighboring
+      districts in this list overlap.
+    distinct: The margins of error of neighboring districts in this list do not overlap.
+    left_out: "House districts left out because no figure is published: {count}."
+    no_figures: No House district has a published figure for this question yet.
+    citation: >-
+      Source: {source}, table {table_id}, {vintage}, geography {geography}.
+      Method: {method}. Coefficient of variation: {cv}.
+    unknown: "Unknown question. Valid values: {valid}."
 
 not_found:
   title: Page not found
@@ -30,12 +62,35 @@ not_found:
   body: This page doesn't exist. The address may be mistyped, or the page may have moved.
   home_link: Go to the home page to pick a Hawaiʻi House or Senate district
 
+find:
+  title: "Find a district by place · Know Your District"
+  heading: Find a district by place
+  # {q} is what was typed, shown as typed.
+  results: "Oʻahu places matching “{q}”:"
+  house_link: House District {number}
+  none: "No Oʻahu place matches “{q}”. Only Oʻahu places are listed so far."
+  picker_hint: Or choose the district by its number.
+  empty: Type the name of a place on Oʻahu, such as Kāneʻohe or Mōʻiliʻili.
+
 brief:
   # {district} is the district's full name, e.g. "Hawaiʻi State House District 22".
   title: "{district} · Know Your District"
+  # Shown only with ?preview=1, in place of a flagged section that failed; {name} is the
+  # section's file name in words. Never printed.
+  section_failed: "Preview: the {name} section could not be shown. The rest of the brief is unaffected."
+  # Above a section that is shown on screen but left off the printout.
+  screen_only: Not on the printout
 
 sections:
   headline:
+    map_label: District map
+    map_table_caption: District map as a table
+    map_district_heading: District
+    map_islands_heading: Islands
+    hawaii: Hawaiʻi
+    boundary_label: "{heading}; {islands}"
+    boundary_source: "District outline: {credit}."
+    coastline_source: "Island coastlines: {credit}."
     # {vintage} is the pinned ACS vintage from config.toml; {plan} the district plan year.
     vintage_line: >-
       U.S. Census Bureau, American Community Survey 5-year estimates, {vintage}.
@@ -55,8 +110,10 @@ sections:
     not_available: not available
     no_moe: no margin of error published
     no_cv: none
+    # Used by the outreach and SNAP tables (pinned by tests/regressions/test_wo136_*).
+    no_row: No published figure in the fact table yet.
     # Shown in a figure's "Source and uncertainty" box when that figure has no published row.
-    no_row: No published figure for this place yet.
+    no_row_plain: No published figure for this place yet.
     # Shown once at the top of the section when none of the brief's figures has a row yet;
     # {vintage} is the pinned ACS vintage from config.toml.
     not_loaded: >-
@@ -68,7 +125,50 @@ sections:
       moderate: "moderate: use with care"
       caution: use with caution
       unavailable: not available
+    # Sentence templates per figure kind (KINDS in app/brief_facts.py). Placeholders only:
+    # every number comes from a Fact and is rendered by the template, never written here.
+    count_sentence: "{geography} has {value} residents ({moe}, {word})."
+    share_sentence: "{value} of residents in {geography} are age 65 and over ({moe}, {word}), {comparison}."
+    dollars_sentence: "The median household income in {geography} is {value} ({moe}, {word}), {comparison}."
+    count_unavailable: >-
+      The number of residents age 65 and over is not yet published here; it is
+      never computed from the share.
+    # #30 comparison wording per kind, one per group from app/analysis/compare.py.
+    # The reference figure goes between lead and tail.
+    comparisons:
+      share:
+        higher:
+          lead: a larger share than
+        lower:
+          lead: a smaller share than
+        indeterminate:
+          lead: about the same share as
+          tail: within the margins of error
+        caution:
+          lead: "use with caution; no comparison claim with"
+        missing:
+          lead: "comparable published estimates are not available; no comparison claim with"
+      dollars:
+        higher:
+          lead: higher than
+        lower:
+          lead: lower than
+        indeterminate:
+          lead: about the same as
+          tail: within the margins of error
+        caution:
+          lead: "use with caution; no comparison claim with"
+        missing:
+          lead: "comparable published estimates are not available; no comparison claim with"
     source_summary: Source and uncertainty
+    check_figure: Check this figure
+    check_links:
+      table: Published table on data.census.gov
+      api: Census API query (may require an API key)
+      evidence: Recorded source evidence (see method above)
+      district_source: District boundary source
+      county_source: County boundary source
+      mapping_file: Committed county area mapping (see method above)
     fields:
       source: Source
       table_id: Table
@@ -79,11 +179,175 @@ sections:
       cv: Coefficient of variation
       endpoint: Data endpoint
 
+  outreach:
+    measure: Households below poverty reporting no SNAP — an outreach signal
+    basis: "State of Hawaiʻi average per {chamber} district"
+    caveat: >-
+      These are households, not people or an estimate of program eligibility.
+      ACS uses national Census poverty thresholds, which differ from Hawaiʻi
+      program guidelines. Survey answers undercount benefit receipt.
+      The state reference is the average count per district in the same chamber,
+      not a household rate. Differences in district household totals can affect
+      this signal. The agency decides eligibility.
+    program_url: https://humanservices.hawaii.gov/bessd/snap/
+    groups:
+      higher: Clearly higher than the state average per district
+      indeterminate: No clear difference from the state average per district
+      lower: Clearly lower than the state average per district
+      caution: "Use with caution; no comparison claim"
+      missing: Comparable published estimates are not available
+
+  # The opening outreach case (#286). The record's own words are in data/cases.yaml.
+  case:
+    title: "{population} · {program}"
+    citation: "Source: {source}, table {table_id}, {vintage}, geography {geography}. Method: {method}."
+    unavailable: >-
+      No published reading is available for {district}, so this card shows no count.
+      The next step still applies.
+    known_label: What we know
+    unknown_label: What we don't
+    problems:
+      geography: Geography
+      population: Population
+      program: Program
+    gap_label: Kind of gap
+    action_label: Action
+    gaps:
+      unused_appropriation: Unused appropriation
+      eligible_nonparticipation: Possible nonparticipation
+      application_or_renewal_barrier: Application or renewal barrier
+      underpayment: Underpayment
+      redemption_or_expiration_loss: Redemption or expiration loss
+      service_capacity_or_fit: Service capacity or fit
+    actions:
+      targeted_information: Targeted information
+      navigator_referral: Navigator referral
+      outreach_planning_lead: Outreach-planning lead
+      agency_follow_up: Agency follow-up
+    next_label: Next step
+    official_label: Official SNAP program page
+    outreach_label: DHS SNAP outreach providers
+    rule_checked: "Rule source checked {date}."
+    evidence_link: County and state figures, and the source
+    save_label: Save to folder
+
+  snap:
+    heading: Households below poverty reporting no SNAP receipt
+    units: households
+    measure_note: >-
+      ACS survey-reported receipt over the past 12 months, not current enrollment or eligibility.
+      This published joint cell counts households with income below poverty that
+      reported no Food Stamps/SNAP receipt during that period.
+    undercount_note: >-
+      Survey answers undercount benefit receipt; reported nonreceipt does not
+      establish that a household received no benefits.
+    poverty_note: >-
+      ACS uses national Census poverty thresholds, not the higher Hawaiʻi HHS
+      poverty guidelines. This count does not determine eligibility or identify
+      households eligible for SNAP but not enrolled.
+    referral_note: >-
+      SNAP may help. DHS decides eligibility. Contact DHS or Aloha United Way 211
+      for assistance.
+    official_url: https://humanservices.hawaii.gov/bessd/snap/
+    referral_url: https://auw211.org/
+
+  # A fixed question; its answer reads the same SNAP result as the outreach card.
+  snap_question:
+    heading: Ask about this district
+    question: >-
+      How many households here have income under the poverty threshold and report
+      no SNAP receipt?
+    submit: Show the answer
+    answer_label: Answer
+    caption: District, county and state published estimates
+    estimate_label: Estimate and uncertainty
+    official_label: Official SNAP program page
+    referral_label: Aloha United Way 211
+
+  ask:
+    heading: Ask about this district
+    label: Ask about this district
+    placeholder: What would you like to understand about this district?
+    submit: Ask
+    working: Looking for published evidence…
+    answer_label: Answer
+    paused: Ask is paused. The published brief is still available.
+    clarify: Which population did you mean?
+    fixed_income: >-
+      No published measure defines fixed income. Choose a separately measured population.
+      Social Security and retirement income populations overlap; they are never added
+      together and do not identify kūpuna or income adequacy.
+    unavailable: "{label} · {geography}: not available. No published figure in the fact table yet."
+    reading: "{label} · {geography}: {value} ({moe}; {reliability})."
+    citation: "Source: {source}, table {table_id}, variable {variable}, {vintage}, geography {geography}. Method: {method}."
+    moe: "margin of error (90%): ±{value}"
+    percentage_moe: "margin of error (90%): ±{value} percentage points"
+    geography_labels:
+      published: Published for district
+      estimated: Estimated for district
+      context: County/state context
+    comparison: "{label} · {district} compared with {reference}: {conclusion}."
+    comparisons:
+      higher: Clearly higher
+      lower: Clearly lower
+      indeterminate: No clear difference within the margins of error
+      caution: Use with caution; no comparison claim
+      missing: Comparable published estimates are not available
+    refusals:
+      individual: I can describe district populations, but cannot look up or infer information about a person.
+      partisan: I can provide nonpartisan population evidence, but cannot give opinions on candidates, parties, votes or bills.
+      eligibility: I cannot determine eligibility. Programs may help; the agency decides eligibility. Use the official program page or Aloha United Way 211 for assistance.
+      unsupported: The published evidence does not support that claim. No count or eligibility estimate is available here.
+      out_of_scope: I can help with the published district populations and outreach cases shown in this brief. Please choose one of those topics.
+    options:
+      population: Total population
+      age_65_share: Share of residents age 65 and over
+      median_household_income: Median household income
+      poverty_65_rate: Poverty rate, age 65 and over
+      older_living_alone: Households with a person age 65 and over living alone
+      social_security_households: Households with Social Security income
+      retirement_households: Households with retirement income
+      below_poverty_no_snap: Households below poverty reporting no SNAP
+
   # Names, agencies, purposes and links come from data/programs.yaml.
   programs:
     heading: Programs that may help
     official_link: Official program page
     referral_link: Aloha United Way 211
+
+# A district folder (#288). Its figures come from the case card, re-read on each render.
+folders:
+  title: "{name} · Know Your District"
+  notice: Anyone with this link can open and edit this folder
+  link_label: Link to this folder
+  copy_link: Copy link
+  copied: Link copied
+  reopen: Reopen this folder's link
+  empty: This folder has no saved cases.
+  district_label: "Saved for {district}"
+  priority_label: Priority
+  reason_label: Reason, one line
+  reason_hint: Up to 200 characters. Do not name or describe a person.
+  set_priority: Set priority
+  status_label: Status
+  set_status: Set status
+  summary: "Priority: {priority}{reason}. Status: {status}."
+  summary_reason: " ({reason})"
+  priorities:
+    high: high
+    normal: normal
+    low: low
+  statuses:
+    idea: idea
+    contacted: contacted
+    planned: planned
+    done: done
+  unknown_case: "Unknown case {value!r}. Valid values: {valid}."
+  unknown_district: "Unknown district. Valid chambers: {valid}, each with its own district numbers."
+  unknown_priority: "Unknown priority {value!r}. Valid values: {valid}."
+  unknown_status: "Unknown status {value!r}. Valid values: {valid}."
+  bad_reason: A reason is one line of 1 to 200 characters.
+  no_store: Folders are not available here because the folder file could not be opened. Set KYD_FOLDERS_DB to choose another file outside the checkout.
 
 # Geography names, shared by the headline and the figures' citations.
 geography:
@@ -96,3 +360,6 @@ counties:
   "003": Honolulu County
   "007": Kauaʻi County
   "009": Maui County
+
+# Ask uses recorded typed decisions here; live routing belongs to #184.
+# No upstream prose, values, labels or comparison claims reach the renderer.

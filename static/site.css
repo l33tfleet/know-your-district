@@ -56,7 +56,82 @@ code {
   font-weight: var(--weight-bold);
 }
 
+/* home: the place search beside the picker, stacked when narrow */
+.finders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--measure) / 3), 1fr));
+  gap: var(--space-gap);
+  align-items: start;
+}
+
+.place-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--picker-gap);
+  align-items: center;
+  padding: var(--picker-padding);
+  border: var(--rule-width) solid var(--color-rule);
+}
+
+.place-search label {
+  font-weight: var(--weight-bold);
+}
+
+/* the as-you-type listbox: one option per line, full width under the searchbox */
+.place-options {
+  flex: 1 1 var(--measure); /* wider than the form, so it wraps onto its own line */
+}
+
+.place-options a {
+  display: block;
+  padding-block: var(--picker-gap);
+}
+
 /* headline */
+.headline-title {
+  display: grid;
+  grid-template-columns: var(--headline-columns);
+  gap: var(--headline-space);
+  align-items: center;
+}
+
+.headline-map svg {
+  display: block;
+  width: var(--headline-map-width);
+  aspect-ratio: var(--headline-map-aspect);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.headline-map path {
+  fill: var(--headline-map-fill);
+  opacity: var(--headline-coastline-opacity);
+}
+
+.headline-map path:last-child {
+  opacity: var(--headline-map-opacity);
+}
+
+.headline-map-table {
+  font-size: var(--headline-table-size);
+  border-spacing: 0;
+  overflow-wrap: var(--headline-source-wrap);
+}
+
+.headline-map-table th,
+.headline-map-table td {
+  padding: var(--headline-table-gap);
+  text-align: left;
+  vertical-align: top;
+}
+
+.boundary-source {
+  display: block;
+  font-size: var(--size-tiny);
+  color: var(--color-muted);
+  overflow-wrap: var(--headline-source-wrap);
+}
+
 .brief-headline {
   border-bottom: var(--rule-heavy) solid var(--color-rule);
 }
@@ -76,6 +151,48 @@ code {
 .figure {
   padding: var(--figure-space) 0;
   border-bottom: var(--rule-width) solid var(--color-rule-light);
+}
+
+.figures .figure-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--interval-full-width), var(--interval-column)), 1fr));
+  gap: var(--figure-space);
+  align-items: center;
+}
+
+.figures .interval-strip {
+  display: block;
+  width: var(--interval-full-width);
+  max-width: var(--interval-width);
+  height: auto;
+  overflow: visible;
+}
+
+.figures .interval-strip text {
+  fill: var(--color-muted);
+  font-family: var(--font-label);
+  font-size: var(--interval-label-size);
+  dominant-baseline: middle;
+}
+
+.figures .interval-strip line {
+  stroke: var(--color-muted);
+  stroke-width: var(--interval-stroke);
+}
+
+.figures .interval-strip circle {
+  fill: var(--color-muted);
+  r: var(--interval-dot);
+}
+
+.figures .interval-strip [data-role="district"] line {
+  stroke: var(--interval-accent);
+  stroke-width: var(--interval-district-stroke);
+}
+
+.figures .interval-strip [data-role="district"] circle {
+  fill: var(--interval-accent);
+  r: var(--interval-district-dot);
 }
 
 .figure-name {
@@ -125,9 +242,449 @@ code {
   margin: 0;
 }
 
+/* opening case: the same text on screen and paper */
+.case {
+  padding: var(--figure-space) 0;
+  border-bottom: var(--rule-width) solid var(--color-rule-light);
+}
+
+.case p {
+  margin: var(--headline-space) 0;
+}
+
+.case-reading {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-bold);
+}
+
+.case-undercount,
+.case-source {
+  font-size: var(--size-small);
+}
+
+.case-citation {
+  font-size: var(--size-tiny);
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+/* district folder */
+.folder-notice {
+  font-weight: var(--weight-bold);
+}
+
+.folder-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--picker-gap);
+  align-items: center;
+}
+
+.folder-link input {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.folder-card form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--picker-gap);
+  align-items: end;
+  margin: var(--headline-space) 0;
+}
+
+.folder-card label {
+  display: block;
+}
+
+.folder-card .folder-reason {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.folder-card .folder-hint {
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+/* brief notes */
+.screen-only-note,
+.section-failure {
+  font-family: var(--note-font);
+  font-size: var(--note-size);
+  color: var(--note-color);
+  border-left: var(--note-rule);
+  padding: var(--note-space);
+  margin: var(--note-margin);
+}
+
 @media print {
+  .brief-headline {
+    --headline-map-width: var(--headline-print-map-width);
+    --headline-table-size: var(--print-citation-size);
+    --headline-table-gap: var(--headline-print-table-gap);
+  }
+
+  .brief-headline .vintage-line {
+    font-size: var(--headline-print-source-size);
+    margin: 0;
+  }
+
+  .headline-copy h1 {
+    margin: 0;
+  }
+
+  .headline-copy {
+    display: grid;
+    grid-template-columns: var(--headline-print-copy-columns);
+    align-items: center;
+    column-gap: var(--headline-space);
+  }
+
+  .headline-map-table {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .headline-copy .vintage-line {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .boundary-source {
+    display: inline;
+    font-size: inherit;
+  }
+
+  /* Off the printout: sections that are not PRINT, and preview failure notes. */
+  .screen-only,
+  .section-failure {
+    display: none;
+  }
+
+  /* One Letter page. The interval strips keep their screen geometry (WO144), so only the
+     type and spacing around them shrink; outreach keeps its text, citations in a grid. */
+  .site-header,
+  .site-footer,
+  .programs,
+  .outreach {
+    font-size: var(--print-text-size);
+  }
+
+  /* Not on body: the strips inherit it and must keep their screen font. */
+  .site-header,
+  .site-footer,
+  .brief-headline,
+  .figure-name,
+  .reading,
+  .programs,
+  .outreach {
+    line-height: var(--print-line-height);
+  }
+
+  /* Vertical only: the horizontal page padding sizes the interval strips (WO144). */
+  .site-header,
+  main,
+  .site-footer {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .brief-headline h1 {
+    font-size: var(--print-headline-size);
+  }
+
+  .brief h2 {
+    font-size: var(--print-heading-size);
+    line-height: var(--print-line-height);
+    margin: var(--print-space) 0;
+  }
+
+  .brief p,
+  .site-footer p {
+    margin: var(--print-space) 0;
+  }
+
+  .figure {
+    padding: var(--print-space) 0;
+  }
+
+  .figure-name,
+  .reading,
+  .reading + .reading {
+    font-size: var(--print-text-size);
+  }
+
+  /* County and state readings sit under the district's on one line each. */
+  .reading + .reading {
+    margin-left: 0;
+  }
+
+  .reading + .reading .value {
+    font-size: inherit;
+  }
+
+  /* Paper cannot open a disclosure, so every figure prints its full citation (R1),
+     open or not, as a compact run of fields like the outreach citations. */
+  .figure details.source::details-content {
+    content-visibility: visible;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 0 var(--print-gap);
+  }
+
+  .figure details.source > summary {
+    display: none;
+  }
+
+  /* One column per geography; inline runs, so a long value continues on its label's line. */
+  .figures .figure .citation {
+    display: block;
+    margin: 0;
+    padding: 0;
+    font-size: var(--print-citation-size);
+    line-height: var(--print-line-height);
+  }
+
+  .figure .citation :is(dt, dd, code) {
+    display: inline;
+    margin: 0;
+    font-size: inherit;
+    overflow-wrap: anywhere;
+  }
+
+  .figure .citation dd {
+    margin-right: var(--print-gap);
+  }
+
+  .figure .citation dt {
+    font-weight: var(--weight-bold);
+  }
+
+  /* The margin of error and reliability already print beside the figure; the endpoint
+     is not one of R1's fields. Leaving them off keeps the brief on one page. */
+  .figure .citation :is(
+    dd:is([data-field="moe"], [data-field="cv"], [data-field="endpoint"]),
+    dt:has(+ dd:is([data-field="moe"], [data-field="cv"], [data-field="endpoint"]))
+  ) {
+    display: none;
+  }
+
+  .program :is(.program-agency, .program-purpose, .program-guidance) {
+    font-size: var(--print-tiny-size);
+  }
+
+  /* The notes and readings sit under the opening case: same text, tighter set. */
+  .outreach > p,
+  .outreach caption {
+    font-size: var(--print-citation-size);
+  }
+
+  .brief .outreach h2 {
+    font-size: var(--print-text-size);
+  }
+
+  .brief .outreach td p {
+    margin: 0;
+  }
+
+  .reading .value {
+    font-size: var(--print-value-size);
+  }
+
+  .program-list {
+    display: grid;
+    grid-template-columns: var(--print-program-columns);
+    gap: 0 var(--print-gap);
+    padding: 0;
+    list-style: none;
+  }
+
+  .program {
+    break-inside: avoid;
+  }
+
+  .program-name {
+    font-size: var(--print-text-size);
+    margin: 0;
+  }
+
+  .outreach table {
+    border-collapse: collapse;
+  }
+
+  .outreach :is(th, td) {
+    padding: 0 var(--print-space);
+    vertical-align: top;
+    text-align: left;
+  }
+
+  /* Flex items stay block-level, so the printed text matches the screen (WO136). */
+  .outreach-citation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--print-space);
+    margin: 0;
+    font-size: calc(var(--print-citation-size) * 0.9);
+  }
+
+  .outreach-citation :is(dt, dd) {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .outreach-citation dd {
+    margin-right: var(--print-gap);
+  }
+
+  .outreach-citation dt {
+    font-weight: var(--weight-bold);
+  }
+
+  .case-save {
+    display: none;
+  }
+
+  /* Four balanced columns of tiny type: the case must leave real room on the one page. */
+  .case {
+    columns: 4;
+    column-gap: calc(var(--print-gap) / 2);
+    padding: var(--print-space) 0;
+    font-size: calc(var(--print-citation-size) * 0.9);
+    line-height: var(--print-line-height);
+  }
+
+  .brief .case h2 {
+    column-span: all;
+    margin: 0;
+    font-size: var(--print-text-size);
+  }
+
+  .brief .case p {
+    margin: 0;
+  }
+
+  .case :is(.case-undercount, .case-source) {
+    font-size: inherit;
+  }
+
+  /* Section 40 prints this same citation, larger, lower on the page. */
+  .case .case-citation {
+    font-size: calc(var(--print-citation-size) * 0.8);
+  }
+
+  .figures .figure-comparison {
+    break-inside: avoid;
+  }
+
+  .figures .interval-strip {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
   .site-header,
   .site-footer {
     border: 0;
+  }
+}
+
+/* Shared consumers only: directions differ exclusively through token values. */
+:is([data-variant="a"], [data-variant="b"]) {
+  .site-header {
+    flex-wrap: wrap;
+  }
+
+  .brief-headline {
+    padding-bottom: var(--headline-space);
+  }
+
+  h1 {
+    line-height: var(--headline-leading);
+  }
+
+  h2 {
+    font-family: var(--heading-font);
+    font-size: var(--section-size);
+    margin: var(--section-space);
+  }
+
+  .program-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .program {
+    padding: var(--program-space) 0;
+    border-bottom: var(--rule-width) solid var(--color-rule-light);
+    break-inside: avoid;
+  }
+
+  .program-name {
+    font-family: var(--heading-font);
+    font-size: var(--program-size);
+    margin: 0;
+  }
+
+  .program p {
+    margin: var(--paragraph-space);
+  }
+
+  .program-agency {
+    color: var(--color-muted);
+    font-size: var(--size-small);
+  }
+
+  a {
+    color: var(--color-link);
+    text-underline-offset: var(--link-offset);
+    text-decoration-thickness: var(--link-thickness);
+  }
+
+  a:hover {
+    color: var(--color-link-hover);
+  }
+
+  .picker :is(select, button),
+  .place-search button,
+  summary {
+    box-sizing: border-box;
+    min-height: var(--control-height);
+    padding: var(--control-padding);
+    border: var(--rule-width) solid var(--color-rule-light);
+    border-radius: var(--control-radius);
+    color: var(--color-text);
+    background: var(--color-control);
+    font-family: var(--font-label);
+    font-size: var(--control-font-size);
+    cursor: pointer;
+  }
+
+  summary {
+    margin: var(--control-margin);
+  }
+
+  .picker :is(select, button):hover,
+  .place-search button:hover,
+  summary:hover {
+    background: var(--color-control-hover);
+  }
+
+  :is(a, select, input, button, summary):focus-visible {
+    outline: var(--focus-width) solid var(--color-focus);
+    outline-offset: var(--focus-offset);
+  }
+
+  .citation {
+    padding: var(--citation-padding);
+  }
+
+  .citation :is(dt, dd) {
+    min-width: 0;
+    overflow-wrap: var(--content-wrap);
   }
 }

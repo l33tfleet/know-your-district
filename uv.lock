@@ -2,6 +2,12 @@ version = 1
 revision = 5
 requires-python = ">=3.12"
 
+[manifest]
+constraints = [
+    { name = "pyproj", specifier = "==3.8.0" },
+    { name = "pyshp", specifier = "==3.1.6" },
+]
+
 [[package]]
 name = "annotated-doc"
 version = "0.0.5"
@@ -358,7 +364,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "jinja2", specifier = ">=3.1" },
-    { name = "pydantic", specifier = ">=2.9" },
+    { name = "pydantic", specifier = "==2.14.1" },
     { name = "pyproj", specifier = ">=3.7" },
     { name = "pyshp", specifier = ">=2.3" },
     { name = "pyyaml" },
