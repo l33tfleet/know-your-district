@@ -1,0 +1,13 @@
+<section class="ask" aria-labelledby="ask-heading">
+  <h2 id="ask-heading">{{ copy.heading }}</h2>
+  <form method="post" action="{{ section.action }}"
+        hx-post="{{ section.action }}" hx-target="#ask-answer" hx-swap="innerHTML"
+        hx-disabled-elt="find button" hx-indicator="#ask-working">
+    <label for="ask-question">{{ copy.label }}</label>
+    <input id="ask-question" name="question" type="text" required maxlength="2000"
+           placeholder="{{ copy.placeholder }}" aria-controls="ask-answer" />
+    <button type="submit">{{ copy.submit }}</button>
+  </form>
+  <p id="ask-working" class="htmx-indicator" role="status">{{ copy.working }}</p>
+  <div id="ask-answer" role="region" aria-label="{{ copy.answer_label }}" aria-live="polite" aria-atomic="true"></div>
+</section>

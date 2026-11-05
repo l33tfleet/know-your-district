@@ -310,6 +310,32 @@ code {
 }
 
 /* brief notes */
+.ask form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--picker-gap);
+  align-items: center;
+}
+
+.ask label {
+  flex-basis: var(--interval-full-width);
+}
+
+.ask input {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.ask :is(input, button) {
+  min-height: var(--control-height);
+  font: inherit;
+}
+
+.ask :is(input, button):focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: var(--focus-offset);
+}
+
 .screen-only-note,
 .section-failure {
   font-family: var(--note-font);
