@@ -10,8 +10,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.copy import section_copy
-from app.features import register_feature, require_feature
+from app.features import enabled, register_feature, require_feature
 from app.page_state import page_state
+from app.source_links import source_links
 from app.tools.snap import DistrictSnap, Question
 
 FEATURE = "snap_question"
@@ -42,8 +43,15 @@ def snap_answer(
         raise HTTPException(
             status_code=422, detail=f"Unknown question {question!r}; valid questions: {valid}"
         )
+    answer = DistrictSnap(state.district).answer()
+    checks_enabled = enabled("source_links", state)
     context = {
-        "answer": DistrictSnap(state.district).answer(),
+        "answer": answer,
+        "source_links": {
+            r.geography: source_links(r.fact)
+            for r in answer.readings
+            if checks_enabled and r.fact is not None
+        },
         "copy": section_copy("snap_question"),
         "figures_copy": section_copy("figures"),
     }
