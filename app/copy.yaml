@@ -311,6 +311,64 @@ sections:
       retirement_households: Households with retirement income
       below_poverty_no_snap: Households below poverty reporting no SNAP
 
+  profiles:
+    heading: Program profiles
+    official: Official program page
+    referral: Aloha United Way 211
+    jurisdiction: Jurisdiction
+    category: Category
+    unit: Assistance unit
+    income_basis: Income basis
+    income_period: Income period
+    bases:
+      census_poverty: National Census poverty thresholds
+      hawaii_hhs: Hawaiʻi HHS poverty guidelines
+      smi: State median income
+      ami: Area median income
+      not_applicable: Not applicable
+    periods:
+      monthly: Monthly
+      annual: Annual
+      past_12_months: Past twelve months
+      not_applicable: Not applicable
+    conditions: Conditions
+    exceptions: Exceptions
+    availability_label: Application availability
+    availability:
+      open: Open
+      closed: Closed
+      waitlist: Waitlist
+      paused: Paused
+      unknown: Unknown
+    unknown: Unknown
+    enacted: Enactment date
+    effective: Effective date
+    applications: Application opening date
+    rules: Official rule source
+    application: Application information
+    verified: Rule source last checked
+    next_steps: Organisational next steps
+    checked: Contact information checked
+    owner: Refresh owner
+    refresh: Refresh deadline
+    statistics: Population context
+    limitations: These figures describe population context, not an eligibility or nonparticipation estimate. Program conditions and comparable participation evidence require separate review.
+    district: Published for district
+    context: County/state context
+    unavailable: not available
+    missing: No matching published observation for this brief; catalog statistics are not displayed.
+    moe: "margin of error (90%): ±{value}"
+    no_moe: no margin of error published
+    reliability:
+      reliable: reliable
+      moderate: "moderate: use with care"
+      caution: use with caution
+      unavailable: not available
+    citation: "Source: {source}, table {table_id}, variable {variable}, {vintage}, geography {geography}. Method: {method}."
+    source: Published fact source
+    permission: Dated reuse permission
+    licence: Reuse licence evidence
+
   # Names, agencies, purposes and links come from data/programs.yaml.
   programs:
     heading: Programs that may help
