@@ -2,6 +2,7 @@
 
 import importlib
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,15 @@ __all__ = ["base_url", "browser", "page"]
 ROOT = Path(__file__).resolve().parents[2]
 URL = "/brief/house/22"
 POST = URL + "/ask"
+
+
+def test_ask_visual_dimensions_come_from_design_tokens() -> None:
+    """Ask follows the brief's token-only styling contract, including percentages."""
+    css = (ROOT / "static/site.css").read_text()
+    ask_rules = re.findall(r"\.ask\b[^{}]*\{([^{}]*)\}", css)
+    assert ask_rules
+    for declarations in ask_rules:
+        assert not re.search(r"\d(?:px|rem|em|pt|%)", declarations), declarations
 
 
 @pytest.fixture

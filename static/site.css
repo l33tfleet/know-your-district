@@ -274,7 +274,7 @@ code {
 }
 
 .ask label {
-  flex-basis: 100%;
+  flex-basis: var(--interval-full-width);
 }
 
 .ask input {
