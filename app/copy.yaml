@@ -23,12 +23,29 @@ home:
       senate: Senate
     number_label: District number
     submit: Open the brief
+  # The place search beside the picker, on the home page and on /find.
+  find:
+    label: Find a district by place
+    submit: Find
+    options_label: Matching places
+    # One listbox option as you type; the option's name is the place alone.
+    option_detail: "{island} · House District {house}"
 
 not_found:
   title: Page not found
   heading: Page not found
   body: This page doesn't exist. The address may be mistyped, or the page may have moved.
   home_link: Go to the home page to pick a Hawaiʻi House or Senate district
+
+find:
+  title: "Find a district by place · Know Your District"
+  heading: Find a district by place
+  # {q} is what was typed, shown as typed.
+  results: "Oʻahu places matching “{q}”:"
+  house_link: House District {number}
+  none: "No Oʻahu place matches “{q}”. Only Oʻahu places are listed so far."
+  picker_hint: Or choose the district by its number.
+  empty: Type the name of a place on Oʻahu, such as Kāneʻohe or Mōʻiliʻili.
 
 brief:
   # {district} is the district's full name, e.g. "Hawaiʻi State House District 22".

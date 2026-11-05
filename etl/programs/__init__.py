@@ -19,6 +19,14 @@ BRACKETS = (0.5, 1.0, 1.25, 1.5, 1.85, 2.0)
 ACS_FIELDS = tuple(f"C17002_{n:03d}E" for n in range(2, 8))
 FORBIDDEN = ("qualify", "eligible for", "you can get", "guaranteed", "apply now")
 
+# Enrichment imports FORBIDDEN from this package; define it before loading contracts.
+from etl.programs.contracts import (  # noqa: E402
+    NextSteps,
+    ProgramEnrichment,
+    Rules,
+    validate_wording,
+)
+
 
 class CatalogModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, str_min_length=1)
@@ -26,9 +34,7 @@ class CatalogModel(BaseModel):
     @field_validator("*", mode="before")
     @classmethod
     def safe_wording(cls, value: object) -> object:
-        if isinstance(value, str) and any(p in value.casefold() for p in FORBIDDEN):
-            raise ValueError("Catalog text contains forbidden wording")
-        return value
+        return validate_wording(value)
 
 
 class EligibilityProxy(CatalogModel):
@@ -93,6 +99,12 @@ class Program(CatalogModel):
     last_verified: date
     guidance: str
     referral_url: Literal["https://www.auw211.org/"]
+    # Omitted extensions stay absent even in the default model_dump/json paths.
+    rules: Rules | None = Field(default=None, exclude_if=lambda value: value is None)
+    next_steps: NextSteps | None = Field(default=None, exclude_if=lambda value: value is None)
+    enrichment: ProgramEnrichment | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
     @model_validator(mode="after")
     def cautious_guidance(self) -> Self:

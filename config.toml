@@ -104,3 +104,17 @@ DP04_0141E = "Estimate!!GROSS RENT AS A PERCENTAGE OF HOUSEHOLD INCOME (GRAPI)!!
 DP04_0142E = "Estimate!!GROSS RENT AS A PERCENTAGE OF HOUSEHOLD INCOME (GRAPI)!!Occupied units paying rent (excluding units where GRAPI cannot be computed)!!35.0 percent or more"
 S1810_C01_001E = "Estimate!!Total!!Total civilian noninstitutionalized population"
 S1810_C02_001E = "Estimate!!With a disability!!Total civilian noninstitutionalized population"
+
+# Ask uses typed Jev decisions, never generated prose. Secrets live in the environment.
+[ask]
+base_url = "https://api.typesafe.ai/v1/systemone"
+model = "jev-latest"
+timeout_seconds = 8
+request_input_tokens = 8192
+daily_input_tokens = 100000
+
+[ask_routing]
+confidence_threshold = 0.6
+individual_threshold = 0.8
+compare_threshold = 0.6
+alternative_threshold = 0.15
