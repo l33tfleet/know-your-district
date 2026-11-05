@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+{# The picker form is mirrored in find.html; change both. #}
 {% set picker = copy.home.picker %}
 {% set question = copy.home.question %}
 <section class="intro">
@@ -17,6 +18,7 @@
   </fieldset>
 </form>
 <div id="question-answer" aria-live="polite">{% if answer %}{% include "partials/question_answer.html" %}{% endif %}</div>
+<div class="finders">
 <form class="picker" action="/brief" method="get" hx-boost="true">
   <fieldset>
     <legend>{{ picker.legend }}</legend>
@@ -33,4 +35,6 @@
     <button type="submit">{{ picker.submit }}</button>
   </fieldset>
 </form>
+{% include "partials/picker.html" %}
+</div>
 {% endblock %}

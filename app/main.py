@@ -16,6 +16,7 @@ from markupsafe import Markup
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app import places
 from app.brief import discover, render_section
 from app.copy import geography_name, load_copy
 from app.features import validate_features
@@ -135,6 +136,42 @@ def pick(chamber: str = "", n: str = "") -> RedirectResponse:
         raise HTTPException(status_code=404)
     district = state.district
     return RedirectResponse(f"/brief/{district.chamber}/{district.district}", status_code=303)
+
+
+def search_query(q: str) -> str:
+    """The place search's text, checked at the edge: control characters are a 400, not a match."""
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in q):
+        raise HTTPException(status_code=400)
+    return q.strip()[:100]
+
+
+@app.get("/find", response_model=None)
+def find_place(request: Request, q: str = "") -> HTMLResponse | RedirectResponse:
+    """The place search's no-JavaScript target (WO #263, step 1: House only).
+
+    One match goes straight to its House brief; several are listed; none says so and keeps
+    the number picker.
+    """
+    q = search_query(q)
+    found = places.find(q)
+    state = page_state("house", str(found[0].house)) if len(found) == 1 else None
+    if state is not None:
+        return RedirectResponse(f"/brief/house/{state.district.district}", status_code=303)
+    context = page_context() | district_numbers("house", None)
+    context |= {"q": q, "places": found}
+    return templates.TemplateResponse(request, "find.html", context)
+
+
+FIND_OPTIONS = 8
+
+
+@app.get("/find/options", response_class=HTMLResponse)
+def find_options(q: str = "") -> HTMLResponse:
+    """htmx partial: the listbox options as you type (story step 1); each opens its House brief."""
+    found = places.find(search_query(q))[:FIND_OPTIONS]
+    picker = templates.get_template("partials/picker.html")
+    block = picker.blocks["place_options"]
+    return HTMLResponse("".join(block(picker.new_context({"copy": load_copy(), "options": found}))))
 
 
 @dataclass(frozen=True)

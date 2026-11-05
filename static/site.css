@@ -56,6 +56,37 @@ code {
   font-weight: var(--weight-bold);
 }
 
+/* home: the place search beside the picker, stacked when narrow */
+.finders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--measure) / 3), 1fr));
+  gap: var(--space-gap);
+  align-items: start;
+}
+
+.place-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--picker-gap);
+  align-items: center;
+  padding: var(--picker-padding);
+  border: var(--rule-width) solid var(--color-rule);
+}
+
+.place-search label {
+  font-weight: var(--weight-bold);
+}
+
+/* the as-you-type listbox: one option per line, full width under the searchbox */
+.place-options {
+  flex: 1 1 var(--measure); /* wider than the form, so it wraps onto its own line */
+}
+
+.place-options a {
+  display: block;
+  padding-block: var(--picker-gap);
+}
+
 /* headline */
 .brief-headline {
   border-bottom: var(--rule-heavy) solid var(--color-rule);
@@ -539,6 +570,7 @@ code {
   }
 
   .picker :is(select, button),
+  .place-search button,
   summary {
     box-sizing: border-box;
     min-height: var(--control-height);
@@ -557,11 +589,12 @@ code {
   }
 
   .picker :is(select, button):hover,
+  .place-search button:hover,
   summary:hover {
     background: var(--color-control-hover);
   }
 
-  :is(a, select, button, summary):focus-visible {
+  :is(a, select, input, button, summary):focus-visible {
     outline: var(--focus-width) solid var(--color-focus);
     outline-offset: var(--focus-offset);
   }
