@@ -9,6 +9,7 @@ from app.tools.program_stats import resolve_statistics
 from etl.programs import load_catalog
 from etl.programs.contracts import load_organisations
 
+FEATURE = "profiles"
 PRINT = False
 CATALOG = Path(__file__).resolve().parents[2] / "data/programs.yaml"
 

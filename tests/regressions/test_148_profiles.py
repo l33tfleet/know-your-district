@@ -11,6 +11,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from app import features
 from app.brief import discover
 from app.facts import FactStore
 from app.main import app, templates
@@ -233,9 +234,45 @@ def test_optional_profiles_dates_and_permission(
 
 
 @pytest.mark.parametrize("chamber,number", [("house", "22"), ("senate", "5")])
-def test_briefs_include_screen_only_profile(chamber: str, number: str) -> None:
+def test_briefs_include_screen_only_profile(
+    chamber: str, number: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    policy = tmp_path / "features.toml"
+    policy.write_text('outreach = "on"\nprofiles = "on"\n')
+    monkeypatch.setattr(features, "FEATURES_PATH", policy)
     response = TestClient(app).get(f"/brief/{chamber}/{number}")
     assert response.status_code == 200
     assert 'class="profiles"' in response.text
     assert "Not on the printout" in response.text
     assert not next(s for s in discover() if s.name == "profiles").printable
+
+
+def test_profiles_default_off_preserves_brief_print_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    policy = tmp_path / "features.toml"
+    policy.write_text('outreach = "off"\n')
+    monkeypatch.setattr(features, "FEATURES_PATH", policy)
+    response = TestClient(app).get("/brief/house/22")
+    assert response.status_code == 200
+    assert 'class="profiles"' not in response.text
+    assert 'class="screen-only"' not in response.text
+
+
+def test_pilot_urls_follow_catalog_link_policy() -> None:
+    from etl.programs.links import LinkResponse, check_catalog
+
+    programs = load_catalog(ROOT / "data/programs.yaml")
+    report = check_catalog(
+        programs, get=lambda _url, _timeout: LinkResponse(200), today=lambda: date(2026, 11, 5)
+    )
+    assert not report.failures
+
+
+def test_pilot_profile_does_not_claim_comparisons(monkeypatch: pytest.MonkeyPatch) -> None:
+    pilot = load_catalog(ROOT / "data/programs.yaml")[-1]
+    tree = Tree()
+    tree.feed(render(pilot, monkeypatch))
+    text = f" {tree.root.text.lower()} "
+    for word in ("higher", "lower", "above", "below"):
+        assert f" {word} " not in text

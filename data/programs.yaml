@@ -62,7 +62,7 @@
   agency: Hawaiʻi Department of Budget and Finance
   level: state
   purpose: Hawaiʻi ABLE may help people with disabilities save for disability-related expenses.
-  official_url: https://www.hawaiiablesavings.com/
+  official_url: https://www.ssa.gov/ssi/spotlights/spot-able.html
   last_verified: 2026-11-05
   guidance: The agency decides eligibility; contact Aloha United Way 211 for help finding services.
   referral_url: https://www.auw211.org/
@@ -93,7 +93,7 @@
       - Disability onset must precede the federal onset-age limit; current age alone does not establish this.
       - A recognised disability benefit or disability certification is required; SSA explains the alternative routes in the rule source.
       - Current Hawaiʻi enrollment availability, fees and incentive terms remain unverified because the program site blocked automated access.
-      - The effective date below refers to the federal onset-age expansion, not Hawaiʻi application opening.
+      - The listed effective date refers to the federal onset-age expansion, not Hawaiʻi application opening.
     exceptions:
       - Benefit interactions and contribution rules require separate program review; no assurance about retaining other benefits is made here.
     enacted_date: null
