@@ -6,6 +6,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 from jinja2 import ChoiceLoader, DictLoader, Environment, FileSystemLoader, StrictUndefined
+from playwright.sync_api import Route, sync_playwright
 
 import app.copy
 import app.main
@@ -173,3 +174,36 @@ def test_card_preserves_its_original_wording(
         "SNAP may help. DHS decides eligibility. Contact DHS or Aloha United Way 211 for "
         "assistance. Official SNAP program page Aloha United Way 211",
     ]
+
+
+def test_story_step_four_exposes_the_official_next_step() -> None:
+    """The shipped SNAP case presents the story's named link beside its evidence."""
+    client = TestClient(asgi_app)
+    result = snap.load_result(DistrictId(chamber="house", district=22))
+
+    def fulfil(route: Route) -> None:
+        response = client.get(route.request.url.replace("http://kyd", ""))
+        route.fulfill(
+            body=response.content,
+            status=response.status_code,
+            content_type=response.headers["content-type"],
+        )
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.route("http://kyd/**", fulfil)
+        page.goto("http://kyd/brief/house/22")
+        case = page.get_by_role("region", name="SNAP").filter(has=page.locator(".case-next"))
+        assert case.count() == 1
+        text = case.inner_text()
+        assert result.district.value_text in text
+        assert result.district.moe_text in text
+        assert result.district.reliability_word in text
+        assert "not current enrollment" in text
+        assert "DHS decides eligibility" in text
+        next_step = case.get_by_role("link", name="official next step", exact=True)
+        assert next_step.count() == 1
+        assert next_step.is_visible()
+        assert next_step.get_attribute("href") == result.official_url
+        browser.close()

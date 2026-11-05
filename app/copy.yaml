@@ -217,7 +217,7 @@ sections:
       outreach_planning_lead: Outreach-planning lead
       agency_follow_up: Agency follow-up
     next_label: Next step
-    official_label: Official SNAP program page
+    official_label: official next step
     outreach_label: DHS SNAP outreach providers
     rule_checked: "Rule source checked {date}."
     evidence_link: County and state figures, and the source
