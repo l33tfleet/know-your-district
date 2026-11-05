@@ -2,12 +2,13 @@
   <div class="headline-title">
     <div>
       <h1>{{ section.heading }}</h1>
-      <p class="vintage-line">{{ section.vintage_line }}</p>
+      <p class="vintage-line">{{ section.vintage_line }}
+        <span class="boundary-source">{{ section.boundary_source }}{% if section.coastline_source %} {{ section.coastline_source }}{% endif %}</span>
+      </p>
     </div>
     {# Expose one named image; the renderer’s individual paths are decorative within it. #}
     <div class="headline-map" role="img" aria-label="{{ section.boundary_label }}">
       <div aria-hidden="true">{{ section.boundary_svg }}</div>
     </div>
   </div>
-  <p class="boundary-source">{{ section.boundary_source }}{% if section.coastline_source %} {{ section.coastline_source }}{% endif %}</p>
 </header>

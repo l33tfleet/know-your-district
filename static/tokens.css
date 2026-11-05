@@ -34,6 +34,7 @@
   --headline-columns: minmax(0, 1fr) var(--headline-map-width);
   --headline-source-wrap: anywhere;
   --headline-print-map-width: 3rem;
+  --headline-print-source-size: var(--print-citation-size);
   --headline-size: 1.6rem;
   --headline-space: 0.25rem;
 

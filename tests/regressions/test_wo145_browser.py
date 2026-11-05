@@ -16,12 +16,14 @@ from tests.regressions.test_wo122_browser_checks import (
     browser,
     open_page,
     page,
+    page_text,
+    spelling_problems,
 )
 from tests.regressions.test_wo143_integration import pdf_pages
 
 __all__ = ["base_url", "browser", "page"]
 NAMES = ["Maui", "Kahoʻolawe", "Lānaʻi", "Molokaʻi"]
-CREDIT = 'Synthetic coastline source <survey> & "credit"'
+CREDIT = 'Synthetic Hawaii coastline source <survey> & "credit"'
 
 
 @pytest.fixture
@@ -116,7 +118,7 @@ def test_multi_island_coastline_states(
         assert [p.get_attribute("aria-label") for p in paths.all()[:-1]] == NAMES
         for path in paths.all()[:-1]:
             assert float(path.evaluate("e => getComputedStyle(e).opacity")) < 0.5
-        assert CREDIT in page.locator(".boundary-source").inner_text()
+        assert CREDIT.replace("Hawaii", "Hawaiʻi") in page.locator(".boundary-source").inner_text()
         assert page.locator(".boundary-source survey").count() == 0
     else:
         assert CREDIT not in page.locator(".boundary-source").inner_text()
@@ -138,24 +140,40 @@ def test_production_chambers_mobile_and_print(
     assert svg.locator("path").count() == 1 + sum(i.geometry is not None for i in entry.islands)
     label = svg.get_attribute("aria-label") or ""
     assert all(i.name in label for i in entry.islands)
-    assert entry.attribution.credit in page.locator(".boundary-source").inner_text()
+    assert (
+        entry.attribution.credit.replace("Hawaii", "Hawaiʻi")
+        in page.locator(".boundary-source").inner_text()
+    )
     assert_ink(page, width)
     assert axe_problems(page) == []
     page.emulate_media(media="print")
     assert_ink(page, width)
 
 
+@pytest.mark.parametrize("path", ["/brief/house/22", "/brief/senate/5"])
 @pytest.mark.parametrize("variant", ["", "?v=a", "?v=b"])
 def test_complete_brief_retains_one_letter_page(
-    page: Page, base_url: str, monkeypatch: pytest.MonkeyPatch, variant: str
+    page: Page, base_url: str, monkeypatch: pytest.MonkeyPatch, variant: str, path: str
 ) -> None:
     monkeypatch.setenv("KYD_FACTS_DB", str(ROOT / "data/facts.db"))
-    open_page(page, base_url + "/brief/house/22" + variant, 1440)
-    assert page.locator(".reading[data-geography='county:15:003']").count() == 3
+    open_page(page, base_url + path + variant, 1440)
+    assert page.locator(".figure .reading[data-geography^='county:']").count() == 3
+    page.add_style_tag(content=".brief, .site-footer { letter-spacing: 0.04em; }")
     assert pdf_pages(page) == 1
     page.emulate_media(media="print")
     assert_ink(page, 1440)
     evidence = Path("/tmp/wo201-print")
     evidence.mkdir(exist_ok=True)
     suffix = re.sub(r"\W", "", variant) or "default"
-    page.pdf(path=str(evidence / f"house22-{suffix}.pdf"), prefer_css_page_size=True)
+    page.pdf(
+        path=str(evidence / f"{path.rsplit('/', 2)[1]}-{suffix}.pdf"), prefer_css_page_size=True
+    )
+
+
+@pytest.mark.parametrize("chamber", ["house", "senate"])
+def test_boundary_attribution_uses_hawaiian_spelling(
+    page: Page, base_url: str, chamber: str
+) -> None:
+    open_page(page, f"{base_url}/brief/{chamber}/22", 390)
+    assert spelling_problems(page_text(page)) == []
+    assert "Hawaiʻi Statewide GIS Program" in page.locator(".boundary-source").inner_text()

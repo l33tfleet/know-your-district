@@ -83,6 +83,7 @@ brief:
 
 sections:
   headline:
+    hawaii: Hawaiʻi
     boundary_label: "{heading}; {islands}"
     boundary_source: "District outline: {credit}."
     coastline_source: "Island coastlines: {credit}."

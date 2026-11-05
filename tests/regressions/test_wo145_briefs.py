@@ -38,7 +38,7 @@ def test_every_brief_displays_its_boundary_and_sources(key: str) -> None:
         [(i.name, i.geometry) for i in boundary.islands],
     )
     assert expected in header[1]
-    assert escape(boundary.attribution.credit) in header[1]
+    assert escape(boundary.attribution.credit.replace("Hawaii", "Hawaiʻi")) in header[1]
     assert "2020–2024" in header[1] and "2022 plan" in header[1]
     for island in boundary.islands:
         assert escape(island.name, quote=True) in header[1]

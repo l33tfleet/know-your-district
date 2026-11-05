@@ -113,9 +113,9 @@ code {
 }
 
 .boundary-source {
+  display: block;
   font-size: var(--size-tiny);
   color: var(--color-muted);
-  margin: 0 0 var(--headline-space);
   overflow-wrap: var(--headline-source-wrap);
 }
 
@@ -312,8 +312,13 @@ code {
     --headline-map-width: var(--headline-print-map-width);
   }
 
+  .brief-headline .vintage-line {
+    font-size: var(--headline-print-source-size);
+  }
+
   .boundary-source {
-    font-size: var(--print-tiny-size);
+    display: inline;
+    font-size: inherit;
   }
 
   /* Off the printout: sections that are not PRINT, and preview failure notes. */
@@ -326,7 +331,6 @@ code {
      type and spacing around them shrink; outreach keeps its text, citations in a grid. */
   .site-header,
   .site-footer,
-  .brief-headline .vintage-line,
   .programs,
   .outreach {
     font-size: var(--print-text-size);

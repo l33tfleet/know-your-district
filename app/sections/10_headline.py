@@ -1,6 +1,8 @@
 # ruff: noqa: N999 -- sections are named NN_name.py by convention (#97); the prefix orders them
 """Headline: the district's name and the vintage line."""
 
+import re
+
 from markupsafe import Markup
 
 from app.boundary_store import load_boundaries
@@ -14,11 +16,16 @@ def context(state: PageState) -> dict[str, object]:
     vintage, plan = acs_config()
     wording = section_copy("headline")
     line: str = wording["vintage_line"]
+
+    def display_credit(credit: str) -> str:
+        # Keep archived credits verbatim; apply product spelling only to the display.
+        return re.sub(r"\bHawaii\b", wording["hawaii"], credit)
+
     heading = geography_name(state.district.fact_key)
     boundary = load_boundaries().district(state.district.fact_key)
     credits = list(
         dict.fromkeys(
-            island.coastline.source.credit
+            display_credit(island.coastline.source.credit)
             for island in boundary.islands
             if island.coastline.status == "available"
         )
@@ -32,7 +39,9 @@ def context(state: PageState) -> dict[str, object]:
         "boundary_svg": Markup(
             render_svg(boundary.geometry, heading, [(i.name, i.geometry) for i in boundary.islands])
         ),
-        "boundary_source": wording["boundary_source"].format(credit=boundary.attribution.credit),
+        "boundary_source": wording["boundary_source"].format(
+            credit=display_credit(boundary.attribution.credit)
+        ),
         "coastline_source": wording["coastline_source"].format(credit="; ".join(credits))
         if credits
         else "",
