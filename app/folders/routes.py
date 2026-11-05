@@ -236,8 +236,10 @@ async def set_priority(
     except ValidationError as exc:
         valid = ", ".join(words["priorities"])
         raise refused(words["unknown_priority"].format(value=priority, valid=valid)) from exc
+    # The reason is optional: none at all stores NULL; any text given meets every rule.
+    reason = form.get("reason") or None
     try:
-        reason = REASONS.validate_python(form.get("reason"))
+        reason = None if reason is None else REASONS.validate_python(reason)
     except ValidationError as exc:
         raise refused(words["bad_reason"]) from exc
     with known_folder():

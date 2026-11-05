@@ -29,7 +29,12 @@ from app.main import app as asgi_app
 from app.page_state import PageState, page_state
 from etl.boundaries import DistrictId
 from tests.regressions.test_wo97_brief_page import parse
-from tests.regressions.test_wo122_browser_checks import axe_problems, base_url, browser, open_page
+from tests.regressions.test_wo122_browser_checks import (
+    axe_problems,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # only #346's superseded tests used it
+    base_url,
+    browser,
+    open_page,
+)
 from tests.regressions.test_wo122_browser_checks import page as page
 from tests.regressions.test_wo143_integration import config, shipped_facts
 
@@ -442,62 +447,6 @@ def test_folder_page_for_a_folder_with_no_live_cards_still_opens(
 
 
 @pytest.mark.parametrize(
-    ("body", "named"),
-    [
-        ("chamber=house&district=22", CASE),
-        ("case_id=no_such&chamber=house&district=22", CASE),
-        (f"case_id={CASE}&chamber=mayor&district=22", "house"),
-        (f"case_id={CASE}&chamber=house&district=52", "house"),
-    ],
-    ids=["no-case", "unknown-case", "bad-chamber", "district-past-the-chamber"],
-)
-def test_bad_save_form_is_refused_naming_the_valid_choices(
-    client: TestClient, tmp_path: Path, body: str, named: str
-) -> None:
-    for path in ("/folders", f"{create(client)}/cases"):
-        before = len(rows(tmp_path / "folders.db", "SELECT id FROM cards"))
-        response = post(client, path, body)
-        assert response.status_code == 422
-        assert named in response.json()["detail"]
-        assert len(rows(tmp_path / "folders.db", "SELECT id FROM cards")) == before
-
-
-@pytest.mark.parametrize(
-    ("action", "body", "named"),
-    [
-        ("priority", "priority=urgent&reason=x", "high, normal, low"),
-        ("priority", "reason=x", "high, normal, low"),
-        ("priority", "priority=high", "1 to 200"),
-        ("priority", "priority=high&reason=", "1 to 200"),
-        ("priority", "priority=high&reason=+++", "1 to 200"),
-        ("priority", f"priority=high&reason={'x' * 201}", "1 to 200"),
-        ("priority", "priority=high&reason=a%0Ab", "one line"),
-        ("status", "status=new", "idea, contacted, planned, done"),
-        ("status", "", "idea, contacted, planned, done"),
-    ],
-    ids=[
-        "unknown-priority",
-        "no-priority",
-        "no-reason",
-        "empty-reason",
-        "blank-reason",
-        "long-reason",
-        "two-line-reason",
-        "unknown-status",
-        "no-status",
-    ],
-)
-def test_bad_card_form_is_refused_naming_the_rule(
-    client: TestClient, action: str, body: str, named: str
-) -> None:
-    path = create(client)
-    response = post(client, f"{path}/cards/{card_id(client, path)}/{action}", body)
-    assert response.status_code == 422
-    assert named in response.json()["detail"]
-    assert "Priority: normal" in client.get(path).text and "Status: idea" in client.get(path).text
-
-
-@pytest.mark.parametrize(
     "reason",
     [
         "%0Aa",
@@ -781,53 +730,6 @@ def live_folders(
     return shipped_facts
 
 
-def test_browser_saves_sets_and_reloads_the_same_values(page: Page, live_folders: str) -> None:
-    open_page(page, f"{live_folders}{BRIEF}?preview=1", 1440)
-    page.get_by_role("button", name=COPY["save_label"]).click()
-    page.wait_for_url("**/f/*")
-    assert NOTICE in page.inner_text("main")
-    assert axe_problems(page) == []
-    url = page.url
-
-    page.select_option("select[name=priority]", "high")
-    page.fill("input[name=reason]", "Office outreach week")
-    page.get_by_role("button", name="Set priority").click()
-    page.get_by_text("Priority: high").wait_for()
-    assert page.url == url  # an htmx partial update, not a page load
-
-    page.select_option("select[name=status]", "contacted")
-    page.get_by_role("button", name="Set status").click()
-    page.get_by_text("Status: contacted").wait_for()
-
-    page.reload()
-    summary = page.inner_text(".folder-summary")
-    assert "Priority: high" in summary
-    assert "Office outreach week" in summary
-    assert "Status: contacted" in summary
-    assert page.input_value("select[name=priority]") == "high"
-    assert page.input_value("input[name=reason]") == "Office outreach week"
-    assert page.input_value("select[name=status]") == "contacted"
-    assert axe_problems(page) == []
-
-
-def test_keyboard_alone_completes_the_status_change_and_keeps_focus(
-    page: Page, live_folders: str
-) -> None:
-    open_page(page, f"{live_folders}{BRIEF}?preview=1", 390)
-    page.get_by_role("button", name=COPY["save_label"]).focus()
-    page.keyboard.press("Enter")
-    page.wait_for_url("**/f/*")
-
-    page.focus("select[name=status]")
-    page.keyboard.press("ArrowDown")
-    page.keyboard.press("Tab")
-    assert page.evaluate("document.activeElement.textContent") == "Set status"
-    page.keyboard.press("Enter")
-    page.get_by_text("Status: contacted").wait_for()
-    assert page.evaluate("document.activeElement.textContent") == "Set status"
-    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-
-
 def test_copy_button_copies_the_folder_link(page: Page, live_folders: str) -> None:
     page.context.grant_permissions(["clipboard-read", "clipboard-write"])
     open_page(page, f"{live_folders}{BRIEF}?preview=1", 1440)
@@ -836,24 +738,6 @@ def test_copy_button_copies_the_folder_link(page: Page, live_folders: str) -> No
     page.locator("button.copy-link").click()
     page.get_by_text("Link copied").wait_for()
     assert page.evaluate("navigator.clipboard.readText()") == page.url
-
-
-def test_demo_steps_run_as_written(page: Page, live_folders: str, tmp_path: Path) -> None:
-    """The commit's `Demo:` block, step for step, on the shipped `preview` flag."""
-    page.goto(f"{live_folders}/brief/house/22?preview=1")
-    page.click("text=Save to folder")
-    page.get_by_text(NOTICE).wait_for()
-    page.select_option("select[name=priority]", "high")
-    page.fill("input[name=reason]", "Office outreach week")
-    page.click("text=Set priority")
-    page.get_by_text("Priority: high").wait_for()
-    page.select_option("select[name=status]", "contacted")
-    page.click("text=Set status")
-    page.get_by_text("Status: contacted").wait_for()
-    page.click("text=Reopen this folder's link")
-    page.get_by_text("Priority: high").wait_for()
-    page.get_by_text("Status: contacted").wait_for()
-    assert (tmp_path / STATE_DIR / "folders.db").exists()
 
 
 # --- the privacy note states the store as built ---

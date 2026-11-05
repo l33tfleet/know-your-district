@@ -285,11 +285,12 @@ code {
   min-width: 0;
 }
 
+/* Each form saves on change, so no button: fields line up by their labels. */
 .folder-card form {
   display: flex;
   flex-wrap: wrap;
   gap: var(--picker-gap);
-  align-items: end;
+  align-items: start;
   margin: var(--headline-space) 0;
 }
 

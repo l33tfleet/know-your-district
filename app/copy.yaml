@@ -362,10 +362,8 @@ folders:
   district_label: "Saved for {district}"
   priority_label: Priority
   reason_label: Reason, one line
-  reason_hint: Up to 200 characters. Do not name or describe a person.
-  set_priority: Set priority
+  reason_hint: Optional, up to 200 characters. Do not name or describe a person.
   status_label: Status
-  set_status: Set status
   summary: "Priority: {priority}{reason}. Status: {status}."
   summary_reason: " ({reason})"
   priorities:
