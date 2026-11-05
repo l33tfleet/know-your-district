@@ -1,0 +1,18 @@
+{% if recorded_on %}
+<p class="ask-recording"><strong>{{ recording_label }}</strong> · <time datetime="{{ recorded_on }}">{{ recorded_on }}</time></p>
+{% endif %}
+{% if clarify %}
+<p>{{ clarify }}</p>
+<form method="post" action="{{ action }}" hx-post="{{ action }}"
+      hx-target="#ask-answer" hx-swap="innerHTML" hx-disabled-elt="find button">
+  {% for option in options %}
+  <button type="submit" name="choice" value="{{ option.id }}">{{ option.label }}</button>
+  {% endfor %}
+</form>
+{% elif figure_section %}
+{% with section=figure_section, copy=figures_copy %}
+{% include "sections/20-figures.html" %}
+{% endwith %}
+{% for comparison in comparisons %}<p>{{ comparison }}</p>{% endfor %}
+{% if note %}<p>{{ note }}</p>{% endif %}
+{% else %}{{ answer }}{% endif %}
