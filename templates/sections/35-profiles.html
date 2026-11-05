@@ -1,0 +1,69 @@
+{% if section.profiles %}
+<section class="profiles">
+  <h2>{{ copy.heading }}</h2>
+  {% for profile in section.profiles %}
+  {% set p = profile.program %}
+  <article class="program-profile" data-program-id="{{ p.id }}">
+    <h3>{{ p.name }}</h3>
+    <p>{{ p.purpose }} {{ p.guidance }}</p>
+    <p><a href="{{ p.official_url }}">{{ copy.official }}</a> · <a href="{{ p.referral_url }}">{{ copy.referral }}</a></p>
+    {% if p.rules %}
+    {% set r = p.rules %}
+    <dl class="profile-rules">
+      <dt>{{ copy.jurisdiction }}</dt><dd>{{ r.jurisdiction }}</dd>
+      <dt>{{ copy.category }}</dt><dd>{{ r.category }}</dd>
+      <dt>{{ copy.unit }}</dt><dd>{{ r.assistance_unit_definition }}</dd>
+      <dt>{{ copy.income_basis }}</dt><dd>{{ copy.bases[r.income_basis] }}</dd>
+      <dt>{{ copy.income_period }}</dt><dd>{{ copy.periods[r.income_period] }}</dd>
+      <dt>{{ copy.conditions }}</dt><dd>{% for condition in r.conditions %}<p>{{ condition }}</p>{% else %}{{ copy.unknown }}{% endfor %}</dd>
+      <dt>{{ copy.exceptions }}</dt><dd>{% for exception in r.exceptions %}<p>{{ exception }}</p>{% else %}{{ copy.unknown }}{% endfor %}</dd>
+      <dt>{{ copy.availability_label }}</dt><dd>{{ copy.availability[r.availability] }}</dd>
+      <dt>{{ copy.enacted }}</dt><dd>{{ r.enacted_date or copy.unknown }}</dd>
+      <dt>{{ copy.effective }}</dt><dd>{{ r.effective_date or copy.unknown }}</dd>
+      <dt>{{ copy.applications }}</dt><dd>{{ r.open_date or copy.unknown }}</dd>
+    </dl>
+    <p><a href="{{ r.rule_url }}">{{ copy.rules }}</a> · <a href="{{ r.application_url }}">{{ copy.application }}</a></p>
+    {% endif %}
+    <p>{{ copy.verified }} {{ p.last_verified }}</p>
+    {% if p.next_steps %}
+    {% set n = p.next_steps %}
+    <h4>{{ copy.next_steps }}</h4>
+    <ul>{% for instruction in n.instructions %}<li>{{ instruction }}</li>{% endfor %}</ul>
+    <p><a href="{{ n.contact.url }}">{{ profile.organisation }}</a></p>
+    <dl class="profile-review">
+      <dt>{{ copy.checked }}</dt><dd>{{ n.checked_at }}</dd>
+      <dt>{{ copy.owner }}</dt><dd>{{ n.refresh_owner }}</dd>
+      <dt>{{ copy.refresh }}</dt><dd>{{ n.refresh_after }}</dd>
+    </dl>
+    {% endif %}
+    {% if profile.statistics %}
+    <h4>{{ copy.statistics }}</h4>
+    <p>{{ copy.limitations }}</p>
+    {% for s in profile.statistics %}
+    <div class="profile-statistic">
+      {% if s.fact %}
+      <p>{{ s.fact.label }} · {{ s.scope }} · {{ s.geography }}</p>
+      <p>{{ s.value }} ({{ s.moe }}; {{ s.reliability }})</p>
+      <p>{{ copy.citation.format(source=s.fact.source, table_id=s.fact.table_id, variable=s.fact.variable, vintage=s.fact.vintage, geography=s.fact.geography, method=s.fact.method) }}</p>
+      <p><a href="{{ s.fact.endpoint }}">{{ copy.source }}</a></p>
+      {% else %}
+      <p>{{ copy.unavailable }} · {{ copy.missing }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% if p.enrichment %}
+    {% for media in p.enrichment.media %}
+    <figure class="profile-media">
+      <img src="{{ media.url }}" alt="{{ media.alt }}" loading="lazy" referrerpolicy="no-referrer">
+      <figcaption>{{ media.credit }} · {{ media.licence }} ·
+        {% if media.permission %}<a href="{{ media.permission.record_url }}">{{ copy.permission }}</a> {{ media.permission.date }}
+        {% else %}<a href="{{ media.licence_url }}">{{ copy.licence }}</a>{% endif %}
+      </figcaption>
+    </figure>
+    {% endfor %}
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
