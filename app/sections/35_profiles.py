@@ -1,6 +1,7 @@
 # ruff: noqa: N999 -- sections are named NN_name.py by convention
 """Optional program detail, independently discovered and kept off the printout."""
 
+from decimal import Decimal
 from pathlib import Path
 
 from app.copy import geography_name, section_copy
@@ -12,6 +13,12 @@ from etl.programs.contracts import load_organisations
 FEATURE = "profiles"
 PRINT = False
 CATALOG = Path(__file__).resolve().parents[2] / "data/programs.yaml"
+
+
+def _format_observation(value: float) -> str:
+    """Group digits without rounding a stored observation or its MOE to zero."""
+    text = format(Decimal(str(value)), ",f")
+    return text.rstrip("0").rstrip(".") if "." in text else text
 
 
 def context(state: PageState) -> dict[str, object]:
@@ -32,10 +39,10 @@ def context(state: PageState) -> dict[str, object]:
                     "scope": copy["district"]
                     if fact and fact.geography == state.district.fact_key
                     else copy["context"],
-                    "value": f"{fact.value:,.6f}".rstrip("0").rstrip(".")
+                    "value": _format_observation(fact.value)
                     if fact and fact.value is not None
                     else copy["unavailable"],
-                    "moe": copy["moe"].format(value=f"{fact.moe:,.6f}".rstrip("0").rstrip("."))
+                    "moe": copy["moe"].format(value=_format_observation(fact.moe))
                     if fact and fact.moe is not None
                     else copy["no_moe"],
                     "reliability": copy["reliability"][fact.reliability] if fact else None,

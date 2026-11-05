@@ -276,3 +276,39 @@ def test_pilot_profile_does_not_claim_comparisons(monkeypatch: pytest.MonkeyPatc
     text = f" {tree.root.text.lower()} "
     for word in ("higher", "lower", "above", "below"):
         assert f" {word} " not in text
+
+
+@pytest.mark.parametrize(
+    "value,moe,reading,reliability",
+    [
+        (
+            0.0000004,
+            0.0000001,
+            "0.0000004 (margin of error (90%): ±0.0000001",
+            "moderate: use with care",
+        ),
+        (0, 0, "0 (margin of error (90%): ±0", "use with caution"),
+        (12000, 300, "12,000 (margin of error (90%): ±300", "reliable"),
+    ],
+)
+def test_profile_preserves_fact_value_and_moe(
+    extended: dict[str, Any],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    value: float,
+    moe: float,
+    reading: str,
+    reliability: str,
+) -> None:
+    """Formatting must not turn a nonzero fact or its uncertainty into zero."""
+    ref = extended["enrichment"]["fact_references"][0]
+    ref["geography"] = DISTRICT.fact_key
+    fact = row("population", DISTRICT.fact_key, value, moe).model_copy(
+        update={"variable": ref["variable"]}
+    )
+    path = tmp_path / "facts.db"
+    build_db(path, [fact])
+    monkeypatch.setenv("KYD_FACTS_DB", str(path))
+    html = render(Program.model_validate(extended), monkeypatch)
+    assert reading in html
+    assert reliability in html
