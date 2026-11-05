@@ -447,6 +447,27 @@ def test_folder_page_for_a_folder_with_no_live_cards_still_opens(
 
 
 @pytest.mark.parametrize(
+    ("body", "named"),
+    [
+        ("chamber=house&district=22", CASE),
+        ("case_id=no_such&chamber=house&district=22", CASE),
+        (f"case_id={CASE}&chamber=mayor&district=22", "house"),
+        (f"case_id={CASE}&chamber=house&district=52", "house"),
+    ],
+    ids=["no-case", "unknown-case", "bad-chamber", "district-past-the-chamber"],
+)
+def test_bad_save_form_is_refused_naming_the_valid_choices(
+    client: TestClient, tmp_path: Path, body: str, named: str
+) -> None:
+    for path in ("/folders", f"{create(client)}/cases"):
+        before = len(rows(tmp_path / "folders.db", "SELECT id FROM cards"))
+        response = post(client, path, body)
+        assert response.status_code == 422
+        assert named in response.json()["detail"]
+        assert len(rows(tmp_path / "folders.db", "SELECT id FROM cards")) == before
+
+
+@pytest.mark.parametrize(
     "reason",
     [
         "%0Aa",
