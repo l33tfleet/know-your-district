@@ -4,13 +4,18 @@ The provider facade alone owns upstream HTTP. One shared Runtime admits calls;
 fact tools read detached rows after classification, with no open transaction.
 """
 
+import json
+import os
+from datetime import date
 from ipaddress import ip_address
 from pathlib import Path
+from typing import Literal
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from app.agent.answers import VARIABLES, AnswerRenderer, Clarify, Paused, Routed
@@ -29,11 +34,38 @@ register_feature(FEATURE)
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
 runtime = Runtime()
+STORY_PATH = Path(__file__).resolve().parents[2] / "data/ask/story.json"
+
+
+class _Recording(BaseModel):
+    """Only routing is recorded; the renderer always reads current fact rows."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    question: Literal["Where could food-assistance outreach help here?"]
+    chamber: Literal["house"]
+    district: Literal[22]
+    recorded_on: date
+    response: dict[str, JsonValue]
+
+
+def _recording(state: PageState, question: str) -> _Recording | None:
+    try:
+        record = _Recording.model_validate_json(STORY_PATH.read_bytes())
+    except (OSError, ValidationError):
+        return None
+    if (
+        question == record.question
+        and state.district.chamber == record.chamber
+        and state.district.district == record.district
+    ):
+        return record
+    return None
 
 
 def answer_context(state: PageState, fields: dict[str, str], address: str) -> dict[str, object]:
     """Resolve only known page topics; upstream output never supplies text or figures."""
     provider = Provider(runtime.settings, transport=http_transport)
+    recorded_on = None
     choice = fields.get("choice")
     if choice is not None:
         answer = Routed(
@@ -42,12 +74,25 @@ def answer_context(state: PageState, fields: dict[str, str], address: str) -> di
             indicator_id=None if choice == "snap_no_receipt" else choice,
             confidence=1,
         )
+    elif not os.environ.get("TYPESAFE_API_KEY", "").strip() and (
+        record := _recording(state, fields["question"])
+    ):
+        raw = json.dumps(record.response).encode()
+
+        def replay(url: str, key: str, body: bytes, timeout: float) -> bytes:
+            return raw
+
+        # Reuse the facade's validation and routing; this transport cannot make HTTP.
+        provider = Provider(runtime.settings, transport=replay)
+        answer = provider.decide(fields["question"], state.district, "recorded")
+        if isinstance(answer, Routed) and answer.case_id == "snap_no_receipt":
+            recorded_on = record.recorded_on.isoformat()
     else:
         answer = runtime.run(
             address, lambda key: provider.decide(fields["question"], state.district, key)
         )
     copy = section_copy("ask")
-    context: dict[str, object] = {"copy": copy, "comparisons": []}
+    context: dict[str, object] = {"copy": copy, "comparisons": [], "recorded_on": recorded_on}
     if isinstance(answer, Clarify):
         context["clarify"] = copy["fixed_income" if answer.reason == "fixed_income" else "clarify"]
         context["options"] = [

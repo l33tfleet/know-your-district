@@ -1,3 +1,6 @@
+{% if recorded_on %}
+<p class="ask-recording"><strong>Recorded answer, not live</strong> · <time datetime="{{ recorded_on }}">{{ recorded_on }}</time></p>
+{% endif %}
 {% if clarify %}
 <p>{{ clarify }}</p>
 <form method="post" action="{{ action }}" hx-post="{{ action }}"
