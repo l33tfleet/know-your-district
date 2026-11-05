@@ -88,6 +88,37 @@ code {
 }
 
 /* headline */
+.headline-title {
+  display: grid;
+  grid-template-columns: var(--headline-columns);
+  gap: var(--headline-space);
+  align-items: center;
+}
+
+.headline-map svg {
+  display: block;
+  width: var(--headline-map-width);
+  aspect-ratio: var(--headline-map-aspect);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.headline-map path {
+  fill: var(--headline-map-fill);
+  opacity: var(--headline-coastline-opacity);
+}
+
+.headline-map path:last-child {
+  opacity: var(--headline-map-opacity);
+}
+
+.boundary-source {
+  font-size: var(--size-tiny);
+  color: var(--color-muted);
+  margin: 0 0 var(--headline-space);
+  overflow-wrap: var(--headline-source-wrap);
+}
+
 .brief-headline {
   border-bottom: var(--rule-heavy) solid var(--color-rule);
 }
@@ -277,6 +308,14 @@ code {
 }
 
 @media print {
+  .brief-headline {
+    --headline-map-width: var(--headline-print-map-width);
+  }
+
+  .boundary-source {
+    font-size: var(--print-tiny-size);
+  }
+
   /* Off the printout: sections that are not PRINT, and preview failure notes. */
   .screen-only,
   .section-failure {

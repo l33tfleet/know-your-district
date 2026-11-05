@@ -26,6 +26,14 @@
   --picker-padding: 0.75rem;
 
   /* headline */
+  --headline-map-width: 6rem;
+  --headline-map-aspect: 4 / 3;
+  --headline-map-fill: var(--color-text);
+  --headline-coastline-opacity: 0.18;
+  --headline-map-opacity: 1;
+  --headline-columns: minmax(0, 1fr) var(--headline-map-width);
+  --headline-source-wrap: anywhere;
+  --headline-print-map-width: 3rem;
   --headline-size: 1.6rem;
   --headline-space: 0.25rem;
 
