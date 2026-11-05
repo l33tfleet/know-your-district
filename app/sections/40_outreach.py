@@ -14,30 +14,24 @@ def context(state: PageState) -> dict[str, object]:
     if not load_features().outreach:
         return {}
     result = snap.load_result(state.district)
+    wording = snap.brief_wording()
+    copy = section_copy("snap_question")
     readings = (result.district, *result.counties, result.state)
     checks_enabled = enabled("source_links", state)
     return {
         "result": result,
-        # Keep the brief's neutral wording while preserving the canonical measure.
-        "heading": result.heading.replace("below poverty", "in poverty"),
-        "measure_note": result.measure_note.replace("below poverty", "under the poverty threshold"),
+        "heading": wording.heading,
+        "measure_note": wording.measure_note,
         "readings": readings,
         "source_links": {
             r.geography: source_links(r.fact)
             for r in readings
             if checks_enabled and r.fact is not None
         },
-        # Preserve the canonical caveat without the page's prohibited "eligible for" wording.
-        "poverty_note": result.poverty_note.replace(
-            "households eligible for SNAP but not enrolled",
-            "unenrolled households that meet SNAP eligibility rules",
-        ).replace(
-            "not the higher Hawaiʻi HHS poverty guidelines",
-            "not Hawaiʻi HHS poverty guidelines (which exceed Census thresholds)",
-        ),
+        "poverty_note": wording.poverty_note,
         "figures_copy": section_copy("figures"),
-        "caption": "District, county and state published estimates",
-        "estimate_label": "Estimate and uncertainty",
-        "official_label": "Official SNAP program page",
-        "referral_label": "Aloha United Way 211",
+        "caption": copy["caption"],
+        "estimate_label": copy["estimate_label"],
+        "official_label": copy["official_label"],
+        "referral_label": copy["referral_label"],
     }
