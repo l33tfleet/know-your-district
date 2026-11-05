@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from playwright.sync_api import Page, expect
+from pydantic import ValidationError
 
 from app import features
 from app.agent.answers import Refuse
@@ -320,6 +321,41 @@ def test_recording_never_replaces_live_failure(
     with TestClient(app, client=("192.0.2.1", 1234)) as client:
         response = client.post(POST, data={"question": RECORDINGS[0].question})
     assert response.text.strip() == section_copy("ask")["paused"]
+
+
+@pytest.mark.parametrize(
+    "condition,error,match",
+    [
+        ("missing", FileNotFoundError, "story.json"),
+        ("unreadable", IsADirectoryError, "story.json"),
+        ("malformed", ValidationError, "json_invalid"),
+        ("invalid_fields", ValidationError, "recorded_on"),
+    ],
+)
+def test_broken_local_recording_raises_instead_of_pausing(
+    offline: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    condition: str,
+    error: type[Exception],
+    match: str,
+) -> None:
+    """Committed recording failures must surface, rather than masquerade as an outage."""
+    web = importlib.import_module("app.web.ask")
+    path = tmp_path / "story.json"
+    if condition == "unreadable":
+        path.mkdir()
+    elif condition == "malformed":
+        path.write_text("{")
+    elif condition == "invalid_fields":
+        record = json.loads((ROOT / "data/ask/story.json").read_text())
+        record["recorded_on"] = "not-a-date"
+        path.write_text(json.dumps(record))
+    monkeypatch.setattr(web, "STORY_PATH", path)
+    monkeypatch.delenv("TYPESAFE_API_KEY")
+    with TestClient(app, client=("192.0.2.1", 1234)) as client, pytest.raises(error, match=match):
+        client.post(POST, data={"question": RECORDINGS[0].question})
+    assert not offline
 
 
 def test_recorded_story_rereads_fact_rows(

@@ -15,7 +15,7 @@ from urllib.parse import parse_qs
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
+from pydantic import BaseModel, ConfigDict, JsonValue
 from starlette.concurrency import run_in_threadpool
 
 from app.agent.answers import VARIABLES, AnswerRenderer, Clarify, Paused, Routed
@@ -50,10 +50,7 @@ class _Recording(BaseModel):
 
 
 def _recording(state: PageState, question: str) -> _Recording | None:
-    try:
-        record = _Recording.model_validate_json(STORY_PATH.read_bytes())
-    except (OSError, ValidationError):
-        return None
+    record = _Recording.model_validate_json(STORY_PATH.read_bytes())
     if (
         question == record.question
         and state.district.chamber == record.chamber
