@@ -83,6 +83,14 @@ brief:
 
 sections:
   headline:
+    map_label: District map
+    map_table_caption: District map as a table
+    map_district_heading: District
+    map_islands_heading: Islands
+    hawaii: Hawaiʻi
+    boundary_label: "{heading}; {islands}"
+    boundary_source: "District outline: {credit}."
+    coastline_source: "Island coastlines: {credit}."
     # {vintage} is the pinned ACS vintage from config.toml; {plan} the district plan year.
     vintage_line: >-
       U.S. Census Bureau, American Community Survey 5-year estimates, {vintage}.
