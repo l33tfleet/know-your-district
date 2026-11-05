@@ -199,3 +199,18 @@ def test_story_glance_map_has_visible_table_twin(
     page.emulate_media(media="print")
     assert table.is_visible()
     assert_ink(page, width)
+
+
+@pytest.mark.parametrize("chamber", ["house", "senate"])
+def test_map_table_headings_wrap_with_enlarged_phone_text(
+    page: Page, base_url: str, chamber: str
+) -> None:
+    """Allow map headings to wrap when readers enlarge text on a narrow phone."""
+    open_page(page, f"{base_url}/brief/{chamber}/13", 320)
+    page.add_style_tag(content=".headline-map-table { font-size: 200%; }")
+    heading = page.locator(".headline-map-table th").first
+    assert heading.evaluate(
+        "e => { const r = document.createRange(); r.selectNodeContents(e);"
+        " return r.getClientRects().length > 1; }"
+    ), "Map table headings must wrap to keep enlarged text within the phone layout"
+    assert_ink(page, 320)

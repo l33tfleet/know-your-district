@@ -125,10 +125,6 @@ code {
   vertical-align: top;
 }
 
-.headline-map-table th {
-  white-space: nowrap;
-}
-
 .boundary-source {
   display: block;
   font-size: var(--size-tiny);
