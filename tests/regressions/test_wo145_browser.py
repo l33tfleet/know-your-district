@@ -72,6 +72,25 @@ def test_complete_briefs_accessible_mobile_and_print(
     )
 
 
+@pytest.mark.parametrize("district", ["house/22", "senate/5"])
+@pytest.mark.parametrize("variant", ["", "a", "b"])
+def test_outline_and_attribution_leave_print_room_for_wider_fonts(
+    offline: Page, district: str, variant: str, tmp_path: Path
+) -> None:
+    """State attribution must fit with the complete brief even when text widens."""
+    offline.set_viewport_size({"width": 1440, "height": 900})
+    offline.goto(f"http://kyd/brief/{district}" + (f"?v={variant}" if variant else ""))
+    offline.add_style_tag(content=".brief, .site-footer { letter-spacing: 0.04em; }")
+    offline.emulate_media(media="print")
+    assert offline.locator(".district-outline").is_visible()
+    assert offline.locator(".boundary-source").is_visible()
+    offline.pdf(
+        path=str(tmp_path / f"wide-{district.replace('/', '-')}-{variant or 'memo'}.pdf"),
+        prefer_css_page_size=True,
+    )
+    assert pdf_pages(offline) == 1
+
+
 @pytest.mark.parametrize("coastlines", [False, True])
 def test_multi_island_geometry_and_missing_coastline_fixture(
     offline: Page, monkeypatch: pytest.MonkeyPatch, coastlines: bool

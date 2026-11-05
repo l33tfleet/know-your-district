@@ -29,7 +29,7 @@
   --outline-full-width: 100%;
   --outline-opacity: 1;
   --outline-width: 6rem;
-  --outline-print-width: 3.5rem;
+  --outline-print-width: 2rem;
   --outline-color: var(--interval-accent);
   --outline-coastline-opacity: 0.3;
   --outline-coastline-color: var(--color-muted);
@@ -72,7 +72,7 @@
   --print-gap: 0.75rem;
   --print-space: 0.15rem;
   --print-heading-size: 0.95rem;
-  --print-headline-size: 1.3rem;
+  --print-headline-size: 0.95rem;
   --print-value-size: 1rem;
 }
 

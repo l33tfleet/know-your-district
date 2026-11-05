@@ -140,6 +140,10 @@ code {
 }
 
 @media print {
+  .headline-text {
+    font-size: var(--print-text-size);
+  }
+
   .district-outline {
     width: var(--outline-print-width);
     print-color-adjust: exact;
@@ -149,6 +153,14 @@ code {
   .brief-headline :is(.boundary-islands, .boundary-source) {
     font-size: var(--print-text-size);
     margin: 0 0 var(--print-space);
+  }
+
+  .brief-headline .boundary-source {
+    font-size: var(--print-citation-size);
+  }
+
+  .brief-headline :is(.vintage-line, .boundary-islands) {
+    display: inline;
   }
 }
 
