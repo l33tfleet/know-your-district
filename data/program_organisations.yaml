@@ -1,0 +1,7 @@
+# Maintainer-vetted public organisation contacts; never add personal endpoints.
+# This is an endpoint allowlist, not evidence of capacity or open appointments.
+auw211:
+  name: Aloha United Way 211
+  source_url: https://www.auw211.org/
+  public_contacts:
+    - https://www.auw211.org/
