@@ -1,4 +1,22 @@
 <header class="brief-headline">
-  <h1>{{ section.heading }}</h1>
-  <p class="vintage-line">{{ section.vintage_line }}</p>
+  <div class="headline-identity">
+    <div class="headline-text">
+      <h1>{{ section.heading }}</h1>
+      <p class="vintage-line">{{ section.vintage_line }}</p>
+      <p class="boundary-islands">{{ copy.islands }} {{ section.islands }}</p>
+    </div>
+    <div class="district-outline" role="img" aria-label="{{ section.outline_label }}">
+      <div aria-hidden="true">{{ section.outline | safe }}</div>
+    </div>
+  </div>
+  <p class="boundary-source">
+    <a href="{{ section.provenance.source_url }}">{{ copy.boundary_source }}</a>:
+    {{ section.credit }}. {{ copy.credit_spelling }}
+    {{ section.provenance.vintage }}. {{ copy.retrieved }} {{ section.provenance.retrieved_on }}.
+    {{ copy.method }} {{ section.provenance.method }}
+    {% for credit, url, date in section.coastline_sources %}
+    {{ copy.coastline_source }} <a href="{{ url }}">{{ credit }}</a>.
+    {{ copy.retrieved }} {{ date }}.
+    {% endfor %}
+  </p>
 </header>

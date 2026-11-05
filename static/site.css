@@ -103,6 +103,55 @@ code {
   color: var(--color-muted);
 }
 
+/* The sole renderer owns geometry; presentation follows the site tokens. */
+.headline-identity {
+  display: grid;
+  grid-template-columns: var(--headline-columns);
+  align-items: center;
+  gap: var(--headline-space);
+}
+
+.district-outline {
+  width: var(--outline-width);
+}
+
+.district-outline svg {
+  display: block;
+  width: var(--outline-full-width);
+  height: auto;
+}
+
+.district-outline path {
+  fill: var(--outline-coastline-color);
+  opacity: var(--outline-coastline-opacity);
+}
+
+.district-outline path:last-child {
+  fill: var(--outline-color);
+  opacity: var(--outline-opacity);
+}
+
+.boundary-islands,
+.boundary-source {
+  margin: 0 0 var(--headline-space);
+  font-size: var(--size-tiny);
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+@media print {
+  .district-outline {
+    width: var(--outline-print-width);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .brief-headline :is(.boundary-islands, .boundary-source) {
+    font-size: var(--print-text-size);
+    margin: 0 0 var(--print-space);
+  }
+}
+
 /* figures */
 .figure {
   padding: var(--figure-space) 0;

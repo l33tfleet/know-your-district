@@ -87,6 +87,12 @@ sections:
     vintage_line: >-
       U.S. Census Bureau, American Community Survey 5-year estimates, {vintage}.
       District lines from the {plan} plan.
+    islands: "Islands:"
+    boundary_source: State of Hawaiʻi district boundaries
+    credit_spelling: Credit spelling follows Hawaiian usage.
+    retrieved: Retrieved
+    method: "Method:"
+    coastline_source: "Coastlines:"
 
   figures:
     heading: Who lives here
