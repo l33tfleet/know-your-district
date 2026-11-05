@@ -26,6 +26,19 @@
   --picker-padding: 0.75rem;
 
   /* headline */
+  --headline-map-width: 6rem;
+  --headline-map-aspect: 4 / 3;
+  --headline-map-fill: var(--color-text);
+  --headline-coastline-opacity: 0.18;
+  --headline-map-opacity: 1;
+  --headline-columns: minmax(0, 1fr) var(--headline-map-width);
+  --headline-source-wrap: anywhere;
+  --headline-table-size: var(--size-tiny);
+  --headline-table-gap: 0.1rem 0.5rem;
+  --headline-print-table-gap: 0 0.5rem;
+  --headline-print-map-width: 3rem;
+  --headline-print-copy-columns: minmax(0, 2fr) minmax(0, 1fr);
+  --headline-print-source-size: var(--print-citation-size);
   --headline-size: 1.6rem;
   --headline-space: 0.25rem;
 

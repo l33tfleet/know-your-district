@@ -1,0 +1,35 @@
+{
+  "question": "Where could food-assistance outreach help here?",
+  "chamber": "house",
+  "district": 22,
+  "recorded_on": "2026-11-05",
+  "response": {
+    "model": "jev-1.14.0",
+    "answers": {
+      "topic": {
+        "type": "choice",
+        "choice": "snap_no_receipt",
+        "confidence": 1,
+        "probabilities": {
+          "snap_no_receipt": 1,
+          "age_65_share": 0,
+          "median_household_income": 0,
+          "population": 0,
+          "none": 0
+        }
+      },
+      "individual": {
+        "type": "noul",
+        "noul": 0.43
+      },
+      "compare": {
+        "type": "noul",
+        "noul": 0.12
+      }
+    },
+    "usage": {
+      "input_tokens": 480,
+      "output_tokens": 30
+    }
+  }
+}

@@ -83,6 +83,14 @@ brief:
 
 sections:
   headline:
+    map_label: District map
+    map_table_caption: District map as a table
+    map_district_heading: District
+    map_islands_heading: Islands
+    hawaii: Hawaiʻi
+    boundary_label: "{heading}; {islands}"
+    boundary_source: "District outline: {credit}."
+    coastline_source: "Island coastlines: {credit}."
     # {vintage} is the pinned ACS vintage from config.toml; {plan} the district plan year.
     vintage_line: >-
       U.S. Census Bureau, American Community Survey 5-year estimates, {vintage}.
@@ -209,13 +217,23 @@ sections:
       outreach_planning_lead: Outreach-planning lead
       agency_follow_up: Agency follow-up
     next_label: Next step
-    official_label: Official SNAP program page
+    official_label: official next step
     outreach_label: DHS SNAP outreach providers
     rule_checked: "Rule source checked {date}."
     evidence_link: County and state figures, and the source
     save_label: Save to folder
 
   snap:
+    brief:
+      heading: Households in poverty reporting no SNAP receipt
+      measure_note: >-
+        ACS survey-reported receipt over the past 12 months, not current enrollment or eligibility.
+        This published joint cell counts households with income under the poverty threshold that
+        reported no Food Stamps/SNAP receipt during that period.
+      poverty_note: >-
+        ACS uses national Census poverty thresholds, not Hawaiʻi HHS poverty guidelines
+        (which exceed Census thresholds). This count does not determine eligibility or identify
+        unenrolled households that meet SNAP eligibility rules.
     heading: Households below poverty reporting no SNAP receipt
     units: households
     measure_note: >-

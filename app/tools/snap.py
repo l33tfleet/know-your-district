@@ -1,6 +1,6 @@
 """District-bound SNAP answer for the fixed question; reads the outreach card's result, no model.
 
-The brief wording mirrors app/sections/40_outreach.py so the answer and the card say the
+The brief wording comes from app.snap.brief_wording so the answer and the card say the
 same thing; tests/regressions/test_wo136_answer.py pins that they match.
 """
 
@@ -39,18 +39,11 @@ class DistrictSnap:
         Each Reading keeps the original Fact with its citation and uncertainty.
         """
         result = snap.load_result(self._district)
+        wording = snap.brief_wording()
         return SnapAnswer(
             result=result,
-            heading=result.heading.replace("below poverty", "in poverty"),
-            measure_note=result.measure_note.replace(
-                "below poverty", "under the poverty threshold"
-            ),
-            poverty_note=result.poverty_note.replace(
-                "households eligible for SNAP but not enrolled",
-                "unenrolled households that meet SNAP eligibility rules",
-            ).replace(
-                "not the higher Hawaiʻi HHS poverty guidelines",
-                "not Hawaiʻi HHS poverty guidelines (which exceed Census thresholds)",
-            ),
+            heading=wording.heading,
+            measure_note=wording.measure_note,
+            poverty_note=wording.poverty_note,
             readings=(result.district, *result.counties, result.state),
         )
