@@ -22,6 +22,21 @@ VARIABLE = "B22003_006E"
 STATE = "state:15"
 
 
+class BriefWording(BaseModel):
+    """Explicit brief copy, independent of canonical measure wording."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    heading: str
+    measure_note: str
+    poverty_note: str
+
+
+def brief_wording() -> BriefWording:
+    """Shared card and answer wording; never rewrite canonical measure strings."""
+    return BriefWording.model_validate(section_copy("snap")["brief"])
+
+
 class Assistance(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
