@@ -132,11 +132,26 @@ code {
 }
 
 .boundary-islands,
+.boundary-table,
 .boundary-source {
   margin: 0 0 var(--headline-space);
   font-size: var(--size-tiny);
   color: var(--color-muted);
   overflow-wrap: anywhere;
+}
+
+.boundary-table {
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.boundary-table :is(th, td) {
+  padding: 0;
+  vertical-align: top;
+}
+
+.boundary-table th {
+  padding-right: var(--headline-space);
 }
 
 @media print {
@@ -150,7 +165,7 @@ code {
     -webkit-print-color-adjust: exact;
   }
 
-  .brief-headline :is(.boundary-islands, .boundary-source) {
+  .brief-headline :is(.boundary-table, .boundary-islands, .boundary-source) {
     font-size: var(--print-text-size);
     margin: 0 0 var(--print-space);
   }
@@ -159,8 +174,16 @@ code {
     font-size: var(--print-citation-size);
   }
 
-  .brief-headline :is(.vintage-line, .boundary-islands) {
-    display: inline;
+  .brief-headline .boundary-table {
+    font-size: var(--print-citation-size);
+  }
+
+  .brief-headline :is(.boundary-table, .boundary-table h1) {
+    margin: 0;
+  }
+
+  .brief-headline .boundary-islands {
+    font-size: inherit;
   }
 }
 

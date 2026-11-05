@@ -48,6 +48,16 @@ def test_complete_briefs_accessible_mobile_and_print(
 ) -> None:
     offline.set_viewport_size({"width": width, "height": 900})
     offline.goto(f"http://kyd/brief/{district}" + (f"?v={variant}" if variant else ""))
+    district_map = offline.get_by_role("region", name="District map", exact=True)
+    assert district_map.is_visible()
+    twin = district_map.get_by_role("table", name="District map as a table", exact=True)
+    assert twin.is_visible()
+    assert offline.locator("h1").inner_text() in twin.inner_text()
+    boundary = load_boundaries().district(
+        f"{district.split('/')[0]}:15:{int(district.split('/')[1]):03}:2022"
+    )
+    for island in boundary.islands:
+        assert island.name in twin.inner_text()
     image = offline.get_by_role("img").filter(has=offline.locator("path"))
     assert image.count() == 1 and image.is_visible()
     assert axe_problems(offline) == []
@@ -61,6 +71,7 @@ def test_complete_briefs_accessible_mobile_and_print(
     screen_name = image.get_attribute("aria-label")
     offline.emulate_media(media="print")
     assert image.is_visible() and image.get_attribute("aria-label") == screen_name
+    assert twin.is_visible()
     assert offline.locator(".boundary-source").is_visible()
     for field in ("source", "table_id", "vintage", "geography", "method"):
         for cell in offline.locator(f'.figure dl.citation [data-field="{field}"]').all():
@@ -145,6 +156,10 @@ def test_multi_island_geometry_and_missing_coastline_fixture(
     name = "Hawaiʻi State House District 13; Maui; Kahoʻolawe; Lānaʻi; Molokaʻi"
     image = offline.get_by_role("img", name=name, exact=True)
     assert image.count() == 1 and image.is_visible()
+    twin = offline.get_by_role("table", name="District map as a table", exact=True)
+    assert twin.is_visible()
+    for island in islands:
+        assert island.name in twin.inner_text()
     paths = image.locator("path")
     assert paths.count() == (5 if coastlines else 1)
     assert len(set(paths.evaluate_all("ps => ps.map(p => p.getAttribute('d'))"))) == paths.count()

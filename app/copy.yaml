@@ -88,6 +88,8 @@ sections:
       U.S. Census Bureau, American Community Survey 5-year estimates, {vintage}.
       District lines from the {plan} plan.
     islands: "Islands:"
+    map_label: District map
+    map_table: District map as a table
     boundary_source: State of Hawaiʻi district boundaries
     credit_spelling: Credit spelling follows Hawaiian usage.
     retrieved: Retrieved

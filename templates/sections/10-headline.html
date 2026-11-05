@@ -1,9 +1,15 @@
 <header class="brief-headline">
-  <div class="headline-identity">
+  <div class="headline-identity" role="region" aria-label="{{ copy.map_label }}">
     <div class="headline-text">
-      <h1>{{ section.heading }}</h1>
+      <table class="boundary-table" aria-label="{{ copy.map_table }}">
+        <tbody>
+          <tr>
+            <th scope="row"><h1>{{ section.heading }}</h1></th>
+            <td class="boundary-islands">{{ copy.islands }} {{ section.islands }}</td>
+          </tr>
+        </tbody>
+      </table>
       <p class="vintage-line">{{ section.vintage_line }}</p>
-      <p class="boundary-islands">{{ copy.islands }} {{ section.islands }}</p>
     </div>
     <div class="district-outline" role="img" aria-label="{{ section.outline_label }}">
       <div aria-hidden="true">{{ section.outline | safe }}</div>
