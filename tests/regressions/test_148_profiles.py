@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 import yaml
 from fastapi.testclient import TestClient
+from playwright.sync_api import Page
 
 from app import features
 from app.brief import discover
@@ -20,8 +21,10 @@ from etl.boundaries import DistrictId
 from etl.programs import Program, load_catalog
 from tests.regressions.test_148_contracts import extended
 from tests.regressions.test_wo97_brief_page import Tree, build_db, row
+from tests.regressions.test_wo122_browser_checks import base_url, browser, open_page, page
+from tests.regressions.test_wo143_integration import pdf_pages
 
-__all__ = ["extended"]
+__all__ = ["base_url", "browser", "extended", "page"]
 ROOT = Path(__file__).resolve().parents[2]
 DISTRICT = DistrictId(chamber="house", district="22")
 
@@ -312,3 +315,30 @@ def test_profile_preserves_fact_value_and_moe(
     html = render(Program.model_validate(extended), monkeypatch)
     assert reading in html
     assert reliability in html
+
+
+@pytest.mark.parametrize("path", ["/brief/house/22", "/brief/senate/5"])
+@pytest.mark.parametrize("variant", ["", "?v=a", "?v=b"])
+def test_pilot_preserves_one_page_with_wider_print_text(
+    page: Page,
+    base_url: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    variant: str,
+) -> None:
+    """The enriched catalog must leave print room for wider system fonts too."""
+    policy = tmp_path / "features.toml"
+    policy.write_text('outreach = "on"\nprofiles = "on"\n')
+    monkeypatch.setattr(features, "FEATURES_PATH", policy)
+    monkeypatch.setenv("KYD_FACTS_DB", str(ROOT / "data/facts.db"))
+    open_page(page, base_url + path + variant, 1440)
+    assert page.locator(".program").count() == 3
+    assert page.locator(".profiles").is_visible()
+    card_text = page.locator(".program-list").inner_text().split()
+    page.add_style_tag(content=".brief, .site-footer { letter-spacing: 0.04em; }")
+    page.emulate_media(media="print")
+    assert not page.locator(".profiles").is_visible()
+    assert all(card.is_visible() for card in page.locator(".program").all())
+    assert page.locator(".program-list").inner_text().split() == card_text
+    assert pdf_pages(page) == 1

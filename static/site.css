@@ -499,8 +499,16 @@ code {
     display: none;
   }
 
-  .program :is(.program-agency, .program-purpose, .program-guidance) {
+  /* A running paragraph under each title keeps every referral in the three-column
+     catalog. Match the agency selector's variant specificity so print type wins. */
+  .programs .program,
+  .programs .program .program-agency {
     font-size: var(--print-tiny-size);
+  }
+
+  .programs .program p {
+    display: inline;
+    margin: 0;
   }
 
   /* The notes and readings sit under the opening case: same text, tighter set. */
