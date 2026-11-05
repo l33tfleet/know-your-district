@@ -177,3 +177,25 @@ def test_boundary_attribution_uses_hawaiian_spelling(
     open_page(page, f"{base_url}/brief/{chamber}/22", 390)
     assert spelling_problems(page_text(page)) == []
     assert "Hawaiʻi Statewide GIS Program" in page.locator(".boundary-source").inner_text()
+
+
+@pytest.mark.parametrize("chamber,number", [("house", 22), ("senate", 8), ("house", 13)])
+@pytest.mark.parametrize("width", [390, 1440])
+def test_story_glance_map_has_visible_table_twin(
+    page: Page, base_url: str, chamber: str, number: int, width: int
+) -> None:
+    open_page(page, f"{base_url}/brief/{chamber}/{number}", width)
+    region = page.get_by_role("region", name="District map", exact=True)
+    assert region.count() == 1
+    table = region.get_by_role("table", name="District map as a table", exact=True)
+    assert table.is_visible()
+    assert region.get_by_role("img").is_visible()
+    assert region.get_by_role("heading", level=1).is_visible()
+    entry = boundaries.load_boundaries().district(f"{chamber}:15:{number:03}:2022")
+    assert table.get_by_role("cell", name=page.locator("h1").inner_text(), exact=True).is_visible()
+    assert table.get_by_role("cell", name="; ".join(i.name for i in entry.islands)).is_visible()
+    assert axe_problems(page) == []
+    assert_ink(page, width)
+    page.emulate_media(media="print")
+    assert table.is_visible()
+    assert_ink(page, width)

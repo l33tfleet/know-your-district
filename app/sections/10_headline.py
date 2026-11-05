@@ -32,6 +32,11 @@ def context(state: PageState) -> dict[str, object]:
     )
     return {
         "heading": heading,
+        "map_label": wording["map_label"],
+        "map_table_caption": wording["map_table_caption"],
+        "map_district_heading": wording["map_district_heading"],
+        "map_islands_heading": wording["map_islands_heading"],
+        "map_islands": "; ".join(i.name for i in boundary.islands),
         "boundary_label": wording["boundary_label"].format(
             heading=heading, islands="; ".join(i.name for i in boundary.islands)
         ),

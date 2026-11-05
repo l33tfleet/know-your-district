@@ -83,6 +83,10 @@ brief:
 
 sections:
   headline:
+    map_label: District map
+    map_table_caption: District map as a table
+    map_district_heading: District
+    map_islands_heading: Islands
     hawaii: Hawaiʻi
     boundary_label: "{heading}; {islands}"
     boundary_source: "District outline: {credit}."
