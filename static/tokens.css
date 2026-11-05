@@ -70,7 +70,8 @@
   --print-program-columns: repeat(2, minmax(0, 1fr));
   --print-line-height: 1.15;
   --print-gap: 0.75rem;
-  --print-space: 0.15rem;
+  /* Reserve room for boundary attribution and wider system fonts. */
+  --print-space: 0.1rem;
   --print-heading-size: 0.95rem;
   --print-headline-size: 0.95rem;
   --print-value-size: 1rem;

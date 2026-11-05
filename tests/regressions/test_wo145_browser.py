@@ -85,13 +85,14 @@ def test_complete_briefs_accessible_mobile_and_print(
 
 @pytest.mark.parametrize("district", ["house/22", "senate/5"])
 @pytest.mark.parametrize("variant", ["", "a", "b"])
+@pytest.mark.parametrize("letter_spacing", ["0.04em", "0.06em"])
 def test_outline_and_attribution_leave_print_room_for_wider_fonts(
-    offline: Page, district: str, variant: str, tmp_path: Path
+    offline: Page, district: str, variant: str, letter_spacing: str, tmp_path: Path
 ) -> None:
     """State attribution must fit with the complete brief even when text widens."""
     offline.set_viewport_size({"width": 1440, "height": 900})
     offline.goto(f"http://kyd/brief/{district}" + (f"?v={variant}" if variant else ""))
-    offline.add_style_tag(content=".brief, .site-footer { letter-spacing: 0.04em; }")
+    offline.add_style_tag(content=f".brief, .site-footer {{ letter-spacing: {letter_spacing}; }}")
     offline.emulate_media(media="print")
     assert offline.locator(".district-outline").is_visible()
     assert offline.locator(".boundary-source").is_visible()
