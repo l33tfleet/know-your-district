@@ -45,7 +45,8 @@ BUSY_TIMEOUT_MS = 5000
 MIGRATIONS: tuple[str, ...] = (Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"),)
 LIVE_FOLDER = "SELECT id, name FROM folders WHERE id = ? AND deleted_at IS NULL AND updated_at > ?"
 LIVE_CARDS = (
-    "SELECT id, card_key AS case_id, chamber, district, priority, reason, status FROM cards"
+    "SELECT id, card_key AS case_id, chamber, district, priority, reason, status,"
+    " created_at, updated_at FROM cards"
     " WHERE folder_id = ? AND deleted_at IS NULL ORDER BY id"
 )
 LIVE_NOTES = (
@@ -151,6 +152,8 @@ class Card(BaseModel):
     priority: Priority
     reason: str | None
     status: Status
+    created_at: str
+    updated_at: str
 
 
 class Folder(BaseModel):
@@ -436,6 +439,22 @@ class FolderStore:
                 " WHERE id = ? AND deleted_at IS NULL AND card_id IN"
                 " (SELECT id FROM cards WHERE folder_id = ? AND deleted_at IS NULL)",
                 (body, confirmed, now(), note_id, folder_id),
+            )
+            if changed.rowcount != 1:
+                raise FolderNotFoundError
+            _touch(db, folder_id)
+
+    @checked
+    def delete_note(self, folder_id: FolderId, note_id: NoteId) -> None:
+        """Move a live note of this folder to the trash (`deleted_at`); a purge removes it."""
+        with self._write() as db:
+            _require_folder(db, folder_id)
+            stamp = now()
+            changed = db.execute(
+                "UPDATE notes SET deleted_at = ?, updated_at = ?"
+                " WHERE id = ? AND deleted_at IS NULL AND card_id IN"
+                " (SELECT id FROM cards WHERE folder_id = ? AND deleted_at IS NULL)",
+                (stamp, stamp, note_id, folder_id),
             )
             if changed.rowcount != 1:
                 raise FolderNotFoundError

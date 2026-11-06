@@ -7,9 +7,10 @@ records exist. No chat history, profiles or other user content persist.
 With `folders` enabled, only `app/folders/store.py` writes: mode 0600, outside
 the checkout, at `KYD_FOLDERS_DB` or
 `$XDG_STATE_HOME/know-your-district/folders.db` (else `~/.local/state`). Stored: folder name,
-district, case IDs, priorities, statuses, timestamps and office-written reasons
-(at most 200 characters).
-Keep personal details out. Anyone possessing the 128-bit link can edit. Removal
+district, case IDs, priorities, statuses, timestamps, office-written reasons
+(at most 200 characters) and dated notes (at most 1,000 characters).
+Keep personal details out of folder names, reasons and notes; notes holding
+contact details are always refused. Anyone possessing the 128-bit link can edit. Removal
 soft-deletes (`deleted_at`); no automatic purge or retention period exists. Folders #155 owns
 future storage.
 

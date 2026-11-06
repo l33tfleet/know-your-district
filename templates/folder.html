@@ -11,9 +11,11 @@
             hx-on:click="const button = this; navigator.clipboard.writeText(location.href).then(function () { button.nextElementSibling.textContent = button.dataset.copied })">{{ words.copy_link }}</button>
     <span id="copy-status" role="status"></span>
   </div>
-  <p><a href="{{ reopen }}">{{ words.reopen }}</a></p>
-  {% for card in cards %}
-  {{ card }}
+  <p><a href="{{ reopen }}">{{ words.open_office }}</a> · <a href="{{ reopen }}">{{ words.reopen }}</a></p>
+  {% include "partials/folder-attention.html" %}
+  {% for entry in cards %}
+  {{ entry.card }}
+  {{ entry.notes }}
   {% else %}
   <p>{{ words.empty }}</p>
   {% endfor %}
