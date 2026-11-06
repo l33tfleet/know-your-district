@@ -266,6 +266,7 @@ def folder_page(
         ],
         "folder": folder,
         "link": link,
+        "preview": state.preview,
         "reopen": folder_path(folder_id, state),
         "title": words["title"].format(name=folder.name),
         "words": words,

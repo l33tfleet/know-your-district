@@ -10,7 +10,8 @@ from fastapi.testclient import TestClient
 from playwright.sync_api import Page, expect
 
 from app.folders import store
-from tests.regressions.test_journey_folder_save import client, flag, folder_store
+from tests.regressions.test_journey_folder_save import Flag, client, create, flag, folder_store
+from tests.regressions.test_wo97_brief_page import parse
 from tests.regressions.test_wo122_browser_checks import base_url, browser
 from tests.regressions.test_wo122_browser_checks import page as page
 from tests.regressions.test_wo143_integration import config, shipped_facts
@@ -207,12 +208,12 @@ def test_browser_reopening_two_folders_reflects_each_saved_state(
         page.get_by_role("button", name="Save to folder").click()
         page.wait_for_url("**/f/*")
         paths.append(page.url)
-        expect(page.get_by_role("region", name="What needs attention")).to_be_visible()
+        expect(page.get_by_role("region", name="Needs attention", exact=True)).to_be_visible()
     page.goto(paths[0])
     page.select_option("select[name=priority]", "high")
     page.get_by_text("Priority: High. Status: Idea.", exact=True).wait_for()
     page.get_by_text("Reopen this folder's link", exact=True).click()
-    attention = page.get_by_role("region", name="What needs attention")
+    attention = page.get_by_role("region", name="Needs attention", exact=True)
     expect(attention).to_contain_text("Make first contact")
     expect(attention).to_contain_text("High priority, still an idea")
     expect(attention.get_by_role("link")).to_contain_text("SNAP")
@@ -220,6 +221,7 @@ def test_browser_reopening_two_folders_reflects_each_saved_state(
     page.get_by_text("Priority: High. Status: Done.", exact=True).wait_for()
     page.get_by_text("Reopen this folder's link", exact=True).click()
     expect(attention).to_contain_text("Nothing needs attention")
+
     page.goto(paths[1])
     page.reload()
     expect(attention).to_contain_text("Normal priority, status idea")
@@ -229,3 +231,65 @@ def test_browser_reopening_two_folders_reflects_each_saved_state(
     page.reload()
     expect(attention.locator("li")).to_have_count(0)
     expect(attention).to_contain_text("Nothing needs attention")
+
+
+def test_attention_refresh_preserves_preview_and_uses_the_folder_get(flag: Flag) -> None:
+    client = flag("preview")
+    path = create(client, "?preview=1") + "?preview=1"
+    document = parse(client.get(path).text)
+    forms = [form for form in document.find_all("form") if "What needs attention?" in form.text]
+    assert len(forms) == 1
+    form = forms[0]
+    assert form.attrs["method"].lower() == "get"
+    assert form.attrs["action"].partition("?")[0] == path.partition("?")[0]
+    assert form.one("button").attrs["type"] == "submit"
+    assert form.one("input", name="preview").attrs["value"] == "1"
+    assert client.get(form.attrs["action"], params={"preview": "1"}).status_code == 200
+    assert client.get(path.partition("?")[0]).status_code == 404
+
+
+def test_story_steps_5_to_7_refresh_confirmed_notes_in_separate_folders(
+    page: Page, live_shipped: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("KYD_FOLDERS_SECRET", "attention-browser-test-secret-32-bytes")
+    paths: list[str] = []
+    attention = page.get_by_role("region", name="Needs attention", exact=True)
+    for _ in range(2):
+        page.goto(f"{live_shipped}/brief/house/22")
+        page.get_by_role("region", name="SNAP", exact=True).get_by_role(
+            "button", name="Save to folder"
+        ).click()
+        page.wait_for_url("**/f/*")
+        paths.append(page.url)
+    page.goto(paths[0])
+    page.get_by_role("combobox", name="Priority").select_option(label="High")
+    page.get_by_text("Priority: High. Status: Idea.", exact=True).wait_for()
+    page.get_by_role("combobox", name="Status").select_option(label="Planned")
+    page.get_by_text("Priority: High. Status: Planned.", exact=True).wait_for()
+    expect(page.get_by_text("Saved").first).to_be_visible()
+    page.get_by_role("textbox", name="Add a note", exact=True).fill(
+        "Table at Mōʻiliʻili meeting 11/8"
+    )
+    page.get_by_role("button", name="Add note", exact=True).click()
+    expect(page.get_by_text("Table at Mōʻiliʻili meeting 11/8", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Save note", exact=True).click()
+    expect(page.locator(".note-body")).to_have_text("Table at Mōʻiliʻili meeting 11/8")
+    page.get_by_role("link", name="Open the office folder", exact=True).click()
+    page.reload()
+    expect(attention).to_contain_text("High priority, status planned")
+    page.get_by_role("button", name="What needs attention?", exact=True).click()
+    expect(attention).to_be_visible()
+    expect(attention).to_contain_text("SNAP")
+    expect(attention).to_contain_text("0 days since the last note")
+    expect(page.locator(".note-body")).to_have_text("Table at Mōʻiliʻili meeting 11/8")
+    page.goto(paths[1])
+    page.get_by_role("link", name="Open the office folder", exact=True).click()
+    page.reload()
+    page.get_by_role("button", name="What needs attention?", exact=True).click()
+    expect(attention).to_contain_text("Normal priority, status idea")
+    expect(attention).to_contain_text("no notes")
+    expect(page.locator(".note-body")).to_have_count(0)
+    page.goto(paths[0])
+    page.get_by_role("button", name="What needs attention?", exact=True).click()
+    expect(attention).to_contain_text("High priority, status planned")
+    expect(attention).to_contain_text("0 days since the last note")

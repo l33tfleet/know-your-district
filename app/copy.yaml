@@ -358,8 +358,11 @@ folders:
   copy_link: Copy link
   copied: Link copied
   reopen: Reopen this folder's link
+  open_office: Open the office folder
   empty: This folder has no saved cases.
   attention_heading: What needs attention
+  attention_region: Needs attention
+  attention_refresh: What needs attention?
   attention_empty: Nothing needs attention. All saved cases are done, or this folder has no saved cases.
   district_label: "Saved for {district}"
   priority_label: Priority

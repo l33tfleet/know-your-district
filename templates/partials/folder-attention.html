@@ -1,5 +1,9 @@
-<section class="folder-attention" aria-labelledby="attention-heading">
+<section class="folder-attention" aria-label="{{ words.attention_region }}">
   <h2 id="attention-heading">{{ words.attention_heading }}</h2>
+  <form method="get" action="{{ reopen }}">
+    {% if preview %}<input type="hidden" name="preview" value="1">{% endif %}
+    <button type="submit">{{ words.attention_refresh }}</button>
+  </form>
   {% if attention %}
   <ol>
     {% for item in attention %}
