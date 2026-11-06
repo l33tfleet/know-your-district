@@ -386,6 +386,7 @@ folders:
   note_label: Add a note
   note_hint: Notes are about outreach and populations, not individual residents.
   add_note: Add note
+  checking_note: "Checking this note:"
   edit_note: Edit note
   edit_label: Edit this note
   update_note: Update note

@@ -736,3 +736,29 @@ def test_demo_steps_run_as_written(page: Page, live_folders: str) -> None:
     page.click("text=Reopen this folder's link")
     page.wait_for_load_state("load")
     page.get_by_text("Tabled at the Kalihi farmers market.").wait_for()
+
+
+def test_story_step_6_shows_the_note_the_moment_add_note_is_pressed(
+    page: Page, live_shipped: str
+) -> None:
+    """The story runner checks step 6 once, right after the click, with no wait (its record
+    of a97437e: the check request took about a second, so the page still showed an empty box).
+    The typed words show at once, as a status, while the server checks them."""
+    open_page(page, f"{live_shipped}{BRIEF}", 1440)
+    page.get_by_role("region", name="SNAP", exact=True).get_by_role(
+        "button", name="Save to folder"
+    ).click()
+    page.wait_for_url("**/f/*")
+    held: list[Any] = []
+    page.route("**/cards/*/notes*", lambda route: held.append(route))
+    words = "Table at Mōʻiliʻili meeting 11/8"
+    page.get_by_role("textbox", name="Add a note").fill(words)
+    page.get_by_role("button", name="Add note").click()
+    status = page.get_by_role("region", name="Notes").get_by_role("status")
+    assert words in page.locator("body").inner_text()
+    assert words in status.inner_text()
+    assert WORDS["checking_note"] in status.inner_text()
+    for route in held:
+        route.continue_()
+    page.get_by_text(CONFIRM).wait_for()
+    assert WORDS["checking_note"] not in page.locator("body").inner_text()

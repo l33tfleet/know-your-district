@@ -358,6 +358,15 @@ code {
   margin: 0;
 }
 
+.folder-notes .note-pending {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.folder-notes .note-pending:empty {
+  display: none;
+}
+
 /* brief notes */
 .ask form {
   display: flex;
