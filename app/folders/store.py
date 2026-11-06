@@ -442,6 +442,22 @@ class FolderStore:
             _touch(db, folder_id)
 
     @checked
+    def delete_note(self, folder_id: FolderId, note_id: NoteId) -> None:
+        """Move a live note of this folder to the trash (`deleted_at`); a purge removes it."""
+        with self._write() as db:
+            _require_folder(db, folder_id)
+            stamp = now()
+            changed = db.execute(
+                "UPDATE notes SET deleted_at = ?, updated_at = ?"
+                " WHERE id = ? AND deleted_at IS NULL AND card_id IN"
+                " (SELECT id FROM cards WHERE folder_id = ? AND deleted_at IS NULL)",
+                (stamp, stamp, note_id, folder_id),
+            )
+            if changed.rowcount != 1:
+                raise FolderNotFoundError
+            _touch(db, folder_id)
+
+    @checked
     def list_notes(self, folder_id: FolderId) -> tuple[Note, ...]:
         with closing(self._connect()) as db:
             _require_folder(db, folder_id)

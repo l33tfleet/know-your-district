@@ -2,11 +2,15 @@
 
 A folder is owned by its link. It holds case ids and districts, so each render re-reads every
 figure through section 15. Without JavaScript a form posts and redirects; htmx gets the partial.
+
+Notes take two posts: the first checks the words and, when they are clean, answers with a confirm
+step carrying a token for exactly those words; the second sends the token back and saves. A
+personal detail is always refused (`app/folders/notes.py`). Delete needs no confirmation.
 """
 
 import importlib
 import os
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import cast
@@ -20,6 +24,9 @@ from pydantic import TypeAdapter, ValidationError
 
 from app.copy import Copy, geography_name, load_copy, section_copy
 from app.features import require_feature
+from app.folders import notes
+from app.folders.notes import Draft
+from app.folders.service import FolderService, Network, client_ip, load_secret
 from app.folders.store import (
     FEATURE,
     Card,
@@ -27,7 +34,10 @@ from app.folders.store import (
     FolderId,
     FolderNotFoundError,
     FolderStore,
+    Note,
+    NoteId,
     Priority,
+    RateLimitedError,
     Reason,
     Status,
     StoreConfigError,
@@ -41,6 +51,9 @@ STATUSES: TypeAdapter[Status] = TypeAdapter(Status)
 REASONS: TypeAdapter[str] = TypeAdapter(Reason)
 FOLDER_IDS: TypeAdapter[str] = TypeAdapter(FolderId)
 CARD_IDS: TypeAdapter[int] = TypeAdapter(CardId)
+NOTE_IDS: TypeAdapter[int] = TypeAdapter(NoteId)
+# No proxy is trusted yet, so behind one every office shares the proxy's write count.
+TRUSTED_PROXIES: tuple[Network, ...] = ()
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
@@ -66,13 +79,33 @@ def open_store(state: PageState) -> FolderStore:
 
 @contextmanager
 def known_folder() -> Generator[None]:
-    """An unknown folder or card answers like any unknown page; a file refused at open, 503."""
+    """An unknown folder or card answers like any unknown page; a file refused at open, 503.
+
+    A request limit answers 429 with the seconds to wait.
+    """
     try:
         yield
     except FolderNotFoundError as exc:
         raise HTTPException(status_code=404) from exc
     except StoreConfigError as exc:
         raise HTTPException(status_code=503, detail=load_copy()["folders"]["no_store"]) from exc
+    except RateLimitedError as exc:
+        seconds = exc.retry_after_seconds
+        raise HTTPException(
+            status_code=429,
+            detail=load_copy()["folders"]["note_rate"].format(seconds=seconds),
+            headers={"Retry-After": str(seconds)},
+        ) from exc
+
+
+def note_service(state: PageState) -> FolderService:
+    """Notes need `KYD_FOLDERS_SECRET` for their confirmations and counts; without it, 503."""
+    try:
+        secret = load_secret()
+    except StoreConfigError as exc:
+        raise HTTPException(status_code=503, detail=load_copy()["folders"]["no_secret"]) from exc
+    with known_folder():
+        return FolderService(open_store(state), secret)
 
 
 def folder_id_or_404(text: str) -> str:
@@ -82,13 +115,17 @@ def folder_id_or_404(text: str) -> str:
         raise HTTPException(status_code=404) from exc
 
 
-def card_id_or_404(text: str) -> int:
+def id_or_404(text: str, ids: TypeAdapter[int]) -> int:
     if not text.isascii() or not text.isdecimal():
         raise HTTPException(status_code=404)
     try:
-        return CARD_IDS.validate_python(int(text))
+        return ids.validate_python(int(text))
     except ValidationError as exc:
         raise HTTPException(status_code=404) from exc
+
+
+def card_id_or_404(text: str) -> int:
+    return id_or_404(text, CARD_IDS)
 
 
 def refused(message: str) -> HTTPException:
@@ -165,6 +202,69 @@ def render_card(card: Card, state: PageState, folder_id: str) -> Markup:
     )
 
 
+def render_notes(
+    state: PageState,
+    folder_id: str,
+    card_id: int,
+    saved: Sequence[Note],
+    draft: Draft | None = None,
+    open_editor: int | None = None,
+) -> Markup:
+    """One card's notes and its note box; the template orders them newest first.
+
+    `open_editor` is the note whose edit box shows; the others offer a link that opens it.
+    """
+    return Markup(
+        templates.get_template("partials/folder-notes.html").render(
+            card_id=card_id,
+            date_label=notes.date_label,
+            draft=draft if draft is not None and draft.card_id == card_id else None,
+            folder_href=folder_path(folder_id, state),
+            folder_id=folder_id,
+            notes=[note for note in saved if note.card_id == card_id],
+            open_editor=open_editor,
+            preview=state.preview,
+            words=load_copy()["folders"],
+        )
+    )
+
+
+def folder_page(
+    request: Request,
+    state: PageState,
+    folder_id: str,
+    draft: Draft | None = None,
+    status_code: int = 200,
+    open_editor: int | None = None,
+) -> HTMLResponse:
+    """The folder with each card and its notes; a draft shows under its own card."""
+    with known_folder():
+        db = open_store(state)
+        folder = db.get_folder(folder_id)
+        saved = db.list_notes(folder_id)
+    # Local: `app.main` includes this router at import time.
+    from app.main import page_context
+
+    words: Copy = load_copy()["folders"]
+    # The link to share is the folder's, never a form's address or an open editor's.
+    link = str(request.base_url).rstrip("/") + folder_path(folder_id, state)
+    context = page_context() | {
+        "cards": [
+            {
+                "card": render_card(card, state, folder_id),
+                "notes": render_notes(state, folder_id, card.id, saved, draft, open_editor),
+            }
+            for card in folder.cards
+        ],
+        "folder": folder,
+        "link": link,
+        "reopen": folder_path(folder_id, state),
+        "title": words["title"].format(name=folder.name),
+        "words": words,
+    }
+    return templates.TemplateResponse(request, "folder.html", context, status_code=status_code)
+
+
 def after_write(request: Request, state: PageState, folder_id: str, card_id: int) -> Response:
     """htmx swaps the summary out of the card partial; a plain form goes back to the folder."""
     if request.headers.get("HX-Request") != "true":
@@ -173,6 +273,61 @@ def after_write(request: Request, state: PageState, folder_id: str, card_id: int
         folder = open_store(state).get_folder(folder_id)
     card = next(card for card in folder.cards if card.id == card_id)
     return HTMLResponse(render_card(card, state, folder_id))
+
+
+def after_note(
+    request: Request, state: PageState, folder_id: str, card_id: int, draft: Draft | None
+) -> Response:
+    """htmx swaps the card's notes; a plain form sees its draft on the folder, else goes back."""
+    status_code = 422 if draft is not None and draft.refusal else 200
+    if request.headers.get("HX-Request") == "true":
+        with known_folder():
+            saved = open_store(state).list_notes(folder_id)
+        html = render_notes(state, folder_id, card_id, saved, draft)
+        return HTMLResponse(html, status_code=status_code)
+    if draft is not None:
+        return folder_page(request, state, folder_id, draft, status_code)
+    return RedirectResponse(folder_path(folder_id, state), status_code=303)
+
+
+def write_note(
+    request: Request,
+    state: PageState,
+    folders: FolderService,
+    folder_id: str,
+    card_id: int,
+    note_id: int | None,
+    form: dict[str, str],
+) -> Response:
+    """No confirmation yet: the check step. With one: the save, which screens the words again."""
+    words: Copy = load_copy()["folders"]
+    body = notes.read_body(form)
+    confirmation = form.get("confirmation")
+    if confirmation is None:
+        draft = notes.check(folders, folder_id, card_id, note_id, body, words)
+        return after_note(request, state, folder_id, card_id, draft)
+    ip = client_ip(request.scope, TRUSTED_PROXIES)
+    try:
+        with known_folder():
+            if note_id is None:
+                folders.add_note(folder_id, card_id, body, confirmation, ip)
+            else:
+                folders.edit_note(folder_id, note_id, body, confirmation, ip)
+    except notes.REFUSALS as exc:
+        message = notes.refusal(body, exc, words)
+        draft = Draft(card_id=card_id, note_id=note_id, body=body, refusal=message)
+        return after_note(request, state, folder_id, card_id, draft)
+    return after_note(request, state, folder_id, card_id, None)
+
+
+def live_note(folders: FolderService, folder_id: str, note_id: int) -> Note:
+    """A live note of this folder, or 404: another folder's note is unknown here."""
+    with known_folder():
+        saved = folders.store.list_notes(folder_id)
+    found = next((note for note in saved if note.id == note_id), None)
+    if found is None:
+        raise HTTPException(status_code=404)
+    return found
 
 
 @router.post("/folders")
@@ -189,24 +344,14 @@ async def create_folder(request: Request, preview: str | None = None) -> Redirec
 
 
 @router.get("/f/{folder_id}", response_class=HTMLResponse)
-def show_folder(request: Request, folder_id: str, preview: str | None = None) -> HTMLResponse:
+def show_folder(
+    request: Request, folder_id: str, preview: str | None = None, edit: str | None = None
+) -> HTMLResponse:
+    """`?edit=<note>` opens that note's edit box; htmx selects the card's notes from the page."""
     state = guard(preview)
     folder_id = folder_id_or_404(folder_id)
-    with known_folder():
-        folder = open_store(state).get_folder(folder_id)
-    # Local: `app.main` includes this router at import time.
-    from app.main import page_context
-
-    words: Copy = load_copy()["folders"]
-    context = page_context() | {
-        "cards": [render_card(card, state, folder_id) for card in folder.cards],
-        "folder": folder,
-        "link": str(request.url),
-        "reopen": folder_path(folder_id, state),
-        "title": words["title"].format(name=folder.name),
-        "words": words,
-    }
-    return templates.TemplateResponse(request, "folder.html", context)
+    editor = None if edit is None else id_or_404(edit, NOTE_IDS)
+    return folder_page(request, state, folder_id, open_editor=editor)
 
 
 @router.post("/f/{folder_id}/cases")
@@ -264,3 +409,45 @@ async def set_status(
     with known_folder():
         open_store(state).set_status(folder_id, card, chosen)
     return after_write(request, state, folder_id, card)
+
+
+@router.post("/f/{folder_id}/cards/{card_id}/notes")
+async def add_note(
+    request: Request, folder_id: str, card_id: str, preview: str | None = None
+) -> Response:
+    state = guard(preview)
+    folder_id, card = folder_id_or_404(folder_id), card_id_or_404(card_id)
+    form = await form_fields(request)
+    folders = note_service(state)
+    with known_folder():
+        cards = folders.store.get_folder(folder_id).cards
+    if card not in {saved.id for saved in cards}:
+        raise HTTPException(status_code=404)
+    return write_note(request, state, folders, folder_id, card, None, form)
+
+
+@router.post("/f/{folder_id}/notes/{note_id}")
+async def edit_note(
+    request: Request, folder_id: str, note_id: str, preview: str | None = None
+) -> Response:
+    state = guard(preview)
+    folder_id, note = folder_id_or_404(folder_id), id_or_404(note_id, NOTE_IDS)
+    form = await form_fields(request)
+    folders = note_service(state)
+    card = live_note(folders, folder_id, note).card_id
+    return write_note(request, state, folders, folder_id, card, note, form)
+
+
+@router.post("/f/{folder_id}/notes/{note_id}/delete")
+async def delete_note(
+    request: Request, folder_id: str, note_id: str, preview: str | None = None
+) -> Response:
+    """No confirmation: removing words adds no personal detail. It still counts as a write."""
+    state = guard(preview)
+    folder_id, note = folder_id_or_404(folder_id), id_or_404(note_id, NOTE_IDS)
+    folders = note_service(state)
+    card = live_note(folders, folder_id, note).card_id
+    with known_folder():
+        folders.throttle_write(client_ip(request.scope, TRUSTED_PROXIES))
+        folders.store.delete_note(folder_id, note)
+    return after_note(request, state, folder_id, card, None)

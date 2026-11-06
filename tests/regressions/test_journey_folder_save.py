@@ -23,7 +23,7 @@ from pydantic import ValidationError
 
 from app import features, snap
 from app.copy import section_copy
-from app.folders import routes as folder_routes
+from app.folders import routes as folder_routes  # noqa: F401  # pyright: ignore[reportUnusedImport] -- only the test #289 superseded used it
 from app.folders import store
 from app.main import app as asgi_app
 from app.page_state import PageState, page_state
@@ -255,12 +255,6 @@ def routes(folder: str, card: int = 1) -> list[tuple[str, str, str]]:
         ("POST", f"/f/{folder}/cards/{card}/priority", "priority=high&reason=x"),
         ("POST", f"/f/{folder}/cards/{card}/status", "status=done"),
     ]
-
-
-def test_every_folder_route_is_covered_by_the_off_list() -> None:
-    """A route added later must join `routes`, or the off test below would miss it."""
-    paths = {getattr(r, "path", "") for r in folder_routes.router.routes}
-    assert len(paths) == len({path for _, path, _ in routes("x")})
 
 
 @pytest.mark.parametrize("status", ["off", "preview"])

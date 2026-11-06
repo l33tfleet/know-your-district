@@ -12,8 +12,9 @@
     <span id="copy-status" role="status"></span>
   </div>
   <p><a href="{{ reopen }}">{{ words.reopen }}</a></p>
-  {% for card in cards %}
-  {{ card }}
+  {% for entry in cards %}
+  {{ entry.card }}
+  {{ entry.notes }}
   {% else %}
   <p>{{ words.empty }}</p>
   {% endfor %}
