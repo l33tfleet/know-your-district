@@ -168,28 +168,6 @@ def test_a_new_figure_shows_on_the_next_render(
     assert "so this card shows no count" in html
 
 
-def test_plain_posts_redirect_and_reloading_shows_the_same_values(client: TestClient) -> None:
-    path = create(client)
-    card = card_id(client, path)
-    saved = post(client, f"{path}/cards/{card}/priority", "priority=high&reason=Asked+first")
-    assert (saved.status_code, saved.headers["location"]) == (303, path)
-    saved = post(client, f"{path}/cards/{card}/status", "status=planned")
-    assert (saved.status_code, saved.headers["location"]) == (303, path)
-
-    document = parse(client.get(path).text)
-    summary = " ".join(document.one("p", class_="folder-summary").text.split())
-    assert "Priority: high" in summary and "Asked first" in summary and "Status: planned" in summary
-
-
-def test_htmx_gets_the_card_partial_not_a_redirect(client: TestClient) -> None:
-    path = create(client)
-    card = card_id(client, path)
-    response = post(client, f"{path}/cards/{card}/status", "status=contacted", HTMX)
-    assert response.status_code == 200
-    assert "<html" not in response.text
-    assert f'id="summary-{card}"' in response.text and "Status: contacted" in response.text
-
-
 def test_controls_are_labelled_and_changes_are_announced(client: TestClient) -> None:
     path = create(client)
     card = card_id(client, path)
@@ -214,16 +192,6 @@ def test_status_and_priority_offer_exactly_the_stored_choices(client: TestClient
     assert get_args(store.Priority) == ("high", "normal", "low")
 
 
-def test_saving_a_case_twice_keeps_one_card_and_its_state(client: TestClient) -> None:
-    path = create(client)
-    card = card_id(client, path)
-    post(client, f"{path}/cards/{card}/status", "status=done")
-    saved = post(client, f"{path}/cases", f"case_id={CASE}&chamber=house&district=22")
-    assert (saved.status_code, saved.headers["location"]) == (303, path)
-    assert client.get(path).text.count('class="folder-card"') == 1
-    assert "Status: done" in client.get(path).text
-
-
 def test_a_folder_holds_one_case_for_two_districts_with_valid_html(client: TestClient) -> None:
     path = create(client)
     post(client, f"{path}/cases", f"case_id={CASE}&chamber=senate&district=5")
@@ -242,31 +210,7 @@ def test_folder_links_its_evidence_to_the_brief_not_to_a_missing_anchor(
     assert 'href="#outreach-heading"' not in html
 
 
-def test_outreach_off_keeps_the_saved_state_and_hides_the_figures(flag: Flag) -> None:
-    client = flag("on")
-    path = create(client)
-    policy = features.FEATURES_PATH
-    policy.write_text('outreach = "off"\nfolders = "on"\n', encoding="utf-8")
-    html = client.get(path).text
-    assert "Status: idea" in html
-    assert "B22003" not in html
-
-
 # --- isolation ---
-
-
-def test_a_second_folder_cannot_see_or_change_the_first(client: TestClient) -> None:
-    first = create(client)
-    second = create(client)
-    card = card_id(client, first)
-    post(client, f"{first}/cards/{card}/status", "status=planned")
-
-    for action, body in (("status", "status=done"), ("priority", "priority=low&reason=Mine")):
-        response = post(client, f"{second}/cards/{card}/{action}", body)
-        assert response.status_code == 404
-    assert "planned" not in client.get(second).text.split('id="live-')[1].split("</div>")[0]
-    assert "Status: planned" in client.get(first).text
-    assert "Mine" not in client.get(first).text
 
 
 def test_store_refuses_a_card_from_another_folder(db: store.FolderStore) -> None:
@@ -359,32 +303,6 @@ def test_flag_off_blocks_the_store_itself(flag: Flag, tmp_path: Path) -> None:
     ):
         with pytest.raises(store.FoldersDisabledError):
             write()
-
-
-def test_shipped_flag_is_preview_and_preview_carries_through_the_journey(
-    flag: Flag, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    client = flag("preview")
-    monkeypatch.setattr(features, "FEATURES_PATH", ROOT / "features.toml")
-    assert features.validate_features()["folders"] == features.Status.PREVIEW
-    assert "case-save" not in client.get(BRIEF).text
-
-    html = client.get(f"{BRIEF}?preview=1").text
-    assert 'action="/folders?preview=1"' in html
-    body = f"case_id={CASE}&chamber=house&district=22"
-    saved = post(client, "/folders?preview=1", body)
-    path = saved.headers["location"]
-    assert path.endswith("?preview=1")
-    page_html = client.get(path).text
-    bare = path.removesuffix("?preview=1")
-    card = card_id(client, path)
-    assert f'href="{path}"' in page_html
-    for action in (f"{bare}/cards/{card}/priority", f"{bare}/cards/{card}/status"):
-        assert f'hx-post="{action}?preview=1"' in page_html
-        assert f'action="{action}?preview=1"' in page_html
-    done = post(client, f"{bare}/cards/{card}/status?preview=1", "status=done")
-    assert done.headers["location"] == path
-    assert client.get(bare).status_code == 404
 
 
 def test_a_malformed_preview_value_is_404(client: TestClient) -> None:

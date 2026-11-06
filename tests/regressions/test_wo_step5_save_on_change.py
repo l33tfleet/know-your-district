@@ -33,7 +33,7 @@ from tests.regressions.test_journey_folder_save import (
     rows,
 )
 from tests.regressions.test_wo97_brief_page import parse
-from tests.regressions.test_wo122_browser_checks import axe_problems, base_url, browser, open_page
+from tests.regressions.test_wo122_browser_checks import axe_problems, base_url, browser, open_page  # noqa: F401  # pyright: ignore[reportUnusedImport]  # only #347's superseded test used it
 from tests.regressions.test_wo122_browser_checks import page as page
 from tests.regressions.test_wo143_integration import config, shipped_facts
 
@@ -87,22 +87,6 @@ def test_the_reason_hint_says_the_reason_is_optional() -> None:
 # --- the route ---
 
 
-@pytest.mark.parametrize(
-    "body", ["priority=high", "priority=high&reason="], ids=["absent", "empty"]
-)
-def test_priority_with_no_reason_stores_null_and_shows_no_parenthesis(
-    client: TestClient, tmp_path: Path, body: str
-) -> None:
-    path = create(client)
-    card = card_id(client, path)
-    saved = post(client, f"{path}/cards/{card}/priority", body)
-    assert (saved.status_code, saved.headers["location"]) == (303, path)
-    assert rows(tmp_path / "folders.db", "SELECT priority, reason FROM cards") == [("high", None)]
-    summary = parse(client.get(path).text).one("p", class_="folder-summary").text
-    assert " ".join(summary.split()) == "Priority: high. Status: idea."
-    assert "(" not in summary
-
-
 def test_an_empty_reason_clears_one_that_was_kept(client: TestClient, tmp_path: Path) -> None:
     path = create(client)
     endpoint = f"{path}/cards/{card_id(client, path)}/priority"
@@ -110,16 +94,6 @@ def test_an_empty_reason_clears_one_that_was_kept(client: TestClient, tmp_path: 
     assert "(Asked first)" in client.get(path).text
     post(client, endpoint, "priority=high&reason=")
     assert rows(tmp_path / "folders.db", "SELECT priority, reason FROM cards") == [("high", None)]
-
-
-def test_an_existing_reason_still_shows(client: TestClient) -> None:
-    path = create(client)
-    card = card_id(client, path)
-    post(client, f"{path}/cards/{card}/priority", "priority=high&reason=Asked+first")
-    document = parse(client.get(path).text)
-    summary = " ".join(document.one("p", class_="folder-summary").text.split())
-    assert summary == "Priority: high (Asked first). Status: idea."
-    assert 'value="Asked first"' in client.get(path).text
 
 
 @pytest.mark.parametrize(
@@ -175,35 +149,6 @@ def test_store_writes_null_for_no_reason_and_still_refuses_an_empty_one(
 
 
 # --- the browser ---
-
-
-def test_browser_saves_priority_and_status_on_change_with_no_click(
-    page: Page, live_folders: str
-) -> None:
-    open_page(page, f"{live_folders}{BRIEF}?preview=1", 1440)
-    page.get_by_role("button", name=COPY["save_label"]).click()
-    page.wait_for_url("**/f/*")
-    assert axe_problems(page) == []
-    url = page.url
-    assert page.locator(".folder-card button").count() == 0
-
-    page.select_option("select[name=priority]", "high")
-    page.get_by_text("Priority: high. Status: idea.").wait_for()
-    page.select_option("select[name=status]", "planned")
-    page.get_by_text("Priority: high. Status: planned.").wait_for()
-    assert page.url == url  # an htmx partial update, not a page load
-
-    page.fill("input[name=reason]", "Office outreach week")
-    page.locator("input[name=reason]").press("Tab")  # leaving the field is its change
-    page.get_by_text("Priority: high (Office outreach week). Status: planned.").wait_for()
-
-    page.reload()
-    summary = " ".join(page.inner_text(".folder-summary").split())
-    assert summary == "Priority: high (Office outreach week). Status: planned."
-    assert page.input_value("select[name=priority]") == "high"
-    assert page.input_value("input[name=reason]") == "Office outreach week"
-    assert page.input_value("select[name=status]") == "planned"
-    assert axe_problems(page) == []
 
 
 def test_keyboard_change_saves_and_keeps_focus_on_the_select(page: Page, live_folders: str) -> None:

@@ -367,14 +367,14 @@ folders:
   summary: "Priority: {priority}{reason}. Status: {status}."
   summary_reason: " ({reason})"
   priorities:
-    high: high
-    normal: normal
-    low: low
+    high: High
+    normal: Normal
+    low: Low
   statuses:
-    idea: idea
-    contacted: contacted
-    planned: planned
-    done: done
+    idea: Idea
+    contacted: Contacted
+    planned: Planned
+    done: Done
   unknown_case: "Unknown case {value!r}. Valid values: {valid}."
   unknown_district: "Unknown district. Valid chambers: {valid}, each with its own district numbers."
   unknown_priority: "Unknown priority {value!r}. Valid values: {valid}."
