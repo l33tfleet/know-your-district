@@ -23,7 +23,6 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 from pydantic import TypeAdapter, ValidationError
 
-from app.cases import load_cases
 from app.copy import Copy, geography_name, load_copy, section_copy
 from app.features import require_feature
 from app.folders import notes
@@ -143,6 +142,9 @@ async def form_fields(request: Request) -> dict[str, str]:
 
 def case_district(form: dict[str, str]) -> PageState:
     """Refuse a case or district the app does not know; the state carries the district."""
+    # Local: `validate_startup` is the first to load the cases, never an import of `app.main`.
+    from app.cases import load_cases
+
     words = load_copy()["folders"]
     valid = [record.id for record in load_cases().cases]
     case_id = form.get("case_id")
@@ -238,6 +240,9 @@ def folder_page(
     open_editor: int | None = None,
 ) -> HTMLResponse:
     """The folder with each card and its notes; a draft shows under its own card."""
+    # Local: importing this router must leave case loading to `validate_startup`.
+    from app.cases import load_cases
+
     with known_folder():
         db = open_store(state)
         folder = db.get_folder(folder_id)

@@ -1,5 +1,7 @@
 """#290: saved timestamps and deterministic, folder-scoped attention after reopening."""
 
+import subprocess
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -25,6 +27,25 @@ __all__ = [
     "shipped_facts",
 ]
 TODAY = date(2026, 11, 6)
+
+
+def test_folder_routes_defer_case_loading_to_startup() -> None:
+    program = (
+        "import sys\n"
+        "import app.folders.routes\n"
+        "assert 'app.cases' not in sys.modules, 'folder routes loaded cases before startup'\n"
+        "from app.main import validate_startup\n"
+        "validate_startup()\n"
+        "assert 'app.cases' in sys.modules\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", program],
+        cwd=Path(__file__).resolve().parents[2],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def card(
