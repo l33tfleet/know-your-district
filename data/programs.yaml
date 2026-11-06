@@ -55,3 +55,64 @@
       No ACS proxy is available: published district tables cannot identify DHS
       medical-board certification, temporary inability to work, asset limits and
       exclusion from other assistance categories together.
+# Pilot: federal rules retrieved 2026-11-05 from SSA's 2026 ABLE spotlight.
+# Hawaiʻi enrollment endpoint returned HTTP 403; availability/fees/incentives unverified.
+- id: hawaii-able
+  name: Hawaiʻi ABLE savings program
+  agency: Hawaiʻi Department of Budget and Finance
+  level: state
+  purpose: Hawaiʻi ABLE may help people with disabilities save for disability-related expenses.
+  official_url: https://www.ssa.gov/ssi/spotlights/spot-able.html
+  last_verified: 2026-11-05
+  guidance: The agency decides eligibility; contact Aloha United Way 211 for help finding services.
+  referral_url: https://www.auw211.org/
+  agency_guideline:
+    threshold: null
+    poverty_line: not applicable
+    effective_date: null
+    source_url: https://www.ssa.gov/ssi/spotlights/spot-able.html
+    description: Disability-onset and certification conditions apply; this is not a poverty-multiple program.
+  eligibility_proxy:
+    status: unavailable
+    acs_fields: []
+    threshold: null
+    poverty_line: null
+    source_url: https://www.ssa.gov/ssi/spotlights/spot-able.html
+    vintage: null
+    geography: Hawaiʻi legislative districts, 2022 plan
+    method: Published population totals do not establish disability onset, certification, eligibility or nonparticipation.
+  rules:
+    jurisdiction: Hawaiʻi
+    rule_url: https://www.ssa.gov/ssi/spotlights/spot-able.html
+    application_url: https://www.hawaiiablesavings.com/
+    category: Disability-related savings
+    assistance_unit_definition: The account owner and designated beneficiary is the person with a disability, not the household.
+    income_basis: not_applicable
+    income_period: not_applicable
+    conditions:
+      - Disability onset must precede the federal onset-age limit; current age alone does not establish this.
+      - A recognised disability benefit or disability certification is required; SSA explains the alternative routes in the rule source.
+      - Current Hawaiʻi enrollment availability, fees and incentive terms remain unverified because the program site blocked automated access.
+      - The listed effective date refers to the federal onset-age expansion, not Hawaiʻi application opening.
+    exceptions:
+      - Benefit interactions and contribution rules require separate program review; no assurance about retaining other benefits is made here.
+    enacted_date: null
+    effective_date: 2026-01-01
+    open_date: null
+    availability: unknown
+  next_steps:
+    instructions:
+      - Review the official program information; this savings program may help, and the agency decides eligibility.
+      - Ask Aloha United Way 211 about navigation assistance; current service capacity and appointments have not been verified.
+      - Ask the program to confirm current Hawaiʻi enrollment, fees, incentives and benefit interactions before planning outreach.
+    contact:
+      organisation_id: auw211
+      url: https://www.auw211.org/
+    checked_at: 2026-11-05
+    refresh_owner: Program catalog maintainers
+    refresh_after: 2026-12-05
+  enrichment:
+    fact_references:
+      - variable: B01003_001E
+        geography: state:15
+        vintage: 2020–2024

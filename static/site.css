@@ -285,11 +285,12 @@ code {
   min-width: 0;
 }
 
+/* Each form saves on change, so no button: fields line up by their labels. */
 .folder-card form {
   display: flex;
   flex-wrap: wrap;
   gap: var(--picker-gap);
-  align-items: end;
+  align-items: start;
   margin: var(--headline-space) 0;
 }
 
@@ -547,8 +548,16 @@ code {
     display: none;
   }
 
-  .program :is(.program-agency, .program-purpose, .program-guidance) {
+  /* A running paragraph under each title keeps every referral in the three-column
+     catalog. Match the agency selector's variant specificity so print type wins. */
+  .programs .program,
+  .programs .program .program-agency {
     font-size: var(--print-tiny-size);
+  }
+
+  .programs .program p {
+    display: inline;
+    margin: 0;
   }
 
   /* The notes and readings sit under the opening case: same text, tighter set. */
@@ -765,4 +774,37 @@ code {
     min-width: 0;
     overflow-wrap: var(--content-wrap);
   }
+}
+
+/* Optional, screen-only program profiles. */
+.program-profile {
+  border-top: var(--rule-width) solid var(--color-rule-light);
+  padding-block: var(--space-gap);
+  overflow-wrap: anywhere;
+}
+
+.profile-rules,
+.profile-review {
+  display: grid;
+  grid-template-columns: minmax(0, var(--profile-label-width)) minmax(0, 1fr);
+  gap: var(--citation-gap);
+}
+
+.program-profile dt {
+  font-weight: var(--weight-bold);
+}
+
+.program-profile dd,
+.program-profile dd p {
+  margin: 0;
+}
+
+.profile-media img {
+  display: block;
+  max-width: var(--profile-media-width);
+  height: auto;
+}
+
+.profile-media figcaption {
+  font-size: var(--size-small);
 }

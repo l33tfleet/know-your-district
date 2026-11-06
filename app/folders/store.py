@@ -254,7 +254,7 @@ def _insert_card(
 
 
 def _update_card(
-    db: sqlite3.Connection, folder_id: str, card_id: int, assignment: str, *values: str
+    db: sqlite3.Connection, folder_id: str, card_id: int, assignment: str, *values: str | None
 ) -> None:
     """Change a live card of a live folder; the folder id scopes every write."""
     _require_folder(db, folder_id)
@@ -373,8 +373,9 @@ class FolderStore:
 
     @checked
     def set_priority(
-        self, folder_id: FolderId, card_id: CardId, priority: Priority, reason: Reason
+        self, folder_id: FolderId, card_id: CardId, priority: Priority, reason: Reason | None
     ) -> None:
+        """None stores no reason; an empty or blank string is still refused."""
         with self._write() as db:
             _update_card(db, folder_id, card_id, "priority = ?, reason = ?", priority, reason)
 

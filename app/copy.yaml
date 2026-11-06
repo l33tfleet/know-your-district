@@ -30,31 +30,6 @@ home:
     options_label: Matching places
     # One listbox option as you type; the option's name is the place alone.
     option_detail: "{island} · House District {house}"
-  # Fixed cross-district questions; keys match QUESTIONS in app/tools/rankings.py.
-  question:
-    legend: Compare all House districts
-    submit: Show the answer
-    options:
-      age_65_share: Which House districts have the highest share of residents age 65 and over?
-      median_household_income: Which House districts have the lowest median household income?
-    # One sentence each. Placeholders only: every number comes from a Fact.
-    findings:
-      age_65_share: >-
-        {district} has the highest estimated share of residents age 65 and over among
-        House districts with a published figure: {value} ({moe}, {word}).
-      median_household_income: >-
-        {district} has the lowest estimated median household income among House
-        districts with a published figure: {value} ({moe}, {word}).
-    overlap: >-
-      Close ranks may not differ meaningfully: the margins of error of neighboring
-      districts in this list overlap.
-    distinct: The margins of error of neighboring districts in this list do not overlap.
-    left_out: "House districts left out because no figure is published: {count}."
-    no_figures: No House district has a published figure for this question yet.
-    citation: >-
-      Source: {source}, table {table_id}, {vintage}, geography {geography}.
-      Method: {method}. Coefficient of variation: {cv}.
-    unknown: "Unknown question. Valid values: {valid}."
 
 not_found:
   title: Page not found
@@ -311,6 +286,64 @@ sections:
       retirement_households: Households with retirement income
       below_poverty_no_snap: Households below poverty reporting no SNAP
 
+  profiles:
+    heading: Program profiles
+    official: Official program page
+    referral: Aloha United Way 211
+    jurisdiction: Jurisdiction
+    category: Category
+    unit: Assistance unit
+    income_basis: Income basis
+    income_period: Income period
+    bases:
+      census_poverty: National Census poverty thresholds
+      hawaii_hhs: Hawaiʻi HHS poverty guidelines
+      smi: State median income
+      ami: Area median income
+      not_applicable: Not applicable
+    periods:
+      monthly: Monthly
+      annual: Annual
+      past_12_months: Past twelve months
+      not_applicable: Not applicable
+    conditions: Conditions
+    exceptions: Exceptions
+    availability_label: Application availability
+    availability:
+      open: Open
+      closed: Closed
+      waitlist: Waitlist
+      paused: Paused
+      unknown: Unknown
+    unknown: Unknown
+    enacted: Enactment date
+    effective: Effective date
+    applications: Application opening date
+    rules: Official rule source
+    application: Application information
+    verified: Rule source last checked
+    next_steps: Organisational next steps
+    checked: Contact information checked
+    owner: Refresh owner
+    refresh: Refresh deadline
+    statistics: Population context
+    limitations: These figures describe population context, not an eligibility or nonparticipation estimate. Program conditions and comparable participation evidence require separate review.
+    district: Published for district
+    context: County/state context
+    unavailable: not available
+    missing: No matching published observation for this brief; catalog statistics are not displayed.
+    moe: "margin of error (90%): ±{value}"
+    no_moe: no margin of error published
+    reliability:
+      reliable: reliable
+      moderate: "moderate: use with care"
+      caution: use with caution
+      unavailable: not available
+    citation: "Source: {source}, table {table_id}, variable {variable}, {vintage}, geography {geography}. Method: {method}."
+    source: Published fact source
+    permission: Dated reuse permission
+    licence: Reuse licence evidence
+
   # Names, agencies, purposes and links come from data/programs.yaml.
   programs:
     heading: Programs that may help
@@ -329,21 +362,19 @@ folders:
   district_label: "Saved for {district}"
   priority_label: Priority
   reason_label: Reason, one line
-  reason_hint: Up to 200 characters. Do not name or describe a person.
-  set_priority: Set priority
+  reason_hint: Optional, up to 200 characters. Do not name or describe a person.
   status_label: Status
-  set_status: Set status
   summary: "Priority: {priority}{reason}. Status: {status}."
   summary_reason: " ({reason})"
   priorities:
-    high: high
-    normal: normal
-    low: low
+    high: High
+    normal: Normal
+    low: Low
   statuses:
-    idea: idea
-    contacted: contacted
-    planned: planned
-    done: done
+    idea: Idea
+    contacted: Contacted
+    planned: Planned
+    done: Done
   unknown_case: "Unknown case {value!r}. Valid values: {valid}."
   unknown_district: "Unknown district. Valid chambers: {valid}, each with its own district numbers."
   unknown_priority: "Unknown priority {value!r}. Valid values: {valid}."
