@@ -1,36 +1,36 @@
 {% if section.matches %}
 <section class="matches" aria-labelledby="matches-heading">
-  <h2 id="matches-heading">Population connections to programs</h2>
-  <p>These connections support outreach planning. Survey populations do not establish individual eligibility or an enrollment gap.</p>
+  <h2 id="matches-heading">{{ section.words.heading }}</h2>
+  <p>{{ section.words.intro }}</p>
   {% for match in section.matches %}
   {% set mapping = match.mapping %}
   {% set population = match.population %}
   {% set program = match.program %}
   <article data-match="{{ mapping.population_id }}:{{ mapping.program_id }}">
     <h3>{{ population.label }}: {{ program.name }}</h3>
-    <p>{{ match.claim }}. Program-expert review: {{ mapping.review_status }}.</p>
+    <p>{{ match.claim }}. {{ section.words.review }} {{ mapping.review_status }}.</p>
     <p>{{ mapping.relevance }}</p>
     <p>{{ section.geography_name }}: {{ match.value }} {{ population.unit }};
       {{ match.moe }}; <span class="reliability">{{ match.reliability }}</span>.</p>
     <details class="source">
-      <summary>Measure, conditions and evidence</summary>
+      <summary>{{ section.words.summary }}</summary>
       <p>{{ population.definition }}</p>
       <dl>
-        <dt>Source</dt><dd>{{ section.source }}, {{ section.vintage }}, {{ section.geography }}; published for district, {{ population.geography.plan }} plan.</dd>
-        <dt>Universe</dt><dd>{{ population.universe }}</dd>
-        <dt>Exclusions</dt><dd>{{ population.exclusions|join(' ') }}</dd>
-        <dt>Numerator measures</dt><dd>{{ population.numerator|join(' + ') }}</dd>
-        <dt>Denominator measures</dt><dd>{{ population.denominator|join(' + ') }}</dd>
-        <dt>Reference period</dt><dd>{{ population.period|replace('_', ' ') }}</dd>
-        <dt>Method</dt><dd>{{ match.figure.method }}</dd>
+        <dt>{{ section.words.source }}</dt><dd>{{ section.source }}, {{ section.vintage }}, {{ section.geography }}; {{ section.words.published }} {{ population.geography.plan }} {{ section.words.plan }}</dd>
+        <dt>{{ section.words.universe }}</dt><dd>{{ population.universe }}</dd>
+        <dt>{{ section.words.exclusions }}</dt><dd>{{ population.exclusions|join(' ') }}</dd>
+        <dt>{{ section.words.numerator }}</dt><dd>{{ population.numerator|join(' + ') }}</dd>
+        <dt>{{ section.words.denominator }}</dt><dd>{{ population.denominator|join(' + ') }}</dd>
+        <dt>{{ section.words.period }}</dt><dd>{{ population.period|replace('_', ' ') }}</dd>
+        <dt>{{ section.words.method }}</dt><dd>{{ match.figure.method }}</dd>
         {% if match.figure.missing %}
-        <dt>Missing measurements</dt><dd>{{ match.figure.missing|join(', ') }}. No eligibility or nonparticipation count is available from these measurements.</dd>
+        <dt>{{ section.words.missing }}</dt><dd>{{ match.figure.missing|join(', ') }}. {{ section.words.missing_note }}</dd>
         {% endif %}
         {% for fact in match.figure.inputs %}
-        <dt>Published input</dt><dd>{{ fact.source }}, table {{ fact.table_id }}, {{ fact.variable }}, {{ fact.vintage }}, {{ fact.geography }}; {{ fact.method }}; <a href="{{ fact.endpoint }}">Source endpoint</a>.</dd>
+        <dt>{{ section.words.input }}</dt><dd>{{ fact.source }}, {{ section.words.table }} {{ fact.table_id }}, {{ fact.variable }}, {{ fact.vintage }}, {{ fact.geography }}; {{ fact.method }}; <a href="{{ fact.endpoint }}">{{ section.words.endpoint }}</a>.</dd>
         {% endfor %}
-        <dt>Observed conditions</dt><dd>{{ mapping.observed_conditions|join(' ') or 'None documented.' }}</dd>
-        <dt>Unobserved conditions</dt><dd>{{ mapping.unobserved_conditions|join(' ') or 'None documented.' }}</dd>
+        <dt>{{ section.words.observed }}</dt><dd>{{ mapping.observed_conditions|join(' ') or section.words.none }}</dd>
+        <dt>{{ section.words.unobserved }}</dt><dd>{{ mapping.unobserved_conditions|join(' ') or section.words.none }}</dd>
         {% for evidence in [mapping.modeling_evidence, mapping.comparability_evidence] if evidence %}
         {% for key, value in evidence.model_dump(mode='json').items() %}
         <dt>{{ key|replace('_', ' ') }}</dt><dd>{{ value }}</dd>
@@ -38,8 +38,8 @@
         {% endfor %}
       </dl>
     </details>
-    <p><a href="{{ program.official_url }}">Official program information</a>. {{ program.guidance }}
-      <a href="{{ program.referral_url }}">Aloha United Way 211</a>.</p>
+    <p><a href="{{ program.official_url }}">{{ section.words.official }}</a>. {{ program.guidance }}
+      <a href="{{ program.referral_url }}">{{ section.words.referral }}</a>.</p>
   </article>
   {% endfor %}
 </section>

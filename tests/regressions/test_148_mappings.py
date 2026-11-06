@@ -8,11 +8,47 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from app import features
 from app.facts import FactStore
 from app.main import app
 from app.models import Fact
 from app.populations import load_populations
 from etl.programs.mappings import ProgramMapping, load_mappings
+
+
+@pytest.fixture(autouse=True)
+def matches_enabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    policy = tmp_path / "features.toml"
+    policy.write_text('outreach = "on"\nmatches = "on"\n', encoding="utf-8")
+    monkeypatch.setattr(features, "FEATURES_PATH", policy)
+
+
+def test_disabled_matches_preserve_brief_and_skip_mapping_load(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    policy = tmp_path / "disabled.toml"
+    policy.write_text('outreach = "off"\n', encoding="utf-8")
+    monkeypatch.setattr(features, "FEATURES_PATH", policy)
+    section = import_module("app.sections.36_matches")
+
+    def unexpected_load() -> None:
+        pytest.fail("Disabled matches must not load mappings")
+
+    monkeypatch.setattr(section, "load_mappings", unexpected_load)
+    response = TestClient(app).get("/brief/house/22")
+    assert response.status_code == 200
+    assert 'class="matches"' not in response.text
+    assert 'class="screen-only"' not in response.text
+
+
+def test_matches_template_keeps_wording_in_section_context() -> None:
+    # The work order excludes app/copy.yaml, as for the population section.
+    import re
+
+    path = Path(__file__).resolve().parents[2] / "templates/sections/36-matches.html"
+    source = re.sub(r"{#.*?#}|{%.*?%}|{{.*?}}", " ", path.read_text(), flags=re.S)
+    source = re.sub(r"<!--.*?-->|<[^>]*>|&[a-z]+;", " ", source, flags=re.S)
+    assert not re.search(r"[^\W\d_]", source)
 
 
 def able_mapping() -> ProgramMapping:

@@ -17,12 +17,40 @@ from etl.programs import load_catalog
 from etl.programs.mappings import load_mappings
 
 # The expanded evidence belongs on screen to preserve the one-page print brief.
+FEATURE = "matches"
 PRINT = False
 CATALOG = Path(__file__).resolve().parents[2] / "data/programs.yaml"
 CLAIMS = {
     "relevant_need": "Relevant need only — potential outreach audience",
     "modeled_eligibility": "Modeled eligibility — agency confirmation required",
     "comparable_nonparticipation": "Comparable nonparticipation — aggregate estimate",
+}
+
+# Wording stays here because app/copy.yaml is outside this work order (see 25_populations).
+WORDS = {
+    "heading": "Population connections to programs",
+    "intro": "These connections support outreach planning. Survey populations do not establish individual eligibility or an enrollment gap.",
+    "review": "Program-expert review:",
+    "summary": "Measure, conditions and evidence",
+    "source": "Source",
+    "published": "published for district,",
+    "plan": "plan.",
+    "universe": "Universe",
+    "exclusions": "Exclusions",
+    "numerator": "Numerator measures",
+    "denominator": "Denominator measures",
+    "period": "Reference period",
+    "method": "Method",
+    "missing": "Missing measurements",
+    "missing_note": "No eligibility or nonparticipation count is available from these measurements.",
+    "input": "Published input",
+    "table": "table",
+    "endpoint": "Source endpoint",
+    "observed": "Observed conditions",
+    "unobserved": "Unobserved conditions",
+    "none": "None documented.",
+    "official": "Official program information",
+    "referral": "Aloha United Way 211",
 }
 
 
@@ -56,6 +84,7 @@ def context(state: PageState) -> dict[str, object]:
         )
     return {
         "matches": matches,
+        "words": WORDS,
         "source": registry.source,
         "vintage": registry.vintage,
         "geography": geography,
