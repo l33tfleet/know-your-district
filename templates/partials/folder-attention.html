@@ -1,0 +1,19 @@
+<section class="folder-attention" aria-label="{{ words.attention_region }}">
+  <h2 id="attention-heading">{{ words.attention_heading }}</h2>
+  <form method="get" action="{{ reopen }}">
+    {% if preview %}<input type="hidden" name="preview" value="1">{% endif %}
+    <button type="submit">{{ words.attention_refresh }}</button>
+  </form>
+  {% if attention %}
+  <ol>
+    {% for item in attention %}
+    <li>
+      <a href="#card-{{ item.case.id }}">{{ case_names[item.case.case_id] }} · {{ geography_name(item.case.chamber ~ ':15:' ~ item.case.district ~ ':2022') }}</a>
+      <p><strong>{{ item.next_step }}</strong> — {{ item.reason }}</p>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p>{{ words.attention_empty }}</p>
+  {% endif %}
+</section>

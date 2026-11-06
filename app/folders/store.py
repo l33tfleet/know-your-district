@@ -45,7 +45,8 @@ BUSY_TIMEOUT_MS = 5000
 MIGRATIONS: tuple[str, ...] = (Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"),)
 LIVE_FOLDER = "SELECT id, name FROM folders WHERE id = ? AND deleted_at IS NULL AND updated_at > ?"
 LIVE_CARDS = (
-    "SELECT id, card_key AS case_id, chamber, district, priority, reason, status FROM cards"
+    "SELECT id, card_key AS case_id, chamber, district, priority, reason, status,"
+    " created_at, updated_at FROM cards"
     " WHERE folder_id = ? AND deleted_at IS NULL ORDER BY id"
 )
 LIVE_NOTES = (
@@ -151,6 +152,8 @@ class Card(BaseModel):
     priority: Priority
     reason: str | None
     status: Status
+    created_at: str
+    updated_at: str
 
 
 class Folder(BaseModel):

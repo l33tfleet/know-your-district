@@ -12,6 +12,7 @@ import importlib
 import os
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 from urllib.parse import parse_qs
@@ -25,6 +26,7 @@ from pydantic import TypeAdapter, ValidationError
 from app.copy import Copy, geography_name, load_copy, section_copy
 from app.features import require_feature
 from app.folders import notes
+from app.folders.attention import needs_attention
 from app.folders.notes import Draft
 from app.folders.service import FolderService, Network, client_ip, load_secret
 from app.folders.store import (
@@ -238,6 +240,9 @@ def folder_page(
     open_editor: int | None = None,
 ) -> HTMLResponse:
     """The folder with each card and its notes; a draft shows under its own card."""
+    # Local: importing this router must leave case loading to `validate_startup`.
+    from app.cases import load_cases
+
     with known_folder():
         db = open_store(state)
         folder = db.get_folder(folder_id)
@@ -249,6 +254,9 @@ def folder_page(
     # The link to share is the folder's, never a form's address or an open editor's.
     link = str(request.base_url).rstrip("/") + folder_path(folder_id, state)
     context = page_context() | {
+        "attention": needs_attention(folder.cards, saved, datetime.now(UTC).date()),
+        "case_names": {record.id: record.program.name for record in load_cases().cases},
+        "geography_name": geography_name,
         "cards": [
             {
                 "card": render_card(card, state, folder_id),
@@ -258,6 +266,7 @@ def folder_page(
         ],
         "folder": folder,
         "link": link,
+        "preview": state.preview,
         "reopen": folder_path(folder_id, state),
         "title": words["title"].format(name=folder.name),
         "words": words,
