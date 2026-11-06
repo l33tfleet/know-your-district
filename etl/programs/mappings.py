@@ -19,6 +19,7 @@ from pydantic import (
     TypeAdapter,
     model_validator,
 )
+from yaml.nodes import MappingNode, Node, SequenceNode
 
 from app.populations import REGISTRY_PATH, load_populations
 from app.sources import Identifier, Text
@@ -74,6 +75,20 @@ class ProgramMapping(BaseModel):
         return self
 
 
+def _unique_keys(node: Node) -> None:
+    """Mirrors app/populations.py: reject keys safe_load would silently overwrite."""
+    if isinstance(node, MappingNode):
+        seen: set[str] = set()
+        for key, value in node.value:
+            if key.value in seen:
+                raise ValueError(f"duplicate YAML key: {key.value}")
+            seen.add(key.value)
+            _unique_keys(value)
+    elif isinstance(node, SequenceNode):
+        for child in node.value:
+            _unique_keys(child)
+
+
 def load_mappings(
     path: Path = MAPPINGS_PATH,
     *,
@@ -87,7 +102,16 @@ def load_mappings(
     Retired program identities remain resolvable through the catalog.
     """
     try:
-        raw: object = yaml.safe_load(path.read_text(encoding="utf-8"))
+        content = path.read_text(encoding="utf-8")
+        loader = yaml.SafeLoader(content)
+        try:
+            node = loader.get_single_node()
+        finally:
+            # PyYAML disposal returns None, but its upstream annotation is missing.
+            loader.dispose()  # pyright: ignore[reportUnknownMemberType]
+        if node is not None:
+            _unique_keys(node)
+        raw: object = yaml.safe_load(content)
     except yaml.YAMLError as exc:
         raise ValueError("Invalid mappings YAML") from exc
     mappings = TypeAdapter(
