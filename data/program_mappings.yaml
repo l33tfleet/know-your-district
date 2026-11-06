@@ -28,7 +28,7 @@
     - Self-reported disability among civilian noninstitutionalized residents.
   unobserved_conditions:
     - Disability onset under the applicable federal rules; current age is not onset age.
-    - Qualifying disability benefits or disability certification and documentation.
+    - Disability benefits meeting program rules, or disability certification and documentation.
     - Current account ownership, ability to save and benefit interactions.
     - Current Hawaiʻi enrollment availability, fees and incentives remain unverified.
   claim: relevant_need

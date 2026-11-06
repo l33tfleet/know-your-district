@@ -17,6 +17,7 @@ from pydantic import (
     HttpUrl,
     StringConstraints,
     TypeAdapter,
+    field_validator,
     model_validator,
 )
 from yaml.nodes import MappingNode, Node, SequenceNode
@@ -24,6 +25,7 @@ from yaml.nodes import MappingNode, Node, SequenceNode
 from app.populations import REGISTRY_PATH, load_populations
 from app.sources import Identifier, Text
 from etl.programs import load_catalog
+from etl.programs.contracts import validate_wording
 
 _DATA = Path(__file__).resolve().parents[2] / "data"
 MAPPINGS_PATH = _DATA / "program_mappings.yaml"
@@ -65,6 +67,13 @@ class ProgramMapping(BaseModel):
     review_status: Literal["pending", "reviewed", "rejected"]
     modeling_evidence: ModelingEvidence | None = None
     comparability_evidence: ComparabilityEvidence | None = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def safe_wording(cls, value: object) -> object:
+        # Apply the catalog policy to prose and nested evidence alike: a claim
+        # enum cannot protect readers from an eligibility promise in free text.
+        return validate_wording(value)
 
     @model_validator(mode="after")
     def supported_claim(self) -> Self:

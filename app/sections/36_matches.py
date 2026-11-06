@@ -31,6 +31,7 @@ WORDS = {
     "heading": "Population connections to programs",
     "intro": "These connections support outreach planning. Survey populations do not establish individual eligibility or an enrollment gap.",
     "review": "Program-expert review:",
+    "survey": "Survey population:",
     "summary": "Measure, conditions and evidence",
     "source": "Source",
     "published": "published for district,",

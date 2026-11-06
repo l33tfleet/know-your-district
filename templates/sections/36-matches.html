@@ -10,11 +10,11 @@
     <h3>{{ population.label }}: {{ program.name }}</h3>
     <p>{{ match.claim }}. {{ section.words.review }} {{ mapping.review_status }}.</p>
     <p>{{ mapping.relevance }}</p>
-    <p>{{ section.geography_name }}: {{ match.value }} {{ population.unit }};
+    <p>{{ section.words.survey }} {{ section.geography_name }}: {{ match.value }} {{ population.unit }};
       {{ match.moe }}; <span class="reliability">{{ match.reliability }}</span>.</p>
+    <p>{{ population.definition }}</p>
     <details class="source">
       <summary>{{ section.words.summary }}</summary>
-      <p>{{ population.definition }}</p>
       <dl>
         <dt>{{ section.words.source }}</dt><dd>{{ section.source }}, {{ section.vintage }}, {{ section.geography }}; {{ section.words.published }} {{ population.geography.plan }} {{ section.words.plan }}</dd>
         <dt>{{ section.words.universe }}</dt><dd>{{ population.universe }}</dd>

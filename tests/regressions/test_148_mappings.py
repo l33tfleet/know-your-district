@@ -201,3 +201,38 @@ def test_match_count_retains_fact_citation_and_uncertainty(
         fact.endpoint,
     ):
         assert text in match
+
+
+@pytest.mark.parametrize("field", ["relevance", "observed_conditions", "unobserved_conditions"])
+@pytest.mark.parametrize("wording", ["You qualify.", "You are eligible for benefits."])
+def test_mapping_prose_cannot_bypass_claim_ceiling(field: str, wording: str) -> None:
+    raw = able_mapping().model_dump(mode="json")
+    raw[field] = wording if field == "relevance" else [wording]
+    with pytest.raises(ValueError, match="forbidden wording"):
+        ProgramMapping.model_validate(raw)
+
+
+def test_nested_evidence_cannot_promise_individual_eligibility() -> None:
+    raw = able_mapping().model_dump(mode="json")
+    raw.update(
+        claim="modeled_eligibility",
+        modeling_evidence={
+            "method": "Synthetic aggregate model.",
+            "rule_source": "https://example.org/rules",
+            "assumptions": ["You qualify."],
+            "validation": "Synthetic validation report.",
+            "evidence_url": "https://example.org/report",
+        },
+    )
+    with pytest.raises(ValueError, match="forbidden wording"):
+        ProgramMapping.model_validate(raw)
+
+
+def test_survey_definition_and_receipt_limits_are_visible_beside_count() -> None:
+    html = TestClient(app).get("/brief/house/22").text
+    populations = {p.id: p for p in load_populations().populations}
+    for mapping in load_mappings():
+        article = html.split(f'data-match="{mapping.population_id}:{mapping.program_id}"', 1)[1]
+        visible = article.split("<details", 1)[0]
+        assert "Survey population:" in visible
+        assert populations[mapping.population_id].definition in visible
