@@ -38,10 +38,11 @@ from tests.regressions.test_wo97_brief_page import parse
 from tests.regressions.test_wo122_browser_checks import axe_problems, base_url, browser, open_page
 from tests.regressions.test_wo122_browser_checks import page as page
 from tests.regressions.test_wo143_integration import config, shipped_facts
+from tests.regressions.test_wo_step5_save_priority import live_shipped
 
-# Reuse the #288 and WO122 fixtures unchanged.
+# Reuse the #288, #316 and WO122 fixtures unchanged.
 __all__ = ["base_url", "browser", "client", "config", "flag", "live_folders", "page"]
-__all__ += ["shipped_facts"]
+__all__ += ["live_shipped", "shipped_facts"]
 
 ROOT = Path(__file__).resolve().parents[2]
 BRIEF = "/brief/house/22"
@@ -696,6 +697,30 @@ def test_browser_story_step_6_finds_the_box_by_its_accessible_name(
     page.get_by_role("textbox", name="Add a note").fill("Story step six note.")
     page.get_by_role("button", name="Add note").click()
     page.get_by_text("Story step six note.").wait_for()
+
+
+def test_story_steps_5_and_6_run_as_written_on_the_shipped_flags(
+    page: Page, live_shipped: str
+) -> None:
+    """Decisions §16: step 6 runs inside step 5's segment, on the committed `features.toml`
+    and without `?preview=1`; the note shows once "Add note" is pressed."""
+    open_page(page, f"{live_shipped}{BRIEF}", 1440)
+    region = page.get_by_role("region", name="SNAP", exact=True)
+    region.get_by_role("button", name="Save to folder").click()
+    page.wait_for_url("**/f/*")
+    assert "preview" not in page.url
+    page.get_by_role("combobox", name="Priority").select_option(label="High")
+    page.get_by_text("Priority: High. Status: Idea.", exact=True).wait_for()
+    page.get_by_role("combobox", name="Status").select_option(label="Planned")
+    page.get_by_text("Priority: High. Status: Planned.", exact=True).wait_for()
+
+    page.get_by_role("textbox", name="Add a note").fill("Table at Mōʻiliʻili meeting 11/8")
+    page.get_by_role("button", name="Add note").click()
+    page.get_by_text("Table at Mōʻiliʻili meeting 11/8").first.wait_for()
+    page.get_by_role("button", name="Save note").click()
+    page.locator(".note-confirm").wait_for(state="detached")
+    page.reload()
+    assert browser_notes(page) == ["Table at Mōʻiliʻili meeting 11/8"]
 
 
 def test_demo_steps_run_as_written(page: Page, live_folders: str) -> None:
