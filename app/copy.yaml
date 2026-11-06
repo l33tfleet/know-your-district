@@ -359,6 +359,8 @@ folders:
   copied: Link copied
   reopen: Reopen this folder's link
   empty: This folder has no saved cases.
+  attention_heading: What needs attention
+  attention_empty: Nothing needs attention. All saved cases are done, or this folder has no saved cases.
   district_label: "Saved for {district}"
   priority_label: Priority
   reason_label: Reason, one line

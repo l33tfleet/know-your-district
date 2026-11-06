@@ -12,6 +12,7 @@ import importlib
 import os
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 from urllib.parse import parse_qs
@@ -22,9 +23,11 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 from pydantic import TypeAdapter, ValidationError
 
+from app.cases import load_cases
 from app.copy import Copy, geography_name, load_copy, section_copy
 from app.features import require_feature
 from app.folders import notes
+from app.folders.attention import needs_attention
 from app.folders.notes import Draft
 from app.folders.service import FolderService, Network, client_ip, load_secret
 from app.folders.store import (
@@ -140,9 +143,6 @@ async def form_fields(request: Request) -> dict[str, str]:
 
 def case_district(form: dict[str, str]) -> PageState:
     """Refuse a case or district the app does not know; the state carries the district."""
-    # Local: `validate_startup` is the first to load the cases, never an import of `app.main`.
-    from app.cases import load_cases
-
     words = load_copy()["folders"]
     valid = [record.id for record in load_cases().cases]
     case_id = form.get("case_id")
@@ -249,6 +249,9 @@ def folder_page(
     # The link to share is the folder's, never a form's address or an open editor's.
     link = str(request.base_url).rstrip("/") + folder_path(folder_id, state)
     context = page_context() | {
+        "attention": needs_attention(folder.cards, saved, datetime.now(UTC).date()),
+        "case_names": {record.id: record.program.name for record in load_cases().cases},
+        "geography_name": geography_name,
         "cards": [
             {
                 "card": render_card(card, state, folder_id),

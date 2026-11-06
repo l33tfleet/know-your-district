@@ -12,6 +12,7 @@
     <span id="copy-status" role="status"></span>
   </div>
   <p><a href="{{ reopen }}">{{ words.reopen }}</a></p>
+  {% include "partials/folder-attention.html" %}
   {% for entry in cards %}
   {{ entry.card }}
   {{ entry.notes }}
