@@ -40,6 +40,7 @@ from etl.boundaries import Chamber
 
 ROOT = Path(__file__).resolve().parents[2]
 FEATURE = "folders"
+DEMO_ID = "de000000000000000000000000000233"
 BUSY_TIMEOUT_MS = 5000
 # One entry per schema version, in order; each runs once, inside one transaction.
 MIGRATIONS: tuple[str, ...] = (Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"),)
@@ -175,6 +176,40 @@ class Note(BaseModel):
     body: str = Field(repr=False)
 
 
+class DemoCard(BaseModel):
+    """Validated office state for one catalog case; no observations or private residents."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    case_id: CaseId
+    priority: Priority
+    status: Status
+    body: NoteBody
+    dated: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+
+class VisitorWrite(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    folder_id: str = Field(repr=False)
+    cards: dict[int, int] = Field(default_factory=dict[int, int])
+    notes: dict[int, int] = Field(default_factory=dict[int, int])
+
+    def card(self, original: int) -> int:
+        if self.cards and original not in self.cards:
+            raise FolderNotFoundError
+        return self.cards.get(original, original)
+
+    def note(self, original: int) -> int:
+        if self.cards and original not in self.notes:
+            raise FolderNotFoundError
+        return self.notes.get(original, original)
+
+
+def _require_mutable(db: sqlite3.Connection, folder_id: str) -> None:
+    if folder_id == DEMO_ID:
+        raise FolderNotFoundError
+    _require_folder(db, folder_id)
+
+
 def new_folder_id() -> str:
     return secrets.token_hex(16)
 
@@ -260,7 +295,7 @@ def _update_card(
     db: sqlite3.Connection, folder_id: str, card_id: int, assignment: str, *values: str | None
 ) -> None:
     """Change a live card of a live folder; the folder id scopes every write."""
-    _require_folder(db, folder_id)
+    _require_mutable(db, folder_id)
     changed = db.execute(
         f"UPDATE cards SET {assignment}, updated_at = ?"
         " WHERE id = ? AND folder_id = ? AND deleted_at IS NULL",
@@ -293,6 +328,7 @@ class FolderStore:
         self.path = _checked_path(path)
         self._state = state
         self._limits = limits or Limits()
+        self._transaction: sqlite3.Connection | None = None
 
     def _create_file(self) -> None:
         """Publish a fully migrated file in one step, so no opener ever sees it half made.
@@ -336,6 +372,9 @@ class FolderStore:
     @contextmanager
     def _write(self) -> Generator[sqlite3.Connection]:
         """One short transaction under the size ceiling; closing rolls back an unfinished one."""
+        if self._transaction is not None:
+            yield self._transaction
+            return
         with self._capacity(), closing(self._connect()) as db:
             db.execute("BEGIN IMMEDIATE")
             _require_ceiling(db, self._limits.max_db_bytes)
@@ -348,6 +387,67 @@ class FolderStore:
         with self._capacity():
             self._connect().close()
         log.info("folder store ready in %.1f ms", (time.perf_counter() - start) * 1000)
+
+    @checked
+    def refresh_demo(self, cards: tuple[DemoCard, ...]) -> None:
+        """Replace only the reserved seed atomically; ordinary folders retain their identities."""
+        with self._write() as db:
+            db.execute("DELETE FROM folders WHERE id = ?", (DEMO_ID,))
+            stamp = now()
+            db.execute(
+                "INSERT INTO folders (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                (DEMO_ID, "Hawaiʻi outreach demo", stamp, stamp),
+            )
+            for card in cards:
+                _insert_card(db, DEMO_ID, card.case_id, "house", 22)
+                db.execute(
+                    "UPDATE cards SET priority = ?, status = ?, created_at = ?, updated_at = ?"
+                    " WHERE folder_id = ? AND card_key = ?",
+                    (card.priority, card.status, card.dated, card.dated, DEMO_ID, card.case_id),
+                )
+                db.execute(
+                    "INSERT INTO notes (card_id, dated, body, confirmed, created_at, updated_at)"
+                    " SELECT id, ?, ?, 1, ?, ? FROM cards WHERE folder_id = ? AND card_key = ?",
+                    (card.dated, card.body, stamp, stamp, DEMO_ID, card.case_id),
+                )
+
+    @contextmanager
+    def visitor_write(self, folder_id: str) -> Generator[VisitorWrite]:
+        """Request-local transaction: remap seed identities and roll back copy/edit on failure."""
+        if folder_id != DEMO_ID:
+            yield VisitorWrite(folder_id=folder_id)
+            return
+        with self._write() as db:
+            row = _require_folder(db, folder_id)
+            target = new_folder_id()
+            stamp = now()
+            db.execute(
+                "INSERT INTO folders (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                (target, row["name"], stamp, stamp),
+            )
+            cards: dict[int, int] = {}
+            notes: dict[int, int] = {}
+            for card in db.execute(LIVE_CARDS, (folder_id,)).fetchall():
+                saved = db.execute(
+                    "INSERT INTO cards (folder_id, card_key, chamber, district, priority, reason,"
+                    " status, created_at, updated_at) SELECT ?, card_key, chamber, district,"
+                    " priority, reason, status, created_at, updated_at FROM cards WHERE id = ?"
+                    " RETURNING id",
+                    (target, card["id"]),
+                ).fetchone()
+                cards[card["id"]] = saved[0]
+            for note in db.execute(LIVE_NOTES, (folder_id,)).fetchall():
+                saved = db.execute(
+                    "INSERT INTO notes (card_id, dated, body, confirmed, created_at, updated_at)"
+                    " VALUES (?, ?, ?, 1, ?, ?) RETURNING id",
+                    (cards[note["card_id"]], note["dated"], note["body"], stamp, stamp),
+                ).fetchone()
+                notes[note["id"]] = saved[0]
+            self._transaction = db
+            try:
+                yield VisitorWrite(folder_id=target, cards=cards, notes=notes)
+            finally:
+                self._transaction = None
 
     @checked
     def create_folder(
@@ -370,7 +470,7 @@ class FolderStore:
     ) -> None:
         """Add a case by its id and district; saving it again keeps the card as it is."""
         with self._write() as db:
-            _require_folder(db, folder_id)
+            _require_mutable(db, folder_id)
             _insert_card(db, folder_id, case_id, chamber, district)
             _touch(db, folder_id)
 
@@ -399,7 +499,7 @@ class FolderStore:
         """Move everything to a new id in one transaction; the old link is then simply unknown."""
         new_id = new_folder_id()
         with self._write() as db:
-            _require_folder(db, folder_id)
+            _require_mutable(db, folder_id)
             db.execute(
                 "INSERT INTO folders (id, name, created_at, updated_at)"
                 " SELECT ?, name, created_at, ? FROM folders WHERE id = ?",
@@ -415,7 +515,7 @@ class FolderStore:
     ) -> int:
         """A note on a live card of this folder; `confirmed` is the office's word, always true."""
         with self._write() as db:
-            _require_folder(db, folder_id)
+            _require_mutable(db, folder_id)
             stamp = now()
             added = db.execute(
                 "INSERT INTO notes (card_id, dated, body, confirmed, created_at, updated_at)"
@@ -433,7 +533,7 @@ class FolderStore:
         self, folder_id: FolderId, note_id: NoteId, body: NoteBody, confirmed: Literal[True]
     ) -> None:
         with self._write() as db:
-            _require_folder(db, folder_id)
+            _require_mutable(db, folder_id)
             changed = db.execute(
                 "UPDATE notes SET body = ?, confirmed = ?, updated_at = ?"
                 " WHERE id = ? AND deleted_at IS NULL AND card_id IN"
@@ -448,7 +548,7 @@ class FolderStore:
     def delete_note(self, folder_id: FolderId, note_id: NoteId) -> None:
         """Move a live note of this folder to the trash (`deleted_at`); a purge removes it."""
         with self._write() as db:
-            _require_folder(db, folder_id)
+            _require_mutable(db, folder_id)
             stamp = now()
             changed = db.execute(
                 "UPDATE notes SET deleted_at = ?, updated_at = ?"

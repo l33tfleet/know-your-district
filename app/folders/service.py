@@ -15,7 +15,8 @@ import ipaddress
 import logging
 import os
 import re
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Generator, Mapping
+from contextlib import contextmanager
 from typing import cast
 
 from pydantic import TypeAdapter, ValidationError
@@ -32,6 +33,7 @@ from app.folders.store import (
     NoteText,
     RateRule,
     StoreConfigError,
+    VisitorWrite,
 )
 from etl.boundaries import Chamber
 
@@ -124,6 +126,16 @@ class FolderService:
         _screen(body)
         if given is None or not pii.confirmation_matches(self._secret, folder_id, body, given):
             raise ConfirmationRequiredError
+
+    @contextmanager
+    def confirmed_write(
+        self, folder_id: FolderId, body: str, confirmation: str | None, ip: str
+    ) -> Generator[VisitorWrite]:
+        """Confirm the original link and exact text before creating any private copy."""
+        self._require_confirmed(folder_id, body, confirmation)
+        self.throttle_write(ip)
+        with self.store.visitor_write(folder_id) as write:
+            yield write
 
     def add_note(
         self, folder_id: FolderId, card_id: int, body: str, confirmation: str | None, ip: str
