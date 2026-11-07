@@ -194,18 +194,14 @@ class VisitorWrite(BaseModel):
     notes: dict[int, int] = Field(default_factory=dict[int, int])
 
     def card(self, original: int) -> int:
-        if not self.cards:
-            return original
-        if original not in self.cards:
+        if self.cards and original not in self.cards:
             raise FolderNotFoundError
-        return self.cards[original]
+        return self.cards.get(original, original)
 
     def note(self, original: int) -> int:
-        if not self.cards:
-            return original
-        if original not in self.notes:
+        if self.cards and original not in self.notes:
             raise FolderNotFoundError
-        return self.notes[original]
+        return self.notes.get(original, original)
 
 
 def _require_mutable(db: sqlite3.Connection, folder_id: str) -> None:
@@ -417,11 +413,7 @@ class FolderStore:
 
     @contextmanager
     def visitor_write(self, folder_id: str) -> Generator[VisitorWrite]:
-        """Copy live seed records and apply the caller's edit under the same transaction.
-
-        Use a request-local store. Exceptions roll back both the copy and the edit.
-        Identity maps let a confirmed edit target its corresponding private card or note.
-        """
+        """Request-local transaction: remap seed identities and roll back copy/edit on failure."""
         if folder_id != DEMO_ID:
             yield VisitorWrite(folder_id=folder_id)
             return
@@ -438,18 +430,10 @@ class FolderStore:
             for card in db.execute(LIVE_CARDS, (folder_id,)).fetchall():
                 saved = db.execute(
                     "INSERT INTO cards (folder_id, card_key, chamber, district, priority, reason,"
-                    " status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
-                    (
-                        target,
-                        card["case_id"],
-                        card["chamber"],
-                        card["district"],
-                        card["priority"],
-                        card["reason"],
-                        card["status"],
-                        card["created_at"],
-                        card["updated_at"],
-                    ),
+                    " status, created_at, updated_at) SELECT ?, card_key, chamber, district,"
+                    " priority, reason, status, created_at, updated_at FROM cards WHERE id = ?"
+                    " RETURNING id",
+                    (target, card["id"]),
                 ).fetchone()
                 cards[card["id"]] = saved[0]
             for note in db.execute(LIVE_NOTES, (folder_id,)).fetchall():

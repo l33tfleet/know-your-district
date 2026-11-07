@@ -108,24 +108,6 @@ def test_every_visitor_edit_forks_and_navigates(
     assert seeded.list_notes(copied.id) == copied_notes
 
 
-@pytest.mark.parametrize(
-    "data",
-    [
-        {"body": BODY},
-        {"body": BODY, "confirmation": "bad"},
-        {"body": "Call 808-555-0142", "confirmation": "bad"},
-    ],
-)
-def test_drafts_and_refusals_do_not_fork(
-    seeded: store.FolderStore, client: TestClient, data: dict[str, str]
-) -> None:
-    card = seeded.get_folder(store.DEMO_ID).cards[0].id
-    before = rows(seeded.path, "SELECT * FROM folders")
-    response = client.post(f"/f/{store.DEMO_ID}/cards/{card}/notes", data=data)
-    assert response.status_code in (200, 422)
-    assert rows(seeded.path, "SELECT * FROM folders") == before
-
-
 def test_refresh_and_fork_roll_back_on_failure(seeded: store.FolderStore) -> None:
     seed = seeded.get_folder(store.DEMO_ID)
     notes = seeded.list_notes(store.DEMO_ID)
@@ -141,6 +123,10 @@ def test_refresh_and_fork_roll_back_on_failure(seeded: store.FolderStore) -> Non
         seeded.visitor_write(store.DEMO_ID),
     ):
         pass
+    with closing(sqlite3.connect(seeded.path)) as db:
+        db.execute("DROP TRIGGER fail_seed")
+    with pytest.raises(store.FolderNotFoundError), seeded.visitor_write(store.DEMO_ID) as write:
+        seeded.set_status(write.folder_id, write.card(999999), "done")
     assert seeded.get_folder(store.DEMO_ID) == seed
     assert seeded.list_notes(store.DEMO_ID) == notes
     assert len(rows(seeded.path, "SELECT * FROM folders")) == 1
@@ -154,19 +140,8 @@ def test_direct_seed_mutation_is_refused(seeded: store.FolderStore) -> None:
         seeded.rotate_link(store.DEMO_ID)
 
 
-def test_failed_edit_rolls_back_copy_and_remapped_records(seeded: store.FolderStore) -> None:
-    before = [
-        rows(seeded.path, f"SELECT * FROM {table}") for table in ("folders", "cards", "notes")
-    ]
-    with pytest.raises(store.FolderNotFoundError), seeded.visitor_write(store.DEMO_ID) as write:
-        seeded.set_status(write.folder_id, write.card(999999), "done")
-    assert before == [
-        rows(seeded.path, f"SELECT * FROM {t}") for t in ("folders", "cards", "notes")
-    ]
-
-
 @pytest.mark.parametrize("htmx", [False, True])
-@pytest.mark.parametrize("failure", ["text", "folder", "throttle"])
+@pytest.mark.parametrize("failure", ["draft", "bad", "pii", "text", "folder", "throttle"])
 def test_confirmation_binding_and_throttle_precede_fork(
     seeded: store.FolderStore, client: TestClient, htmx: bool, failure: str
 ) -> None:
@@ -177,10 +152,15 @@ def test_confirmation_binding_and_throttle_precede_fork(
     if failure == "throttle":
         for _ in range(60):
             service.throttle_write("unknown")
+    data = {"body": BODY + (" Changed." if failure == "text" else ""), "confirmation": token}
+    if failure == "draft":
+        del data["confirmation"]
+    elif failure in ("bad", "pii"):
+        data = {"body": "Call 808-555-0142" if failure == "pii" else BODY, "confirmation": "bad"}
     response = client.post(
         f"/f/{store.DEMO_ID}/cards/{card}/notes",
-        data={"body": BODY + (" Changed." if failure == "text" else ""), "confirmation": token},
+        data=data,
         headers={"HX-Request": str(htmx).lower()},
     )
-    assert response.status_code == (429 if failure == "throttle" else 422)
+    assert response.status_code == {"draft": 200, "throttle": 429}.get(failure, 422)
     assert len(rows(seeded.path, "SELECT * FROM folders")) == 1

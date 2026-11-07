@@ -1,10 +1,6 @@
-"""Preview/refresh the immutable public seed: python -m app.folders.demo [--commit].
-
+"""Preview/refresh the immutable seed: python -m app.folders.demo [--commit].
 Uses KYD_FOLDERS_DB (or the store's XDG default), with the folders flag on.
-Preview reads only the catalog. #287 supplies the remaining production research cases;
-no placeholder programs, duplicated district cases, or invented actions stand in for them.
-Scheduling belongs to #234. Refresh uses the existing schema; no migration is needed.
-"""
+#287 supplies remaining cases; scheduling belongs to #234. Preview reads only catalog."""
 
 import argparse
 import os
