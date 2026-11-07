@@ -94,9 +94,20 @@ sections:
       unavailable: not available
     # Sentence templates per figure kind (KINDS in app/brief_facts.py). Placeholders only:
     # every number comes from a Fact and is rendered by the template, never written here.
-    count_sentence: "{geography} has {value} residents ({moe}, {word})."
-    share_sentence: "{value} of residents in {geography} are age 65 and over ({moe}, {word}), {comparison}."
-    dollars_sentence: "The median household income in {geography} is {value} ({moe}, {word}), {comparison}."
+    # {reading} is one geography's figure with its margin of error and reliability word.
+    count_sentence: "{geography} has {reading} residents"
+    share_sentence: "In {geography}, {reading} of residents are age 65 and over"
+    dollars_sentence: "The median household income in {geography} is {reading}"
+    # Population is never compared (KINDS): the county and state counts are only shown.
+    count_reference: "{name} has {reading}"
+    comparison_clause: "{lead} {name}, {reading}"
+    comparison_tail: ", {tail}"
+    clause_separator: "; "
+    sentence_end: "."
+    companion_sentence: "Published count of residents age 65 and over in {geography}: {reading}."
+    # A share's margin of error is in percentage points, not a percent of the share.
+    moe_units:
+      age_65_share: points
     count_unavailable: >-
       The number of residents age 65 and over is not yet published here; it is
       never computed from the share.
