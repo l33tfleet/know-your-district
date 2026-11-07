@@ -2,7 +2,6 @@
 """Three figures (population, share 65+, median household income) for the district, each with
 its ±MOE, reliability in words and full citation, and county and state figures beside it."""
 
-from app.analysis.intervals import interval_layout
 from app.brief_facts import FORMATS, STATE, BriefFacts, citation, reading
 from app.copy import geography_name, section_copy
 from app.counties import load_mapping
@@ -35,18 +34,6 @@ def context(state: PageState) -> dict[str, object]:
                     reading(g, facts.get((variables[figure], g)), fmt, copy)
                     | {"label": geography_name(g)}
                     for g in counties
-                ],
-                "intervals": [
-                    {
-                        "mark": mark,
-                        "label": geography_name(mark.geography),
-                        "role": "district"
-                        if mark.geography == district
-                        else "state"
-                        if mark.geography == STATE
-                        else "county",
-                    }
-                    for mark in interval_layout(found)
                 ],
                 "citations": [
                     citation(f, fmt, copy) | {"links": source_links(f) if checks_enabled else ()}
