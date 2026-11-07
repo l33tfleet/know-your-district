@@ -195,3 +195,67 @@ def test_cli_rejects_bad_state_without_overwriting(
     assert main(["--checks", str(checks), "--save"]) == 1
     assert "Content check failed" in capsys.readouterr().out
     assert checks.read_text() == raw
+
+
+def test_new_url_requires_review_even_when_bytes_match_reviewed_content() -> None:
+    program = load_catalog(CATALOG)[0]
+    baseline = dict.fromkeys(dict(iter_urls(program)).values(), DIGEST)
+    program.official_url = type(program.official_url)("https://agency.gov/new-source")
+    before = program.model_dump_json()
+    state = verify(
+        [program],
+        CheckState(reviewed=baseline),
+        get=Mock(return_value=LinkResponse(200, body=b"reviewed")),
+    )
+    assert state.needs_review
+    assert state.reviewed == baseline
+    observation = next(o for o in state.observations if o.field == "official_url")
+    assert observation.url == "https://agency.gov/new-source"
+    assert observation.sha256 == DIGEST
+    # A successful new source never changes the catalog's verification date.
+    assert program.model_dump_json() == before
+
+
+@pytest.mark.parametrize("trusted_redirect", [True, False])
+def test_redirects_use_http_trust_policy_and_preserve_original_url(
+    trusted_redirect: bool,
+) -> None:
+    program = load_catalog(CATALOG)[0]
+    original = str(program.official_url)
+    target = "https://agency.gov/current" if trusted_redirect else "http://127.0.0.1/private"
+
+    def get(url: str, _timeout: float) -> LinkResponse:
+        if url == original:
+            return LinkResponse(302, location=target)
+        assert url != "http://127.0.0.1/private"
+        return LinkResponse(200, body=b"reviewed")
+
+    before = program.model_dump_json()
+    baseline = dict.fromkeys(dict(iter_urls(program)).values(), DIGEST)
+    state = verify([program], CheckState(reviewed=baseline), get=get)
+    observation = next(o for o in state.observations if o.field == "official_url")
+    assert observation.url == original
+    assert observation.sha256 == (DIGEST if trusted_redirect else None)
+    assert bool(observation.error) != trusted_redirect
+    assert state.needs_review != trusted_redirect
+    assert state.reviewed == baseline
+    assert program.model_dump_json() == before
+
+
+def test_one_failed_source_does_not_hide_later_new_urls(program: Program) -> None:
+    urls = list(iter_urls(program))
+    failed_url = urls[0][1]
+
+    def get(url: str, _timeout: float) -> LinkResponse:
+        if url == failed_url:
+            raise TimeoutError("offline")
+        return LinkResponse(200, body=b"reviewed")
+
+    state = verify([program], CheckState(), get=get)
+    assert [(o.field, o.url) for o in state.observations] == urls
+    assert state.observations[0].error
+    permission = next(
+        o for o in state.observations if o.field == "enrichment.media.1.permission.record_url"
+    )
+    assert permission.sha256 == DIGEST
+    assert state.needs_review

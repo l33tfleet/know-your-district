@@ -12,6 +12,14 @@ The version-1 JSON remains compatible with the legacy checker for legacy fields.
 Extended field paths are read by this command. Roll back by restoring the prior
 checks JSON; neither command changes the program catalog. Unapproved media or
 application hosts are enumerated but rejected by the existing HTTP trust policy.
+
+URL inventory (each occurrence is reported under its program ID): official_url,
+referral_url, eligibility_proxy.source_url, agency_guideline.source_url,
+rules.rule_url, rules.application_url, next_steps.contact.url,
+enrichment.stats.<index>.source_url, enrichment.media.<index>.url,
+enrichment.media.<index>.licence_url and
+enrichment.media.<index>.permission.record_url. Optional fields are enumerated
+when present; list indices distinguish separate source and media records.
 """
 
 import argparse
