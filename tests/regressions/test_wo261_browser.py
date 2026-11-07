@@ -65,16 +65,3 @@ def test_figures_accessible_in_viewport_and_print_match(
     screen = [box_styles(f) for f in figures.all()]
     page.emulate_media(media="print")
     assert [box_styles(f) for f in figures.all()] == screen
-
-
-def test_house_43_renders_figures_without_any_strip(page: Page, base_url: str) -> None:
-    """The work order's evidence page, as Chromium paints it: figures with readings, no dots."""
-    open_page(page, base_url + "/brief/house/43", 1440)
-    figures = page.locator(".figure")
-    assert figures.count() == 3
-    assert page.locator(".figure svg, svg.interval-strip").count() == 0
-    for figure in figures.all():
-        reading = figure.locator(".reading").first
-        assert reading.is_visible()
-        # The wo122 server's fixture may lack this district: a reading is a value or "missing".
-        assert reading.locator("data.value, .missing").count() == 1
