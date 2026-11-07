@@ -103,20 +103,40 @@ def test_hashes_never_renew_review_or_dates(program: Program, body: bytes) -> No
 
 
 @pytest.mark.parametrize(
-    "result",
+    ("result", "expected_error"),
     [
-        LinkResponse(403),
-        LinkResponse(404),
-        LinkResponse(500),
-        LinkResponse(200),
-        OSError("offline"),
+        (LinkResponse(403), "HTTP 403: refused automated access; not verified"),
+        (LinkResponse(403, body=b"denied"), "HTTP 403: refused automated access; not verified"),
+        (LinkResponse(404), "HTTP 404: {url}"),
+        (LinkResponse(500), "HTTP 500: {url}"),
+        (LinkResponse(200), "Missing response body; not verified"),
+        (OSError("offline"), "HTTP request failed: {url}"),
     ],
 )
-def test_failures_need_review_without_hashes(program: Program, result: object) -> None:
+def test_failures_need_review_without_hashes(result: object, expected_error: str) -> None:
+    # Every URL of this program is trusted, so trust rejection cannot mask a failure.
+    program = load_catalog(CATALOG)[0]
     get = Mock(side_effect=result) if isinstance(result, OSError) else Mock(return_value=result)
     state = verify([program], CheckState(), get=get)
+    assert get.call_count == len(state.observations) > 0
     assert state.needs_review
-    assert all(o.sha256 is None and o.error for o in state.observations)
+    for observation in state.observations:
+        assert observation.sha256 is None
+        assert observation.error == expected_error.format(url=observation.url)
+
+
+def test_cli_rejects_missing_explicit_checks_without_creating_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from etl.programs import verify as module
+
+    checks = tmp_path / "missing.json"
+    check = Mock()
+    monkeypatch.setattr(module, "verify", check)
+    assert main(["--checks", str(checks), "--save"]) == 1
+    assert "Content check failed" in capsys.readouterr().out
+    assert not checks.exists()
+    check.assert_not_called()
 
 
 def test_cli_enumerates_and_previews_then_saves_without_accepting_review(
