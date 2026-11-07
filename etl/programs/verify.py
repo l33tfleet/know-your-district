@@ -1,16 +1,22 @@
 """Observe all program URLs, including optional metadata, through the HTTP facade.
 
 Run ``uv run python -m etl.programs.verify`` to enumerate URLs and preview checks;
-add ``--save`` to atomically persist observations in data/program_checks.json.
+add ``--save`` to atomically persist observations in
+data/program_verification_checks.json. A first default run starts with an empty
+baseline; an explicit --checks path must already exist and validate.
 No authentication or environment variables are required. Failed, new or changed
 content requires human review. After reviewing source content, a maintainer may
 manually copy its observed digest into ``reviewed``; this CLI never promotes it
 or renews last_verified/checked_at/refresh_after. Unchanged bytes establish only
 content equality, not current program availability or eligibility.
 
-The version-1 JSON remains compatible with the legacy checker for legacy fields.
-Extended field paths are read by this command. Roll back by restoring the prior
-checks JSON; neither command changes the program catalog. Unapproved media or
+Extended observations are incompatible with the legacy checker's four-field
+schema. Its data/program_checks.json remains separate and cannot be a save
+destination for this CLI. Custom --checks files containing extended fields must
+also be used only with this command, never the legacy --revalidate command.
+Review baselines are maintained independently. Roll back by restoring the prior
+extended checks JSON, or remove it to start without reviewed hashes; neither
+command changes the program catalog. Unapproved media or
 application hosts are enumerated but rejected by the existing HTTP trust policy.
 
 URL inventory (each occurrence is reported under its program ID): official_url,
@@ -143,18 +149,32 @@ def save_checks(path: Path, state: CheckState) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", type=Path, default=Path("data/programs.yaml"))
-    parser.add_argument("--checks", type=Path, default=Path("data/program_checks.json"))
+    parser.add_argument(
+        "--checks",
+        type=Path,
+        help="existing extended checks file (default: data/program_verification_checks.json)",
+    )
     parser.add_argument(
         "--save", action="store_true", help="save observations, never accept review"
     )
     args = parser.parse_args(argv)
     try:
-        state = verify(load_catalog(args.catalog), load_checks(args.checks))
+        checks = args.checks or Path("data/program_verification_checks.json")
+        legacy = Path("data/program_checks.json")
+        if args.save and (
+            checks.resolve() == legacy.resolve()
+            or (checks.exists() and legacy.exists() and checks.samefile(legacy))
+        ):
+            raise ValueError("Cannot overwrite legacy checks file; use a separate --checks path")
+        previous = (
+            CheckState() if args.checks is None and not checks.exists() else load_checks(checks)
+        )
+        state = verify(load_catalog(args.catalog), previous)
         print(state.model_dump_json(indent=2))
         print("REVIEW required" if state.needs_review else "UNCHANGED reviewed content")
         if args.save:
-            save_checks(args.checks, state)
-            print(f"Saved observations to {args.checks}; reviewed baseline unchanged.")
+            save_checks(checks, state)
+            print(f"Saved observations to {checks}; reviewed baseline unchanged.")
         else:
             print("Preview only; use --save to persist observations.")
     except (OSError, ValueError) as exc:

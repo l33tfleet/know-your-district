@@ -259,3 +259,81 @@ def test_one_failed_source_does_not_hide_later_new_urls(program: Program) -> Non
     )
     assert permission.sha256 == DIGEST
     assert state.needs_review
+
+
+def test_default_save_preserves_legacy_checks_workflow(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    program: Program,
+) -> None:
+    from etl.programs import revalidation
+    from etl.programs import verify as module
+
+    data = tmp_path / "data"
+    data.mkdir()
+    legacy_path = data / "program_checks.json"
+    legacy_state = revalidation.CheckState(
+        reviewed={str(program.official_url): DIGEST},
+        observations=[
+            revalidation.Observation(
+                program_id=program.id,
+                field="official_url",
+                url=str(program.official_url),
+                sha256=DIGEST,
+            )
+        ],
+    )
+    revalidation.save_checks(legacy_path, legacy_state)
+    legacy_before = legacy_path.read_bytes()
+    real_verify = verify
+
+    def offline(programs: list[Program], previous: CheckState) -> CheckState:
+        return real_verify(
+            programs, previous, get=Mock(return_value=LinkResponse(200, body=b"reviewed"))
+        )
+
+    def catalog(_path: Path) -> list[Program]:
+        return [program]
+
+    monkeypatch.setattr(module, "load_catalog", catalog)
+    monkeypatch.setattr(module, "verify", offline)
+    monkeypatch.chdir(tmp_path)
+    # Preview works before any extended checks file exists and writes nothing.
+    extended_path = data / "program_verification_checks.json"
+    assert main([]) == 1
+    assert "rules.application_url" in capsys.readouterr().out
+    assert not extended_path.exists()
+    assert main(["--save"]) == 1
+    assert "Saved observations" in capsys.readouterr().out
+    extended = load_checks(extended_path)
+    assert {"rules.application_url", "enrichment.media.0.url"} <= {
+        observation.field for observation in extended.observations
+    }
+    assert legacy_path.read_bytes() == legacy_before
+    assert revalidation.load_checks(legacy_path) == legacy_state
+    # A legacy save cannot remove the separately persisted extended observations.
+    extended_before = extended_path.read_bytes()
+    revalidation.save_checks(legacy_path, legacy_state)
+    assert extended_path.read_bytes() == extended_before
+    assert main(["--save"]) == 1
+    assert load_checks(extended_path) == extended
+
+
+def test_cli_refuses_to_save_extended_state_over_legacy_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from etl.programs import verify as module
+
+    data = tmp_path / "data"
+    data.mkdir()
+    legacy = data / "program_checks.json"
+    legacy.write_text(CheckState().model_dump_json())
+    before = legacy.read_bytes()
+    monkeypatch.chdir(tmp_path)
+    get = Mock()
+    monkeypatch.setattr(module, "verify", get)
+    assert main(["--checks", str(legacy), "--save"]) == 1
+    assert "legacy checks file" in capsys.readouterr().out
+    assert legacy.read_bytes() == before
+    get.assert_not_called()
