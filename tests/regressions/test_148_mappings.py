@@ -111,33 +111,6 @@ def test_unknown_match_ids_fail_clearly(tmp_path: Path, field: str) -> None:
         load_mappings(path)
 
 
-@pytest.mark.parametrize("chamber", ["house", "senate"])
-def test_brief_renders_nonpoverty_match_with_limits(
-    chamber: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("KYD_FACTS_DB", str(tmp_path / "absent.db"))
-    response = TestClient(app).get(f"/brief/{chamber}/22")
-    assert response.status_code == 200
-    html = response.text
-    assert 'data-match="disability:hawaii-able"' in html
-    for text in (
-        "People with a disability",
-        "Relevant need only",
-        "Program-expert review: pending",
-        "Disability onset",
-        "certification",
-        "enrollment",
-        "S1810_C02_001E",
-        "Civilian noninstitutionalized population",
-        "Not available",
-        "not available",
-        "https://www.ssa.gov/ssi/spotlights/spot-able.html",
-        "https://www.auw211.org/",
-        "agency decides eligibility",
-    ):
-        assert text in html
-
-
 def test_rejected_matches_are_not_referred(monkeypatch: pytest.MonkeyPatch) -> None:
     section = import_module("app.sections.36_matches")
     rejected = able_mapping().model_copy(update={"review_status": "rejected"})

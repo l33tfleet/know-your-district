@@ -2,6 +2,7 @@
 <section class="matches" aria-labelledby="matches-heading">
   <h2 id="matches-heading">{{ section.words.heading }}</h2>
   <p>{{ section.words.intro }}</p>
+  <p>{{ section.words.preview }}</p>
   {% for match in section.matches %}
   {% set mapping = match.mapping %}
   {% set population = match.population %}
@@ -9,10 +10,15 @@
   <article data-match="{{ mapping.population_id }}:{{ mapping.program_id }}">
     <h3>{{ population.label }}: {{ program.name }}</h3>
     <p>{{ match.claim }}. {{ section.words.review }} {{ mapping.review_status }}.</p>
+    <p>{{ section.words.band }} {{ match.result.band }}.</p>
     <p>{{ mapping.relevance }}</p>
     <p>{{ section.words.survey }} {{ section.geography_name }}: {{ match.value }} {{ population.unit }};
       {{ match.moe }}; <span class="reliability">{{ match.reliability }}</span>.</p>
     <p>{{ population.definition }}</p>
+    <details class="source">
+      <summary>{{ section.words.reason }}</summary>
+      <p>{{ match.result.reason }}</p>
+    </details>
     <details class="source">
       <summary>{{ section.words.summary }}</summary>
       <dl>
