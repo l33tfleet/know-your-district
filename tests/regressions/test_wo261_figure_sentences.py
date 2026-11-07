@@ -334,6 +334,14 @@ def test_county_values_moes_and_citations_in_each_sentence(
         assert "more than one county" in page.text
         assert "Maui County" in page.text
         assert "75.0%" in page.text and "25.0%" in page.text
+        assert "area" in page.text
+        # Each county's percentage is labelled as a share of district area, beside it.
+        items = [
+            " ".join(li.text.split()) for li in page.one("section", class_="figures").find_all("li")
+        ]
+        for name, share in (("Honolulu County", "75.0%"), ("Maui County", "25.0%")):
+            item = next(i for i in items if i.startswith(name))
+            assert f"{share} — Share of county-covered district area" in item
 
 
 def test_house_43_from_committed_facts_reads_as_sentences(
