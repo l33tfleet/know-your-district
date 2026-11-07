@@ -16,3 +16,20 @@
     - Current receipt; self-reported past receipt is undercounted.
   claim: relevant_need
   review_status: pending
+
+- population_id: disability
+  program_id: hawaii-able
+  relevance: >-
+    Hawaiʻi ABLE may help people with disabilities save for disability-related
+    expenses. This survey-defined population is a potential outreach audience,
+    not an estimate of eligibility or nonparticipation. Program-expert review
+    is pending; the agency decides eligibility.
+  observed_conditions:
+    - Self-reported disability among civilian noninstitutionalized residents.
+  unobserved_conditions:
+    - Disability onset under the applicable federal rules; current age is not onset age.
+    - Disability benefits meeting program rules, or disability certification and documentation.
+    - Current account ownership, ability to save and benefit interactions.
+    - Current Hawaiʻi enrollment availability, fees and incentives remain unverified.
+  claim: relevant_need
+  review_status: pending
