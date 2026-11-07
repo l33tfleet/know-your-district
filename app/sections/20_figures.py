@@ -107,9 +107,12 @@ def context(state: PageState) -> dict[str, object]:
                 "district": readings[0],
                 "state": readings[-1],
                 "counties": readings[1:-1],
-                # With nothing loaded (#129) the section's notice says so once, and the card
-                # falls back to stacked readings, each one short phrase, not a sentence of blanks.
-                "sentence": sentence(figure, readings, found, copy) if facts else [],
+                # A card with no row for any geography (#129) falls back to stacked readings,
+                # each one short phrase, not a sentence of blanks; with nothing loaded at all the
+                # section's notice also says so once.
+                "sentence": sentence(figure, readings, found, copy)
+                if any(f is not None for f in found)
+                else [],
                 "count_sentence": count_sentence,
                 "count_unavailable": copy["count_unavailable"]
                 if KINDS[figure].kind == "share" and count is None

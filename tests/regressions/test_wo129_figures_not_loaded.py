@@ -101,3 +101,31 @@ def test_one_row_is_enough_to_drop_the_notice(
 ) -> None:
     section = section_for(tmp_path, monkeypatch, [ROWS[-1]])
     assert notices(section) == []
+
+
+def test_card_with_no_row_shows_one_missing_phrase_when_other_cards_have_rows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A partly loaded table: the cards with no row at all still read one phrase per reading,
+    never the doubled no_row text followed by 'not available'."""
+    present = ROWS[-1]
+    section = section_for(tmp_path, monkeypatch, [present])
+    copy = figures_copy()
+    word = str(copy["reliability"]["unavailable"])
+    empty = [
+        node
+        for node in section.find_all(class_="figure")
+        if node.attrs["data-variable"] != present.variable
+    ]
+    assert len(empty) == 2
+    for figure in empty:
+        assert figure.find_all("p", class_="reading", data_figure_sentence="") == []
+        assert str(copy["no_row"]) not in figure.text
+        readings = figure.find_all(class_="reading")
+        assert len(readings) >= 2
+        for reading in readings:
+            labels = reading.find_all(class_="reading-label")
+            text = reading.text
+            if labels:
+                text = text.removeprefix(labels[0].text).strip()
+            assert text == word, reading.text
