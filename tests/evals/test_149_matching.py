@@ -5,12 +5,30 @@ promote preview: recorded economist/outreach judgments and Kevin's check are req
 """
 
 import json
+import sys
 from datetime import date
 from pathlib import Path
 from typing import Literal
 
 import pytest
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+from app.analysis.populations import Derived
+from app.populations import Population
+
+RESEARCH_PROGRAMS = frozenset(
+    {
+        "preschool-open-doors",
+        "child-care-subsidy",
+        "public-pre-k",
+        "head-start",
+        "extra-help",
+        "medicare-savings-programs",
+        "med-quest",
+        "wic",
+        "eitc",
+    }
+)
 
 FIXTURE = Path(__file__).parent / "fixtures/149_matching.json"
 
@@ -40,6 +58,7 @@ class Candidate(BaseModel):
     population: str
     program: str
     question: str
+    program_scope: Literal["catalog", "research_only"]
     judgments: list[Judgment] | None
     kevin_check: SpotCheck | None
 
@@ -66,9 +85,28 @@ def expert_agreement(candidates: list[Candidate], predictions: dict[str, str]) -
 
 
 def candidates() -> list[Candidate]:
-    return [
+    from app.populations import load_populations
+    from app.tools.matches import CATALOG
+    from etl.programs import load_catalog
+    from etl.programs.mappings import load_mappings
+
+    rows = [
         Candidate.model_validate(c) for c in json.loads(FIXTURE.read_text())["review_candidates"]
     ]
+    populations = {p.id for p in load_populations().populations}
+    programs = {p.id for p in load_catalog(CATALOG)}
+    mapped = {m.program_id for m in load_mappings()}
+    for c in rows:
+        if c.population not in populations:
+            raise ValueError(f"Unknown candidate population: {c.population}")
+        if c.program_scope == "catalog":
+            if c.program not in programs:
+                raise ValueError(f"Unknown catalog candidate program: {c.program}")
+        elif c.program in programs | mapped:
+            raise ValueError(f"Research candidate is already cataloged or mapped: {c.program}")
+        elif c.program not in RESEARCH_PROGRAMS:
+            raise ValueError(f"Unknown research candidate program: {c.program}")
+    return rows
 
 
 def test_review_pending_is_not_expert_agreement() -> None:
@@ -111,6 +149,9 @@ def test_synthetic_policy_cases() -> None:
     mappings = load_mappings()
     expected = expectations()
     for c in candidates():
+        if c.program_scope == "research_only":
+            # Absence is checked separately; it is not evidence about scorer behavior.
+            continue
         # Rejection is a synthetic scenario, not a human judgment of a real pair.
         rejected = expected[c.id] == "irrelevant"
         scenario = (
@@ -188,3 +229,185 @@ def test_isolated_missing_review_evidence(missing: str) -> None:
     else:
         rows[0].id = rows[1].id
     assert not expert_agreement(rows, predictions)
+
+
+def test_candidates_resolve_or_explicitly_declare_research_scope() -> None:
+    from app.populations import load_populations
+    from app.tools.matches import CATALOG
+    from etl.programs import load_catalog
+    from etl.programs.mappings import load_mappings
+
+    populations = {p.id for p in load_populations().populations}
+    programs = {p.id for p in load_catalog(CATALOG)}
+    mapped = {m.program_id for m in load_mappings()}
+    raw = json.loads(FIXTURE.read_text())["review_candidates"]
+    for c in raw:
+        assert c["population"] in populations, c["id"]
+        assert c["program_scope"] in ("catalog", "research_only"), c["id"]
+        if c["program_scope"] == "catalog":
+            assert c["program"] in programs, c["id"]
+        else:
+            assert c["program"] in RESEARCH_PROGRAMS, c["id"]
+            assert c["program"] not in programs | mapped, c["id"]
+
+
+@pytest.mark.parametrize(
+    "field,value,error",
+    [
+        ("population", "fixed_income", "Unknown candidate population: fixed_income"),
+        ("program", "snpa", "Unknown catalog candidate program: snpa"),
+        ("program", "preschool-open-door", "Unknown research candidate program"),
+        ("program", "snap", "Research candidate is already cataloged or mapped"),
+    ],
+)
+def test_candidate_reference_errors(
+    field: str, value: str, error: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = json.loads(FIXTURE.read_text())
+    row = raw["review_candidates"][6 if "Research" in error or "research" in error else 0]
+    row[field] = value
+    path = tmp_path / "candidates.json"
+    path.write_text(json.dumps(raw))
+    monkeypatch.setattr(sys.modules[__name__], "FIXTURE", path)
+    with pytest.raises(ValueError, match=error):
+        candidates()
+
+
+def synthetic_share(population_id: str) -> tuple[Population, Derived]:
+    """Published-cell shaped test doubles; never catalog facts or human judgments."""
+    from app.analysis.populations import compare
+    from app.models import Fact
+    from app.populations import load_populations
+
+    population = next(p for p in load_populations().populations if p.id == population_id)
+    geography = "house:15:022:2022"
+    facts = {
+        (cell, geography): Fact(
+            variable=cell,
+            geography=geography,
+            vintage="2020–2024",
+            value=10 if cell in population.numerator else 100,
+            moe=1,
+            cv=0.06,
+            reliability="reliable",
+            source="Synthetic ACS fixture",
+            table_id=cell.split("_")[0],
+            method="published estimate and 90% margin of error",
+            endpoint="https://example.org/synthetic",
+            label="Synthetic cell",
+        )
+        for cell in population.numerator + population.denominator
+    }
+    return population, compare(population, (geography,), facts)[0].share
+
+
+@pytest.mark.parametrize(
+    "population_id,programs",
+    [
+        (
+            "children_under_5",
+            (
+                ("preschool-open-doors", "POD subsidy", "Exact age cohort and approved provider"),
+                (
+                    "child-care-subsidy",
+                    "General child-care subsidy",
+                    "Care hours and work schedule",
+                ),
+                ("public-pre-k", "Public pre-K classroom", "School admission and capacity"),
+                ("head-start", "Head Start services", "Service area and enrollment capacity"),
+            ),
+        ),
+        (
+            "older_below_poverty",
+            (
+                ("extra-help", "Part D drug-cost assistance", "Part D enrollment and resources"),
+                (
+                    "medicare-savings-programs",
+                    "Medicare premium assistance",
+                    "MSP category and resources",
+                ),
+            ),
+        ),
+    ],
+)
+def test_distinct_programs_keep_their_own_claims_and_reasons(
+    population_id: str, programs: tuple[tuple[str, str, str], ...]
+) -> None:
+    from app.analysis.matching import MatchResult, rank_matches, score_match
+    from etl.programs.mappings import ProgramMapping
+
+    population, district = synthetic_share(population_id)
+    results: list[MatchResult] = []
+    # Reversed input makes collapsing or skipping records visible; these are
+    # synthetic mappings, not permission to add absent programs to the catalog.
+    for program, relevance, unknown in reversed(programs):
+        mapping = ProgramMapping(
+            population_id=population.id,
+            program_id=program,
+            relevance=relevance,
+            observed_conditions=(population.definition,),
+            unobserved_conditions=(unknown,),
+            claim="relevant_need",
+            review_status="pending",
+        )
+        results.append(score_match(mapping, population, district))
+    ranked = rank_matches(results)
+    assert len(ranked) == len(programs)
+    assert [r.program_id for r in ranked] == sorted(p[0] for p in programs)
+    by_program = {r.program_id: r for r in ranked}
+    for program, relevance, unknown in programs:
+        result = by_program[program]
+        assert result.population_id == population_id
+        assert result.band == "possible"
+        assert result.claim == "relevant_need"
+        assert result.uptake is None
+        assert relevance in result.reason
+        assert unknown in result.reason
+        assert "Review: pending" in result.reason
+        for other, other_relevance, other_unknown in programs:
+            if other != program:
+                assert other_relevance not in result.reason
+                assert other_unknown not in result.reason
+
+
+def test_fixed_income_never_merges_income_source_populations() -> None:
+    from app.analysis.matching import MatchResult, rank_matches, score_match
+    from app.populations import load_populations
+    from etl.programs.mappings import load_mappings
+
+    populations = {p.id: p for p in load_populations().populations}
+    assert "fixed_income" not in populations
+    social = populations["social_security"]
+    retirement = populations["retirement"]
+    combined = social.model_dump()
+    combined["numerator"] = social.numerator + retirement.numerator
+    with pytest.raises(ValidationError, match="B19055 and B19059 overlap and are never combined"):
+        Population.model_validate(combined)
+    results: list[MatchResult] = []
+    for population_id in ("social_security", "retirement"):
+        population, district = synthetic_share(population_id)
+        mapping = load_mappings()[0].model_copy(
+            update={
+                "population_id": population_id,
+                "relevance": population.definition,
+            }
+        )
+        result = score_match(mapping, population, district)
+        assert result.figures[0].numerator == population.numerator
+        assert result.figures[0].value == pytest.approx(10)
+        assert population.definition in result.reason
+        assert result.claim == "relevant_need"
+        results.append(result)
+    assert {r.population_id for r in rank_matches(results)} == {"social_security", "retirement"}
+
+
+def test_no_invented_med_quest_mapping_or_uptake() -> None:
+    from app.tools.matches import DistrictMatches
+    from etl.boundaries import DistrictId
+    from etl.programs.mappings import load_mappings
+
+    assert all(m.program_id != "med-quest" for m in load_mappings())
+    results = DistrictMatches(DistrictId(chamber="house", district=22)).get_matches()
+    assert results
+    assert all(m.program.id != "med-quest" for m in results)
+    assert all(m.result.uptake is None and m.result.claim == "relevant_need" for m in results)

@@ -6,7 +6,8 @@
       "program": "snap",
       "question": "Joint survey nonreceipt supports outreach, never eligible nonparticipation.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     },
     {
       "id": "review-02",
@@ -14,7 +15,8 @@
       "program": "hawaii-able",
       "question": "Disability supports outreach; onset and certification remain unknown.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     },
     {
       "id": "review-03",
@@ -22,15 +24,17 @@
       "program": "snap",
       "question": "Child age alone does not supply a reviewed SNAP mapping.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     },
     {
       "id": "review-04",
-      "population": "fixed_income",
+      "population": "social_security",
       "program": "snap",
-      "question": "Fixed income needs clarification; income-source households overlap.",
+      "question": "Ambiguous fixed income: clarify the request; Social Security and retirement households overlap and must stay separate.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     },
     {
       "id": "review-05",
@@ -38,7 +42,8 @@
       "program": "snap",
       "question": "Social Security is not proof of inadequate income or older age.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     },
     {
       "id": "review-06",
@@ -46,7 +51,8 @@
       "program": "snap",
       "question": "Retirement income is separate from Social Security, never summed.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     },
     {
       "id": "review-07",
@@ -54,7 +60,8 @@
       "program": "preschool-open-doors",
       "question": "POD needs exact age cohort and provider evidence.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-08",
@@ -62,7 +69,8 @@
       "program": "child-care-subsidy",
       "question": "General child-care subsidy is separate from POD.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-09",
@@ -70,7 +78,8 @@
       "program": "public-pre-k",
       "question": "Public pre-K is separate from subsidies.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-10",
@@ -78,7 +87,8 @@
       "program": "head-start",
       "question": "Head Start has its own rules and capacity.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-11",
@@ -86,7 +96,8 @@
       "program": "extra-help",
       "question": "Extra Help requires Part D and resources evidence.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-12",
@@ -94,7 +105,8 @@
       "program": "medicare-savings-programs",
       "question": "MSPs differ from Extra Help in benefits and rules.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-13",
@@ -102,7 +114,8 @@
       "program": "extra-help",
       "question": "Younger disability is not proof of Medicare or Part D.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-14",
@@ -110,7 +123,8 @@
       "program": "med-quest",
       "question": "No invented Med-QUEST mapping or uptake.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-15",
@@ -118,7 +132,8 @@
       "program": "snap",
       "question": "Disability alone does not establish a SNAP assistance unit.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     },
     {
       "id": "review-16",
@@ -126,7 +141,8 @@
       "program": "hawaii-able",
       "question": "Poverty/nonreceipt does not observe disability onset.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     },
     {
       "id": "review-17",
@@ -134,7 +150,8 @@
       "program": "wic",
       "question": "Age alone lacks category, income and nutrition-risk evidence.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-18",
@@ -142,7 +159,8 @@
       "program": "eitc",
       "question": "Retirement alone supplies no earned-income evidence.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "research_only"
     },
     {
       "id": "review-19",
@@ -150,7 +168,8 @@
       "program": "snap",
       "question": "Synthetic rejected SNAP mapping must not be referred.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     },
     {
       "id": "review-20",
@@ -158,7 +177,8 @@
       "program": "hawaii-able",
       "question": "Synthetic rejected ABLE mapping must not be referred.",
       "judgments": null,
-      "kevin_check": null
+      "kevin_check": null,
+      "program_scope": "catalog"
     }
   ],
   "synthetic_expectations": {
