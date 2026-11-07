@@ -1,11 +1,4 @@
-"""Pure match preparation (#363); no readers, model calls or persisted format changes.
-
-Policy: direct/indirect strength 1/.4; prominence 1 for a significantly higher
-comparable share, .6 otherwise; reliability 1/.75/.25/0; validated nonreceipt
-multiplier 1 + (eligible-received)/eligible, neutral 1 without comparable uptake.
-Bands: strong >= .7, possible >= .4, weak below; missing evidence is insufficient.
-Scores are internal ordering keys, never population figures or eligibility probabilities.
-"""
+"""Deterministic match policy; scores are ranking weights, never eligibility probabilities."""
 
 from collections.abc import Sequence
 from decimal import Decimal
@@ -88,6 +81,10 @@ def _uptake_problem(mapping: ProgramMapping, p: Population, d: Derived, u: Uptak
     return None
 
 
+def _available(d: Derived) -> bool:
+    return d.value is not None and bool(d.inputs) and not d.missing
+
+
 def score_match(
     mapping: ProgramMapping,
     population: Population,
@@ -97,11 +94,6 @@ def score_match(
     strength: Literal["direct", "indirect"] = "direct",
     uptake: Uptake | None = None,
 ) -> MatchResult:
-    """Score canonical population shares; preserve every supplied fact in one reason.
-
-    Comparability evidence is an assessed contract, not inferred from similar numbers.
-    An invalid participation comparison always falls back to a labelled outreach signal.
-    """
     if mapping.population_id != population.id:
         raise ValueError("mapping population mismatch")
     if strength not in STRENGTH:
@@ -115,20 +107,12 @@ def score_match(
             or d.universe != population.universe
         ):
             raise ValueError("population share mismatch")
-    available = (
-        district.value is not None
-        and bool(district.inputs)
-        and not district.missing
-        and mapping.review_status != "rejected"
-    )
+    available = _available(district) and mapping.review_status != "rejected"
     prominence, reliability = 0.6, RELIABILITY[district.reliability]
     comparison = "No comparable prominence evidence."
     if benchmark is not None:
         comparable = (
-            benchmark.value is not None
-            and not benchmark.missing
-            and bool(benchmark.inputs)
-            and len({f.vintage for d in figures for f in d.inputs}) == 1
+            _available(benchmark) and len({f.vintage for d in figures for f in d.inputs}) == 1
         )
         if comparable:
             reliability = min(reliability, RELIABILITY[benchmark.reliability])
