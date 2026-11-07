@@ -72,7 +72,7 @@
       {% set opener = base ~ ("?preview=1&edit=" if preview else "?edit=") ~ note.id %}
       <p class="note-edit"><a href="{{ opener }}#note-{{ note.id }}" hx-get="{{ opener }}"
          hx-select="#notes-{{ card_id }}" hx-target="#notes-{{ card_id }}"
-         hx-swap="outerHTML">{{ words.edit_note }}</a></p>
+         hx-swap="outerHTML settle:0">{{ words.edit_note }}</a></p>
       {% endif %}
       <form class="note-delete" method="post" action="{{ base }}/notes/{{ note.id }}/delete{{ query }}"
             hx-post="{{ base }}/notes/{{ note.id }}/delete{{ query }}"
