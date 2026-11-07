@@ -378,3 +378,72 @@ def test_house_43_paints_one_sentence_per_figure_without_any_strip(
         # The wo122 server's fixture may lack this district: a reading is a value or "missing".
         assert reading.locator("data.value, .missing").count() == 1
         assert reading.locator(".reliability[data-reliability]").count() == 1
+
+
+SMOKE_DISTRICT = "house:15:022:2022"
+SMOKE_CITATION = (
+    f'<dl class="citation" data-geography="{SMOKE_DISTRICT}">'
+    '<dd data-field="table_id">B01003</dd><dd data-field="vintage">2020–2024</dd></dl>'
+)
+
+
+def smoke_finds(reading: str, citation: str = SMOKE_CITATION) -> bool:
+    house_figure = import_module("scripts.smoke").HouseFigure
+    parser = house_figure()
+    parser.feed(
+        '<div class="figure" data-figure="population">'
+        f'<p class="reading" data-figure-sentence>About {reading} people live here.</p>'
+        f"{citation}</div>"
+    )
+    return bool(parser.found)
+
+
+@pytest.mark.parametrize(
+    ("reading", "found"),
+    [
+        # The district span with a value and its cited B01003 2020–2024 row counts, even when
+        # a self-closing tag precedes the value inside it.
+        (
+            f'<span class="reading" data-geography="{SMOKE_DISTRICT}"><br/>'
+            f'<data class="value" value="25100" data-geography="{SMOKE_DISTRICT}">25,100</data>'
+            ' (<span class="moe"><data value="1200">±1,200</data></span>,'
+            ' <span class="reliability" data-reliability="reliable">reliable</span>)</span>',
+            True,
+        ),
+        # A value after the district span closes (here the state's) does not count for it,
+        # even with a self-closing tag nested inside the district span.
+        (
+            f'<span class="reading" data-geography="{SMOKE_DISTRICT}"><br/><span class="missing">'
+            "No published row</span></span>; "
+            '<span class="reading" data-geography="state:15">'
+            '<data class="value" value="1455271">1,455,271</data></span>',
+            False,
+        ),
+        # An empty value is not a reading.
+        (
+            f'<span class="reading" data-geography="{SMOKE_DISTRICT}">'
+            '<data class="value" value="">—</data></span>',
+            False,
+        ),
+        # Another geography's span is not House 22's reading.
+        (
+            '<span class="reading" data-geography="county:15:003">'
+            '<data class="value" value="1016508">1,016,508</data></span>',
+            False,
+        ),
+    ],
+)
+def test_smoke_reads_the_district_value_inside_the_sentence(reading: str, found: bool) -> None:
+    """Under #284's amendment `scripts/smoke.py` learns `span.reading` and stays as strict."""
+    assert smoke_finds(reading) is found
+
+
+def test_smoke_still_requires_the_population_citation_beside_the_sentence() -> None:
+    reading = (
+        f'<span class="reading" data-geography="{SMOKE_DISTRICT}">'
+        '<data class="value" value="25100">25,100</data></span>'
+    )
+    assert smoke_finds(reading)
+    assert not smoke_finds(reading, SMOKE_CITATION.replace("B01003", "B01001"))
+    assert not smoke_finds(reading, SMOKE_CITATION.replace("2020–2024", "2019–2023"))
+    assert not smoke_finds(reading, "")
