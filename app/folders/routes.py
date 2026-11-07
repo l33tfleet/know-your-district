@@ -274,6 +274,18 @@ def folder_page(
     return templates.TemplateResponse(request, "folder.html", context, status_code=status_code)
 
 
+def fork_redirect(
+    request: Request, state: PageState, original: str, target: str
+) -> Response | None:
+    """Navigate the whole page so every remaining form uses the private link."""
+    if original == target:
+        return None
+    path = folder_path(target, state)
+    if request.headers.get("HX-Request") == "true":
+        return Response(headers={"HX-Redirect": path})
+    return RedirectResponse(path, status_code=303)
+
+
 def after_write(request: Request, state: PageState, folder_id: str, card_id: int) -> Response:
     """htmx swaps the summary out of the card partial; a plain form goes back to the folder."""
     if request.headers.get("HX-Request") != "true":
@@ -317,16 +329,18 @@ def write_note(
         return after_note(request, state, folder_id, card_id, draft)
     ip = client_ip(request.scope, TRUSTED_PROXIES)
     try:
-        with known_folder():
+        with known_folder(), folders.confirmed_write(folder_id, body, confirmation, ip) as write:
             if note_id is None:
-                folders.add_note(folder_id, card_id, body, confirmation, ip)
+                folders.store.add_note(write.folder_id, write.card(card_id), body, True)
             else:
-                folders.edit_note(folder_id, note_id, body, confirmation, ip)
+                folders.store.edit_note(write.folder_id, write.note(note_id), body, True)
     except notes.REFUSALS as exc:
         message = notes.refusal(body, exc, words)
         draft = Draft(card_id=card_id, note_id=note_id, body=body, refusal=message)
         return after_note(request, state, folder_id, card_id, draft)
-    return after_note(request, state, folder_id, card_id, None)
+    return fork_redirect(request, state, folder_id, write.folder_id) or after_note(
+        request, state, folder_id, card_id, None
+    )
 
 
 def live_note(folders: FolderService, folder_id: str, note_id: int) -> Note:
@@ -370,10 +384,12 @@ async def save_case(request: Request, folder_id: str, preview: str | None = None
     form = await form_fields(request)
     district = case_district(form).district
     with known_folder():
-        open_store(state).save_case(
-            folder_id, form["case_id"], district.chamber, int(district.district)
-        )
-    return RedirectResponse(folder_path(folder_id, state), status_code=303)
+        db = open_store(state)
+        with db.visitor_write(folder_id) as write:
+            db.save_case(write.folder_id, form["case_id"], district.chamber, int(district.district))
+    return fork_redirect(request, state, folder_id, write.folder_id) or RedirectResponse(
+        folder_path(folder_id, state), status_code=303
+    )
 
 
 @router.post("/f/{folder_id}/cards/{card_id}/priority")
@@ -397,8 +413,12 @@ async def set_priority(
     except ValidationError as exc:
         raise refused(words["bad_reason"]) from exc
     with known_folder():
-        open_store(state).set_priority(folder_id, card, chosen, reason)
-    return after_write(request, state, folder_id, card)
+        db = open_store(state)
+        with db.visitor_write(folder_id) as write:
+            db.set_priority(write.folder_id, write.card(card), chosen, reason)
+    return fork_redirect(request, state, folder_id, write.folder_id) or after_write(
+        request, state, folder_id, card
+    )
 
 
 @router.post("/f/{folder_id}/cards/{card_id}/status")
@@ -416,8 +436,12 @@ async def set_status(
         valid = ", ".join(words["statuses"])
         raise refused(words["unknown_status"].format(value=status, valid=valid)) from exc
     with known_folder():
-        open_store(state).set_status(folder_id, card, chosen)
-    return after_write(request, state, folder_id, card)
+        db = open_store(state)
+        with db.visitor_write(folder_id) as write:
+            db.set_status(write.folder_id, write.card(card), chosen)
+    return fork_redirect(request, state, folder_id, write.folder_id) or after_write(
+        request, state, folder_id, card
+    )
 
 
 @router.post("/f/{folder_id}/cards/{card_id}/notes")
@@ -458,5 +482,8 @@ async def delete_note(
     card = live_note(folders, folder_id, note).card_id
     with known_folder():
         folders.throttle_write(client_ip(request.scope, TRUSTED_PROXIES))
-        folders.store.delete_note(folder_id, note)
-    return after_note(request, state, folder_id, card, None)
+        with folders.store.visitor_write(folder_id) as write:
+            folders.store.delete_note(write.folder_id, write.note(note))
+    return fork_redirect(request, state, folder_id, write.folder_id) or after_note(
+        request, state, folder_id, card, None
+    )
