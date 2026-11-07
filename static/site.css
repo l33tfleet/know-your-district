@@ -155,44 +155,9 @@ code {
 
 .figures .figure-comparison {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(var(--interval-full-width), var(--interval-column)), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--full-width), var(--figure-column)), 1fr));
   gap: var(--figure-space);
   align-items: center;
-}
-
-.figures .interval-strip {
-  display: block;
-  width: var(--interval-full-width);
-  max-width: var(--interval-width);
-  height: auto;
-  overflow: visible;
-}
-
-.figures .interval-strip text {
-  fill: var(--color-muted);
-  font-family: var(--font-label);
-  font-size: var(--interval-label-size);
-  dominant-baseline: middle;
-}
-
-.figures .interval-strip line {
-  stroke: var(--color-muted);
-  stroke-width: var(--interval-stroke);
-}
-
-.figures .interval-strip circle {
-  fill: var(--color-muted);
-  r: var(--interval-dot);
-}
-
-.figures .interval-strip [data-role="district"] line {
-  stroke: var(--interval-accent);
-  stroke-width: var(--interval-district-stroke);
-}
-
-.figures .interval-strip [data-role="district"] circle {
-  fill: var(--interval-accent);
-  r: var(--interval-district-dot);
 }
 
 .figure-name {
@@ -285,11 +250,12 @@ code {
   min-width: 0;
 }
 
+/* Each form saves on change, so no button: fields line up by their labels. */
 .folder-card form {
   display: flex;
   flex-wrap: wrap;
   gap: var(--picker-gap);
-  align-items: end;
+  align-items: start;
   margin: var(--headline-space) 0;
 }
 
@@ -309,6 +275,63 @@ code {
   font-size: var(--size-small);
 }
 
+/* notes on a saved case */
+.folder-notes .note-form,
+.folder-notes .note-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--picker-gap);
+  align-items: start;
+  margin: var(--headline-space) 0;
+}
+
+.folder-notes textarea {
+  align-self: stretch;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.folder-notes .folder-hint {
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+.folder-notes .note-error {
+  margin: 0;
+  font-weight: var(--weight-bold);
+}
+
+.folder-notes .note-list {
+  padding-left: 0;
+  list-style: none;
+}
+
+.folder-notes .note {
+  margin: var(--headline-space) 0;
+}
+
+.folder-notes .note-date {
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+.folder-notes :is(.note-body, .note-echo) {
+  overflow-wrap: anywhere;
+}
+
+.folder-notes .note-echo {
+  margin: 0;
+}
+
+.folder-notes .note-pending {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.folder-notes .note-pending:empty {
+  display: none;
+}
+
 /* brief notes */
 .ask form {
   display: flex;
@@ -318,7 +341,7 @@ code {
 }
 
 .ask label {
-  flex-basis: var(--interval-full-width);
+  flex-basis: var(--full-width);
 }
 
 .ask input {
@@ -390,8 +413,8 @@ code {
     display: none;
   }
 
-  /* One Letter page. The interval strips keep their screen geometry (WO144), so only the
-     type and spacing around them shrink; outreach keeps its text, citations in a grid. */
+  /* One Letter page. The figure boxes keep their screen geometry, so only the type and
+     spacing around them shrink; outreach keeps its text, citations in a grid. */
   .site-header,
   .site-footer,
   .programs,
@@ -399,7 +422,7 @@ code {
     font-size: var(--print-text-size);
   }
 
-  /* Not on body: the strips inherit it and must keep their screen font. */
+  /* Not on body: the figure boxes inherit it and keep their screen font. */
   .site-header,
   .site-footer,
   .brief-headline,
@@ -410,7 +433,7 @@ code {
     line-height: var(--print-line-height);
   }
 
-  /* Vertical only: the horizontal page padding sizes the interval strips (WO144). */
+  /* Vertical only: the horizontal page padding keeps the figure boxes their screen width. */
   .site-header,
   main,
   .site-footer {
@@ -431,10 +454,6 @@ code {
   .brief p,
   .site-footer p {
     margin: var(--print-space) 0;
-  }
-
-  .figure {
-    padding: var(--print-space) 0;
   }
 
   .figure-name,
@@ -583,6 +602,10 @@ code {
     display: none;
   }
 
+  .folder-notes :is(form, details) {
+    display: none;
+  }
+
   /* Four balanced columns of tiny type: the case must leave real room on the one page. */
   .case {
     columns: 4;
@@ -613,11 +636,6 @@ code {
 
   .figures .figure-comparison {
     break-inside: avoid;
-  }
-
-  .figures .interval-strip {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
   }
 
   .site-header,

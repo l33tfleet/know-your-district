@@ -1,7 +1,7 @@
 <section class="ask" aria-labelledby="ask-heading">
   <h2 id="ask-heading">{{ copy.heading }}</h2>
   <form method="post" action="{{ section.action }}"
-        hx-post="{{ section.action }}" hx-target="#ask-answer" hx-swap="innerHTML"
+        hx-post="{{ section.action }}" hx-target="#ask-answer" hx-swap="innerHTML settle:0"
         hx-disabled-elt="find button" hx-indicator="#ask-working">
     <label for="ask-question">{{ copy.label }}</label>
     <input id="ask-question" name="question" type="text" required maxlength="2000"
