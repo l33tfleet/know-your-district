@@ -22,8 +22,8 @@ from tests.regressions.test_wo97_brief_page import (
     Node,
     brief,
     build_db,
-    check_reading,
 )
+from tests.regressions.test_wo261_figure_sentences import check_span
 
 
 def figures_copy() -> dict[str, Any]:
@@ -90,7 +90,10 @@ def test_rows_present_show_no_notice_and_cards_as_before(
         variable = VARIABLES[figure][0]
         for geography in (SENATE_5, STATE):
             fact = next(r for r in ROWS if r.variable == variable and r.geography == geography)
-            check_reading(node.one(class_="reading", data_geography=geography), fact, figure)
+            sentence = node.one("p", class_="reading", data_figure_sentence="")
+            check_span(
+                sentence.one("span", class_="reading", data_geography=geography), fact, figure
+            )
 
 
 def test_one_row_is_enough_to_drop_the_notice(

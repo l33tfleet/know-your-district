@@ -7,7 +7,7 @@ step, and never says "eligible", "qualify" or "not enrolled".
 """
 
 import copy
-import importlib
+import importlib  # noqa: F401  # pyright: ignore[reportUnusedImport]  # only #347's superseded test used it
 import re
 import shutil
 import sqlite3
@@ -18,15 +18,15 @@ from typing import Any, get_args
 import pytest
 import yaml
 from fastapi.testclient import TestClient
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-from markupsafe import Markup
+from jinja2 import Environment, FileSystemLoader, select_autoescape  # noqa: F401  # pyright: ignore[reportUnusedImport]  # only #347's superseded test used it
+from markupsafe import Markup  # noqa: F401  # pyright: ignore[reportUnusedImport]  # only #347's superseded test used it
 from playwright.sync_api import Page
 from pydantic import ValidationError
 
 import app.copy
 from app import cases, features, populations, snap
 from app.main import app as asgi_app
-from app.page_state import page_state
+from app.page_state import page_state  # noqa: F401  # pyright: ignore[reportUnusedImport]  # only #347's superseded test used it
 from etl.boundaries import DISTRICT_COUNTS, Chamber, DistrictId
 from tests.regressions.test_wo97_brief_page import Node, parse
 from tests.regressions.test_wo122_browser_checks import axe_problems, base_url, browser, open_page
@@ -263,22 +263,6 @@ def test_off_hides_form_and_route_and_loads_the_result_once_per_section(
         path = f"/brief/house/22/snap-answer?question=no_snap_households{query}"
         assert client.get(path).status_code == 404
     assert calls == []
-
-
-def test_save_slot_renders_only_when_a_later_step_passes_a_control() -> None:
-    assert "case-save" not in TestClient(asgi_app).get("/brief/house/22").text
-    env = Environment(
-        loader=FileSystemLoader(ROOT / "templates"), autoescape=select_autoescape(["html"])
-    )
-    template = env.get_template("sections/15-case.html")
-    module = importlib.import_module("app.sections.15_case")
-    state = page_state("house", "22")
-    section: dict[str, object] = module.context(state)
-    plain = template.render(section=section, copy=CASE_COPY, state=state)
-    assert "case-save" not in plain
-    slot = Markup("<button>Save to folder</button>")
-    saved = template.render(section=section | {"save_control": slot}, copy=CASE_COPY, state=state)
-    assert parse(saved).one("div", class_="case-save").one("button").text == "Save to folder"
 
 
 # --- screen and print ---

@@ -1,0 +1,88 @@
+{# One saved case's dated notes, newest first, with the box that adds one. An htmx response is
+   this whole section. A refusal answers 422, which htmx 2.0 would not swap; the section's
+   before-swap handler swaps it, so the message shows in place. #}
+{% set query = "?preview=1" if preview else "" %}
+{% set base = "/f/" ~ folder_id %}
+
+{# A note's own line breaks, each line escaped. #}
+{% macro lines(text) %}{% for line in text.split("\n") %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}{% endmacro %}
+
+{% macro box(field_id, label, action, body, refusal, button, focus=false) %}
+{# While the server checks the words, they show at once in a status line, so the office (and a
+   screen reader) sees what was sent before the confirm step or a refusal replaces this form. #}
+<form class="note-form" method="post" action="{{ action }}{{ query }}"
+      hx-post="{{ action }}{{ query }}" hx-target="#notes-{{ card_id }}" hx-swap="outerHTML"
+      hx-on::before-request="const s = this.querySelector('.note-pending'); s.textContent = s.dataset.label + ' ' + this.elements.body.value">
+  <label for="{{ field_id }}">{{ label }}</label>
+  {% if refusal %}
+  <p class="note-error" id="{{ field_id }}-error" role="alert">{{ refusal }}</p>
+  {% endif %}
+  <textarea id="{{ field_id }}" name="body" rows="3" maxlength="1000" required
+            aria-describedby="{% if refusal %}{{ field_id }}-error {% endif %}{{ field_id }}-hint"
+            {% if refusal %}aria-invalid="true"{% endif %}{% if refusal or focus %} autofocus{% endif %}>
+{{ body }}</textarea>{# the parser drops one newline after the tag, never the note's own #}
+  <p class="folder-hint" id="{{ field_id }}-hint">{{ words.note_hint }}</p>
+  <button type="submit">{{ button }}</button>
+  <p class="note-pending" role="status" data-label="{{ words.checking_note }}"></p>
+  {% if focus %}
+  <a href="{{ folder_href }}">{{ words.cancel_note }}</a>
+  {% endif %}
+</form>
+{% endmacro %}
+
+{% macro confirm(field_id, action, draft) %}
+<form class="note-confirm" method="post" action="{{ action }}{{ query }}"
+      hx-post="{{ action }}{{ query }}" hx-target="#notes-{{ card_id }}" hx-swap="outerHTML"
+      role="group" aria-labelledby="{{ field_id }}-confirm">
+  <p class="note-confirm-statement" id="{{ field_id }}-confirm">{{ words.confirm_statement }}</p>
+  <blockquote class="note-echo">{{ lines(draft.body) }}</blockquote>
+  <input type="hidden" name="body" value="{{ draft.body }}">
+  <input type="hidden" name="confirmation" value="{{ draft.token }}">
+  <button type="submit" autofocus>{{ words.save_note }}</button>
+  <a href="{{ folder_href }}">{{ words.cancel_note }}</a>
+</form>
+{% endmacro %}
+
+<section class="folder-notes" id="notes-{{ card_id }}" aria-labelledby="notes-heading-{{ card_id }}"
+         hx-on::before-swap="if (event.detail.xhr.status === 422) { event.detail.shouldSwap = true; event.detail.isError = false }">
+  <h3 id="notes-heading-{{ card_id }}">{{ words.notes_heading }}</h3>
+  {% set new = draft if draft is not none and draft.note_id is none else none %}
+  {% if new is not none and new.token %}
+  {{ confirm("note-new-" ~ card_id, base ~ "/cards/" ~ card_id ~ "/notes", new) }}
+  {% else %}
+  {{ box("note-new-" ~ card_id, words.note_label, base ~ "/cards/" ~ card_id ~ "/notes",
+         new.body if new is not none else "", new.refusal if new is not none else none,
+         words.add_note) }}
+  {% endif %}
+  {% if notes %}
+  <ol class="note-list">
+    {% for note in notes|sort(attribute="dated,id", reverse=true) %}
+    {% set editing = draft if draft is not none and draft.note_id == note.id else none %}
+    <li class="note" id="note-{{ note.id }}">
+      <p class="note-date"><time datetime="{{ note.dated }}">{{ date_label(note.dated) }}</time></p>
+      <p class="note-body">{{ lines(note.body) }}</p>
+      {% if editing is not none and editing.token %}
+      {{ confirm("note-" ~ note.id ~ "-edit", base ~ "/notes/" ~ note.id, editing) }}
+      {% elif editing is not none or note.id == open_editor %}
+      {{ box("note-" ~ note.id ~ "-edit", words.edit_label, base ~ "/notes/" ~ note.id,
+             editing.body if editing is not none else note.body,
+             editing.refusal if editing is not none else none, words.update_note, true) }}
+      {% else %}
+      {# The editor loads on demand, so a note's words show once on the page. #}
+      {% set opener = base ~ ("?preview=1&edit=" if preview else "?edit=") ~ note.id %}
+      <p class="note-edit"><a href="{{ opener }}#note-{{ note.id }}" hx-get="{{ opener }}"
+         hx-select="#notes-{{ card_id }}" hx-target="#notes-{{ card_id }}"
+         hx-swap="outerHTML settle:0">{{ words.edit_note }}</a></p>
+      {% endif %}
+      <form class="note-delete" method="post" action="{{ base }}/notes/{{ note.id }}/delete{{ query }}"
+            hx-post="{{ base }}/notes/{{ note.id }}/delete{{ query }}"
+            hx-target="#notes-{{ card_id }}" hx-swap="outerHTML">
+        <button type="submit">{{ words.delete_note }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="note-none">{{ words.no_notes }}</p>
+  {% endif %}
+</section>

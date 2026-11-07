@@ -17,12 +17,15 @@ from pydantic import (
     HttpUrl,
     StringConstraints,
     TypeAdapter,
+    field_validator,
     model_validator,
 )
+from yaml.nodes import MappingNode, Node, SequenceNode
 
 from app.populations import REGISTRY_PATH, load_populations
 from app.sources import Identifier, Text
 from etl.programs import load_catalog
+from etl.programs.contracts import validate_wording
 
 _DATA = Path(__file__).resolve().parents[2] / "data"
 MAPPINGS_PATH = _DATA / "program_mappings.yaml"
@@ -65,6 +68,13 @@ class ProgramMapping(BaseModel):
     modeling_evidence: ModelingEvidence | None = None
     comparability_evidence: ComparabilityEvidence | None = None
 
+    @field_validator("*", mode="before")
+    @classmethod
+    def safe_wording(cls, value: object) -> object:
+        # Apply the catalog policy to prose and nested evidence alike: a claim
+        # enum cannot protect readers from an eligibility promise in free text.
+        return validate_wording(value)
+
     @model_validator(mode="after")
     def supported_claim(self) -> Self:
         if self.claim != "relevant_need" and self.modeling_evidence is None:
@@ -72,6 +82,20 @@ class ProgramMapping(BaseModel):
         if self.claim == "comparable_nonparticipation" and self.comparability_evidence is None:
             raise ValueError("comparability evidence is required for nonparticipation claims")
         return self
+
+
+def _unique_keys(node: Node) -> None:
+    """Mirrors app/populations.py: reject keys safe_load would silently overwrite."""
+    if isinstance(node, MappingNode):
+        seen: set[str] = set()
+        for key, value in node.value:
+            if key.value in seen:
+                raise ValueError(f"duplicate YAML key: {key.value}")
+            seen.add(key.value)
+            _unique_keys(value)
+    elif isinstance(node, SequenceNode):
+        for child in node.value:
+            _unique_keys(child)
 
 
 def load_mappings(
@@ -87,7 +111,16 @@ def load_mappings(
     Retired program identities remain resolvable through the catalog.
     """
     try:
-        raw: object = yaml.safe_load(path.read_text(encoding="utf-8"))
+        content = path.read_text(encoding="utf-8")
+        loader = yaml.SafeLoader(content)
+        try:
+            node = loader.get_single_node()
+        finally:
+            # PyYAML disposal returns None, but its upstream annotation is missing.
+            loader.dispose()  # pyright: ignore[reportUnknownMemberType]
+        if node is not None:
+            _unique_keys(node)
+        raw: object = yaml.safe_load(content)
     except yaml.YAMLError as exc:
         raise ValueError("Invalid mappings YAML") from exc
     mappings = TypeAdapter(

@@ -347,40 +347,6 @@ def check_citation(dl: Node, fact: Fact) -> None:
         assert dl.one(data_field="cv").text == f"{fact.cv * 100:.1f}%"
 
 
-@pytest.mark.parametrize(
-    ("path", "geography"), [("/brief/house/22", HOUSE_22), ("/brief/senate/5", SENATE_5)]
-)
-def test_each_figure_equals_the_fixture_rows(client: TestClient, path: str, geography: str) -> None:
-    page = brief(client, path)
-    figures = page.find_all(class_="figure")
-    assert [f.attrs["data-figure"] for f in figures] == list(VARIABLES)
-    for node in figures:
-        figure = node.attrs["data-figure"]
-        variable = VARIABLES[figure][0]
-        district = next(r for r in ROWS if r.variable == variable and r.geography == geography)
-        state = next(r for r in ROWS if r.variable == variable and r.geography == STATE)
-        check_reading(node.one(class_="reading", data_geography=geography), district, figure)
-        check_reading(node.one(class_="reading", data_geography=STATE), state, figure)
-        source = node.one("details")
-        summary = source.children[0]
-        assert summary.tag == "summary" and summary.text
-        check_citation(source.one("dl", data_geography=geography), district)
-        check_citation(source.one("dl", data_geography=STATE), state)
-
-
-def test_reliability_word_is_always_shown_including_caution(client: TestClient) -> None:
-    page = brief(client, "/brief/senate/5")
-    words = [n.attrs["data-reliability"] for n in page.find_all(class_="reliability")]
-    assert len(words) == 6
-    assert {"reliable", "caution", "unavailable"} <= set(words)
-
-
-def test_no_comparison_words_yet(client: TestClient) -> None:
-    text = brief(client, "/brief/house/22").text.lower()
-    for word in ("higher", "lower", "above", "below"):
-        assert f" {word} " not in f" {text} "
-
-
 def test_missing_database_shows_no_numbers(
     client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
