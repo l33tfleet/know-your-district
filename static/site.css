@@ -176,14 +176,30 @@ code {
   font-weight: var(--weight-bold);
 }
 
-.reading + .reading {
+/* Stacked readings (the ask answer's figure): county and state under the district's. */
+p.reading + p.reading {
   margin-left: var(--figure-indent);
   font-size: var(--size-small);
+}
+
+/* One sentence per figure (#284): only the district's own value is set large. */
+[data-figure-sentence] .reading .value {
+  font-size: inherit;
+}
+
+[data-figure-sentence] > .reading:first-child .value {
+  font-size: var(--figure-value-size);
 }
 
 .reading-label,
 .moe {
   color: var(--color-muted);
+}
+
+/* A reliable figure needs no emphasis; moderate and caution keep the text's weight and colour. */
+.reliability[data-reliability="reliable"] {
+  color: var(--color-muted);
+  font-size: var(--size-small);
 }
 
 .reliability[data-reliability="caution"],
@@ -458,16 +474,16 @@ code {
 
   .figure-name,
   .reading,
-  .reading + .reading {
+  p.reading + p.reading {
     font-size: var(--print-text-size);
   }
 
   /* County and state readings sit under the district's on one line each. */
-  .reading + .reading {
+  p.reading + p.reading {
     margin-left: 0;
   }
 
-  .reading + .reading .value {
+  p.reading + p.reading .value {
     font-size: inherit;
   }
 
@@ -544,8 +560,16 @@ code {
     margin: 0;
   }
 
-  .reading .value {
+  .reading .value,
+  [data-figure-sentence] > .reading:first-child .value {
     font-size: var(--print-value-size);
+  }
+
+  /* The sentence runs longer than the stacked readings did; its note sets like a citation. */
+  .figure .count-unavailable {
+    margin: 0;
+    font-size: var(--print-citation-size);
+    line-height: var(--print-line-height);
   }
 
   .program-list {

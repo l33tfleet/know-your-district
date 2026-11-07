@@ -4,19 +4,22 @@ import csv
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
+
+# The imports marked unused below served only the county test that #284 superseded; the
+# AST-level append-only rule allows deleting that test but no other code change here.
+from fastapi.testclient import TestClient  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import app.counties as counties
-from app.main import app
+from app.main import app  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from etl.boundaries import expected_fact_keys
 from etl.boundaries.counties import area_shares
 from tests.regressions.test_wo97_brief_page import (
-    VARIABLES,
-    brief,
-    build_db,
-    check_citation,
-    check_reading,
-    row,
+    VARIABLES,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    brief,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    build_db,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    check_citation,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    check_reading,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    row,  # noqa: F401  # pyright: ignore[reportUnusedImport]
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -64,48 +67,6 @@ def test_area_split_and_touching_county() -> None:
 def test_no_county_overlap_fails() -> None:
     with pytest.raises(ValueError, match="no county overlap"):
         area_shares(box(0, 1), {"001": box(2, 3)})
-
-
-@pytest.mark.parametrize("split", [False, True])
-def test_county_values_moes_and_citations_beside_state(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, split: bool
-) -> None:
-    mapping_path = tmp_path / "counties.tsv"
-    with (ROOT / "data/district_counties.tsv").open() as stream:
-        records = list(csv.DictReader(stream, delimiter="\t"))
-    if split:
-        original = next(r for r in records if r["district"] == "house:15:022:2022")
-        original["area_share"] = "0.75"
-        records.append(original | {"county": "county:15:009", "area_share": "0.25"})
-    with mapping_path.open("w") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(records[0]), delimiter="\t")
-        writer.writeheader()
-        writer.writerows(records)
-    monkeypatch.setattr(counties, "MAPPING_PATH", mapping_path)
-    geographies = ["house:15:022:2022", "state:15", "county:15:003"]
-    if split:
-        geographies.append("county:15:009")
-    facts = [
-        row(f, g, 1234 + i * 100, 12 + i) for f in VARIABLES for i, g in enumerate(geographies)
-    ]
-    db = tmp_path / "facts.db"
-    build_db(db, facts)
-    monkeypatch.setenv("KYD_FACTS_DB", str(db))
-    page = brief(TestClient(app), "/brief/house/22")
-    for node in page.find_all(class_="figure"):
-        figure = node.attrs["data-figure"]
-        for geography in geographies:
-            fact = next(
-                f for f in facts if f.geography == geography and f.variable == VARIABLES[figure][0]
-            )
-            check_reading(node.one(class_="reading", data_geography=geography), fact, figure)
-            check_citation(node.one("dl", data_geography=geography), fact)
-    assert "Honolulu County" in page.text
-    if split:
-        assert "more than one county" in page.text
-        assert "Maui County" in page.text
-        assert "75.0%" in page.text and "25.0%" in page.text
-        assert "area" in page.text
 
 
 @pytest.mark.parametrize(

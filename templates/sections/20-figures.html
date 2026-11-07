@@ -1,10 +1,30 @@
 {% macro raw(number) %}{{ "" if number is none else number }}{% endmacro %}
-{% macro show(r, label, county=false) %}
+{#- A share's margin of error reads in percentage points (copy.moe_units), keyed by figure so
+    the ask answer, which renders this template without a sentence, words it the same way. -#}
+{% macro moe_text(moe, text, key) -%}
+{%- set unit = (copy.moe_units or {}).get(key) -%}
+{%- if unit and moe is not none -%}±{{ "%.1f"|format(moe) }} {{ unit }}{%- else -%}{{ text }}{%- endif -%}
+{%- endmacro %}
+{#- One geography inside a figure sentence: value, ±MOE and reliability in words (rules 1-2). -#}
+{% macro part(r, key, kind) -%}
+<span class="{{ kind }}" data-geography="{{ r.geography }}">
+{%- if r.found -%}
+<data class="value" value="{{ raw(r.value) }}" data-geography="{{ r.geography }}">{{ r.value_text }}</data>{{ " (" }}<span class="moe"><data value="{{ raw(r.moe) }}">{{ moe_text(r.moe, r.moe_text, key) }}</data></span>{{ ", " }}
+{%- else -%}
+<span class="missing">{{ r.value_text }}</span>{{ " (" }}
+{%- endif -%}
+<span class="reliability" data-reliability="{{ r.reliability }}">{{ r.word }}</span>)</span>
+{%- endmacro %}
+{% macro words(parts, key, kind) -%}
+{%- for p in parts -%}{%- if p.reading -%}{{ part(p.reading, key, kind) }}{%- else -%}{{ p.text }}{%- endif -%}{%- endfor -%}
+{%- endmacro %}
+{#- Stacked readings: the ask answer's figure context (app/web/ask.py) has no sentence. -#}
+{% macro show(r, label, key, county=false) %}
 <p class="reading" data-geography="{{ r.geography }}">
   {% if label %}<span class="reading-label">{{ label }}</span>{% endif %}
   {% if r.found %}
   <data class="value" value="{{ raw(r.value) }}">{{ r.value_text }}</data>
-  <span class="moe"><data value="{{ raw(r.moe) }}">{{ r.moe_text }}</data></span>
+  <span class="moe"><data value="{{ raw(r.moe) }}">{{ moe_text(r.moe, r.moe_text, key) }}</data></span>
   {% else %}
   <span class="missing">{{ r.value_text }}</span>
   {% endif %}
@@ -37,11 +57,21 @@
     <h3 class="figure-name">{{ f.name }}</h3>
     <div class="figure-comparison">
     <div>
-    {{ show(f.district, none) }}
+    {% if f.sentence %}
+    {#- class is exactly "reading": test_wo261_strip_removed.py's House 43 test matches it whole. -#}
+    <p class="reading" data-figure-sentence>{{ words(f.sentence, f.key, "reading") }}</p>
+    {% if f.count_sentence %}
+    <p class="companion-count">{{ words(f.count_sentence, "population", "companion") }}</p>
+    {% elif f.count_unavailable %}
+    <p class="count-unavailable">{{ f.count_unavailable }}</p>
+    {% endif %}
+    {% else %}
+    {{ show(f.district, none, f.key) }}
     {% for county in f.counties %}
-    {{ show(county, county.label, true) }}
+    {{ show(county, county.label, f.key, true) }}
     {% endfor %}
-    {{ show(f.state, copy.state_label) }}
+    {{ show(f.state, copy.state_label, f.key) }}
+    {% endif %}
     </div>
     </div>
     <details class="source">
@@ -59,7 +89,7 @@
         <dt>{{ copy.fields.method }}</dt>
         <dd data-field="method">{{ c.fact.method }}</dd>
         <dt>{{ copy.fields.moe }}</dt>
-        <dd data-field="moe"><data value="{{ raw(c.fact.moe) }}">{{ c.moe_text }}</data></dd>
+        <dd data-field="moe"><data value="{{ raw(c.fact.moe) }}">{{ c.moe_text if c.companion else moe_text(c.fact.moe, c.moe_text, f.key) }}</data></dd>
         <dt>{{ copy.fields.cv }}</dt>
         <dd data-field="cv"><data value="{{ raw(c.fact.cv) }}">{{ c.cv_text }}</data></dd>
         <dt>{{ copy.fields.endpoint }}</dt>

@@ -14,6 +14,10 @@ CHECKS = [
 ]
 
 
+def classes(attributes: dict[str, str | None]) -> list[str]:
+    return (attributes.get("class") or "").split()
+
+
 class HouseFigure(HTMLParser):
     """Check the population reading and its citation within the same figure.
 
@@ -25,6 +29,7 @@ class HouseFigure(HTMLParser):
         super().__init__()
         self.depth = 0
         self.reading = False
+        self.inner = 0
         self.citation = False
         self.field = ""
         self.value = False
@@ -44,8 +49,13 @@ class HouseFigure(HTMLParser):
         if not self.depth:
             return
         district = attributes.get("data-geography") == "house:15:022:2022"
-        if tag == "p":
+        # A reading is a `<p>` (stacked) or the district's `span.reading` inside the
+        # figure's one sentence (#284); nested tags inside it are counted to find its end.
+        if self.reading:
+            self.inner += tag not in ("br", "img", "input", "meta", "link", "hr")
+        elif tag == "p" or (tag == "span" and "reading" in classes(attributes)):
             self.reading = district
+            self.inner = 0
         if tag == "dl":
             self.citation = district
         if tag == "dd":
@@ -61,7 +71,9 @@ class HouseFigure(HTMLParser):
                 self.vintage += data
 
     def handle_endtag(self, tag: str) -> None:
-        if tag == "p":
+        if self.reading and self.inner:
+            self.inner -= 1
+        elif self.reading or tag == "p":
             self.reading = False
         if tag == "dl":
             self.citation = False
