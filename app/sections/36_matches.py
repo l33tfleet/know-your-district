@@ -5,30 +5,28 @@ Use the canonical population registry and mapping contracts. Missing facts remai
 unavailable; neither review status nor a survey count establishes eligibility.
 """
 
-from pathlib import Path
-
-from app.analysis.populations import total
 from app.analysis.reliability import FLAG_WORDS
 from app.copy import geography_name
-from app.facts import FactStore
 from app.page_state import PageState
 from app.populations import load_populations
-from etl.programs import load_catalog
+from app.tools.matches import DistrictMatches
 from etl.programs.mappings import load_mappings
 
 # The expanded evidence belongs on screen to preserve the one-page print brief.
 FEATURE = "matches"
 PRINT = False
-CATALOG = Path(__file__).resolve().parents[2] / "data/programs.yaml"
 CLAIMS = {
     "relevant_need": "Relevant need only — potential outreach audience",
     "modeled_eligibility": "Modeled eligibility — agency confirmation required",
     "comparable_nonparticipation": "Comparable nonparticipation — aggregate estimate",
 }
 
-# Wording stays here because app/copy.yaml is outside this work order (see 25_populations).
+# Keep the existing section wording contract; templates contain no literal prose.
 WORDS = {
-    "heading": "Population connections to programs",
+    "heading": "Ranked population connections to programs",
+    "band": "Outreach band:",
+    "reason": "Ranking reason and calculations",
+    "preview": "Preview: expert review pending. Bands rank outreach signals within this district; they are not eligibility probabilities. Weak evidence differs from insufficient evidence.",
     "intro": "These connections support outreach planning. Survey populations do not establish individual eligibility or an enrollment gap.",
     "review": "Program-expert review:",
     "survey": "Survey population:",
@@ -57,26 +55,18 @@ WORDS = {
 
 def context(state: PageState) -> dict[str, object]:
     registry = load_populations()
-    populations = {p.id: p for p in registry.populations}
-    programs = {p.id: p for p in load_catalog(CATALOG)}
-    mappings = tuple(
-        m
-        for m in load_mappings()
-        if m.review_status != "rejected" and programs[m.program_id].retired is None
-    )
+    ranked = DistrictMatches(state.district).get_matches(load_mappings())
     geography = state.district.fact_key
-    cells = {c for m in mappings for c in populations[m.population_id].numerator}
-    facts = FactStore.default().get(((c, geography) for c in cells), registry.vintage)
     matches: list[dict[str, object]] = []
-    for mapping in mappings:
-        population = populations[mapping.population_id]
-        figure = total(population.numerator, geography, facts)
+    for match in ranked:
+        mapping, population, figure = match.mapping, match.population, match.count
         matches.append(
             {
                 "mapping": mapping,
                 "population": population,
-                "program": programs[mapping.program_id],
-                "claim": CLAIMS[mapping.claim],
+                "program": match.program,
+                "result": match.result,
+                "claim": CLAIMS[match.result.claim],
                 "figure": figure,
                 "value": "Not available" if figure.value is None else f"{figure.value:,.0f}",
                 "moe": "no margin of error" if figure.moe is None else f"±{figure.moe:,.0f}",

@@ -1,0 +1,206 @@
+{
+  "review_candidates": [
+    {
+      "id": "review-01",
+      "population": "below_poverty_no_snap",
+      "program": "snap",
+      "question": "Joint survey nonreceipt supports outreach, never eligible nonparticipation.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    },
+    {
+      "id": "review-02",
+      "population": "disability",
+      "program": "hawaii-able",
+      "question": "Disability supports outreach; onset and certification remain unknown.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    },
+    {
+      "id": "review-03",
+      "population": "children_under_5",
+      "program": "snap",
+      "question": "Child age alone does not supply a reviewed SNAP mapping.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    },
+    {
+      "id": "review-04",
+      "population": "social_security",
+      "program": "snap",
+      "question": "Ambiguous fixed income: clarify the request; Social Security and retirement households overlap and must stay separate.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    },
+    {
+      "id": "review-05",
+      "population": "social_security",
+      "program": "snap",
+      "question": "Social Security is not proof of inadequate income or older age.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    },
+    {
+      "id": "review-06",
+      "population": "retirement",
+      "program": "snap",
+      "question": "Retirement income is separate from Social Security, never summed.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    },
+    {
+      "id": "review-07",
+      "population": "children_under_5",
+      "program": "preschool-open-doors",
+      "question": "POD needs exact age cohort and provider evidence.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-08",
+      "population": "children_under_5",
+      "program": "child-care-subsidy",
+      "question": "General child-care subsidy is separate from POD.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-09",
+      "population": "children_under_5",
+      "program": "public-pre-k",
+      "question": "Public pre-K is separate from subsidies.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-10",
+      "population": "children_under_5",
+      "program": "head-start",
+      "question": "Head Start has its own rules and capacity.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-11",
+      "population": "older_below_poverty",
+      "program": "extra-help",
+      "question": "Extra Help requires Part D and resources evidence.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-12",
+      "population": "older_below_poverty",
+      "program": "medicare-savings-programs",
+      "question": "MSPs differ from Extra Help in benefits and rules.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-13",
+      "population": "disability",
+      "program": "extra-help",
+      "question": "Younger disability is not proof of Medicare or Part D.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-14",
+      "population": "below_poverty_no_snap",
+      "program": "med-quest",
+      "question": "No invented Med-QUEST mapping or uptake.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-15",
+      "population": "disability",
+      "program": "snap",
+      "question": "Disability alone does not establish a SNAP assistance unit.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    },
+    {
+      "id": "review-16",
+      "population": "below_poverty_no_snap",
+      "program": "hawaii-able",
+      "question": "Poverty/nonreceipt does not observe disability onset.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    },
+    {
+      "id": "review-17",
+      "population": "children_under_5",
+      "program": "wic",
+      "question": "Age alone lacks category, income and nutrition-risk evidence.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-18",
+      "population": "retirement",
+      "program": "eitc",
+      "question": "Retirement alone supplies no earned-income evidence.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "research_only"
+    },
+    {
+      "id": "review-19",
+      "population": "below_poverty_no_snap",
+      "program": "snap",
+      "question": "Synthetic rejected SNAP mapping must not be referred.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    },
+    {
+      "id": "review-20",
+      "population": "disability",
+      "program": "hawaii-able",
+      "question": "Synthetic rejected ABLE mapping must not be referred.",
+      "judgments": null,
+      "kevin_check": null,
+      "program_scope": "catalog"
+    }
+  ],
+  "synthetic_expectations": {
+    "review-01": "relevant",
+    "review-02": "relevant",
+    "review-03": "insufficient",
+    "review-04": "insufficient",
+    "review-05": "insufficient",
+    "review-06": "insufficient",
+    "review-07": "insufficient",
+    "review-08": "insufficient",
+    "review-09": "insufficient",
+    "review-10": "insufficient",
+    "review-11": "insufficient",
+    "review-12": "insufficient",
+    "review-13": "insufficient",
+    "review-14": "insufficient",
+    "review-15": "insufficient",
+    "review-16": "insufficient",
+    "review-17": "insufficient",
+    "review-18": "insufficient",
+    "review-19": "irrelevant",
+    "review-20": "irrelevant"
+  }
+}
