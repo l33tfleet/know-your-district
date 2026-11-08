@@ -534,7 +534,7 @@ p.reading + p.reading {
     display: none;
   }
 
-  /* A running paragraph under each title keeps every referral in the three-column
+  /* A running paragraph under each title keeps every referral in the four-column
      catalog. Match the agency selector's variant specificity so print type wins. */
   .programs .program,
   .programs .program .program-agency {

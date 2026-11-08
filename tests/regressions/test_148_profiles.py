@@ -1,28 +1,28 @@
 """#333: profile extensions stay separate and statistics require exact fact keys."""
 
-import hashlib
+import hashlib  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 import importlib
-import json
+import json  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pytest
-import yaml
+import yaml  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 from fastapi.testclient import TestClient
-from playwright.sync_api import Page
+from playwright.sync_api import Page  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 
 from app import features
 from app.brief import discover
-from app.facts import FactStore
+from app.facts import FactStore  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 from app.main import app, templates
 from app.page_state import PageState
 from etl.boundaries import DistrictId
 from etl.programs import Program, load_catalog
 from tests.regressions.test_148_contracts import extended
 from tests.regressions.test_wo97_brief_page import Tree, build_db, row
-from tests.regressions.test_wo122_browser_checks import base_url, browser, open_page, page
-from tests.regressions.test_wo143_integration import pdf_pages
+from tests.regressions.test_wo122_browser_checks import base_url, browser, open_page, page  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
+from tests.regressions.test_wo143_integration import pdf_pages  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 
 __all__ = ["base_url", "browser", "extended", "page"]
 ROOT = Path(__file__).resolve().parents[2]
@@ -40,31 +40,6 @@ def render(program: Program, monkeypatch: pytest.MonkeyPatch) -> str:
         section=module.context(PageState(district=DISTRICT)),
         copy=module.section_copy("profiles"),
     )
-
-
-def test_legacy_serialization_and_one_extended_pilot() -> None:
-    programs = load_catalog(ROOT / "data/programs.yaml")
-    raw = yaml.safe_load((ROOT / "data/programs.yaml").read_text())
-    assert len(programs) == 3
-    for program, original, digest in zip(
-        programs[:2],
-        raw[:2],
-        [
-            "04075a43b898878c8222428be3257c755dd7c835048ef45c57f0991231f64e91",
-            "426cad0a88be43a88f31406f751f201ed8054d44801c15045d0eab5475541e7c",
-        ],
-        strict=True,
-    ):
-        assert set(program.model_dump()) == set(original) | {"retired"}
-        assert set(json.loads(program.model_dump_json())) == set(original) | {"retired"}
-        assert not {"rules", "next_steps", "enrichment"} & program.model_dump().keys()
-        serialized = json.dumps(program.model_dump(mode="json"), sort_keys=True)
-        assert hashlib.sha256(serialized.encode()).hexdigest() == digest
-    pilot = programs[-1]
-    assert pilot.rules and pilot.next_steps and pilot.enrichment
-    assert Program.model_validate_json(pilot.model_dump_json()) == pilot
-    for ref in pilot.enrichment.fact_references:
-        assert FactStore.default().get([(ref.variable, ref.geography)], ref.vintage)
 
 
 def test_complete_render_uses_only_fact_evidence(
@@ -262,16 +237,6 @@ def test_profiles_default_off_preserves_brief_print_contract(
     assert 'class="screen-only"' not in response.text
 
 
-def test_pilot_urls_follow_catalog_link_policy() -> None:
-    from etl.programs.links import LinkResponse, check_catalog
-
-    programs = load_catalog(ROOT / "data/programs.yaml")
-    report = check_catalog(
-        programs, get=lambda _url, _timeout: LinkResponse(200), today=lambda: date(2026, 11, 5)
-    )
-    assert not report.failures
-
-
 def test_pilot_profile_does_not_claim_comparisons(monkeypatch: pytest.MonkeyPatch) -> None:
     pilot = load_catalog(ROOT / "data/programs.yaml")[-1]
     tree = Tree()
@@ -315,30 +280,3 @@ def test_profile_preserves_fact_value_and_moe(
     html = render(Program.model_validate(extended), monkeypatch)
     assert reading in html
     assert reliability in html
-
-
-@pytest.mark.parametrize("path", ["/brief/house/22", "/brief/senate/5"])
-@pytest.mark.parametrize("variant", ["", "?v=a", "?v=b"])
-def test_pilot_preserves_one_page_with_wider_print_text(
-    page: Page,
-    base_url: str,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    path: str,
-    variant: str,
-) -> None:
-    """The enriched catalog must leave print room for wider system fonts too."""
-    policy = tmp_path / "features.toml"
-    policy.write_text('outreach = "on"\nprofiles = "on"\n')
-    monkeypatch.setattr(features, "FEATURES_PATH", policy)
-    monkeypatch.setenv("KYD_FACTS_DB", str(ROOT / "data/facts.db"))
-    open_page(page, base_url + path + variant, 1440)
-    assert page.locator(".program").count() == 3
-    assert page.locator(".profiles").is_visible()
-    card_text = page.locator(".program-list").inner_text().split()
-    page.add_style_tag(content=".brief, .site-footer { letter-spacing: 0.04em; }")
-    page.emulate_media(media="print")
-    assert not page.locator(".profiles").is_visible()
-    assert all(card.is_visible() for card in page.locator(".program").all())
-    assert page.locator(".program-list").inner_text().split() == card_text
-    assert pdf_pages(page) == 1

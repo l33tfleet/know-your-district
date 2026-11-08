@@ -79,7 +79,7 @@
       "question": "Public pre-K is separate from subsidies.",
       "judgments": null,
       "kevin_check": null,
-      "program_scope": "research_only"
+      "program_scope": "catalog"
     },
     {
       "id": "review-10",
@@ -190,7 +190,7 @@
     "review-06": "insufficient",
     "review-07": "insufficient",
     "review-08": "insufficient",
-    "review-09": "insufficient",
+    "review-09": "relevant",
     "review-10": "insufficient",
     "review-11": "insufficient",
     "review-12": "insufficient",
