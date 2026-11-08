@@ -6,9 +6,12 @@ is screen-only in the brief; the same partial can render an optional email excer
 """
 
 from datetime import date
+from urllib.parse import quote, urlencode
 
 from pydantic import BaseModel, ConfigDict, HttpUrl
 
+from app.analysis.populations import Derived
+from app.analysis.reliability import FLAG_WORDS
 from app.copy import geography_name, load_copy
 from app.counties import load_mapping
 from app.match_cards import MatchCard, to_match_card
@@ -40,6 +43,7 @@ class ProgramCardWording(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    outreach_email: str = "Ask the agency about outreach here"
     evidence: str = "Reason, uncertainty and cited evidence"
     source_table: str = "Source table"
     service_areas: str = (
@@ -59,7 +63,67 @@ class ProgramCard(BaseModel):
     guidance: str
     counties: tuple[CountyContacts, ...]
     screen_only: str
+    email_url: str
     wording: ProgramCardWording = ProgramCardWording()
+
+
+def _outreach_email(
+    district: DistrictId, card: MatchCard, guidance: str, figures: tuple[Derived, ...]
+) -> str:
+    """Serialize detached public evidence only; no recipient or request context."""
+    district_name = f"Hawaiʻi State {district.chamber.title()} District {district.district}"
+    subject = f"Outreach inquiry: {district_name} · {card.program_name}"
+    lines = [
+        f"Ask the agency about outreach here: {district_name}",
+        f"Program: {card.program_name}",
+        f"Agency: {card.agency}",
+        f"Population: {card.population}",
+        card.definition,
+        f"Universe: {card.universe}",
+        card.claim_label,
+        f"{card.wording.review}: {card.review_status}",
+        f"{card.wording.band}: {card.band}",
+        card.case_claim,
+        card.reason,
+        *card.exclusions,
+    ]
+    for index, figure in enumerate((card.figure, *figures)):
+        value = (
+            f"{figure.value} {card.unit if index == 0 or figure.kind == 'sum' else '%'}"
+            if figure.value is not None
+            else card.wording.not_available
+        )
+        uncertainty = (
+            f"{card.wording.moe} ±{figure.moe}" if figure.moe is not None else card.wording.no_moe
+        )
+        lines.extend(
+            [
+                f"{value}; {uncertainty}; {FLAG_WORDS[figure.reliability]}.",
+                f"{figure.geography} · {figure.universe} · {figure.method}",
+            ]
+        )
+        if figure.missing:
+            lines.append(f"{card.wording.missing}: {', '.join(figure.missing)}")
+        for fact in figure.inputs:
+            lines.append(
+                f"{fact.source}, {fact.table_id}, {fact.variable}, {fact.vintage}, "
+                f"{fact.geography}. {card.wording.method}: {fact.method}. {fact.endpoint}"
+            )
+    lines.extend(
+        [
+            f"{card.wording.known}: " + " ".join(text for _, text in card.known),
+            f"{card.wording.unknown}: " + " ".join(text for _, text in card.unknown),
+            card.disclaimer,
+            guidance,
+            f"{card.wording.official}: {card.official_url}",
+            f"{card.wording.referral}: {card.referral_url}",
+            card.checked,
+            *card.next_steps,
+            *(f"{label}: {url}" for label, url in card.links),
+            f"Brief: https://district.hawaiitechmentors.org/brief/{district.chamber}/{district.district}",
+        ]
+    )
+    return "mailto:?" + urlencode({"subject": subject, "body": "\n".join(lines)}, quote_via=quote)
 
 
 def load_cards(district: DistrictId) -> tuple[ProgramCard, ...]:
@@ -72,7 +136,8 @@ def load_cards(district: DistrictId) -> tuple[ProgramCard, ...]:
     return tuple(
         ProgramCard(
             screen_only=screen_only,
-            match=to_match_card(match),
+            match=(card := to_match_card(match)),
+            email_url=_outreach_email(district, card, match.program.guidance, match.result.figures),
             guidance=match.program.guidance,
             counties=tuple(
                 CountyContacts(
