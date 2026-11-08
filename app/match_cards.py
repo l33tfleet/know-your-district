@@ -43,6 +43,7 @@ class CardWording(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    survey: str = "Survey population:"
     not_available: str = "Not available"
     moe: str = "90% margin of error"
     no_moe: str = "Margin of error unavailable"
@@ -79,6 +80,7 @@ class MatchCard(BaseModel):
     agency: str
     population_id: str
     population: str
+    definition: str
     unit: str
     universe: str
     exclusions: tuple[str, ...]
@@ -142,6 +144,7 @@ def to_match_card(
         agency=p.agency,
         population_id=population.id,
         population=population.label,
+        definition=population.definition,
         unit=population.unit,
         universe=population.universe,
         exclusions=population.exclusions,
