@@ -1,6 +1,7 @@
 """#372: separately flagged strong program cards preserve evidence and county scope."""
 
 import html
+import re
 import subprocess
 import sys
 from importlib import import_module
@@ -33,6 +34,16 @@ from tests.regressions.test_wo150_prek import complete_store
 __all__ = ["base_url", "browser", "complete_store", "matching_store", "page"]
 ROOT = Path(__file__).resolve().parents[2]
 DISTRICT = DistrictId(chamber="house", district=22)
+
+
+@pytest.mark.parametrize("template", ["sections/30-programs.html", "partials/program-cards.html"])
+def test_program_templates_contain_no_literal_wording(template: str) -> None:
+    """Card copy follows the existing wording-free page template contract."""
+    source = (ROOT / "templates" / template).read_text()
+    source = re.sub(r"{#.*?#}|{%.*?%}|{{.*?}}", " ", source, flags=re.S)
+    source = re.sub(r"<!--.*?-->|<[^>]*>|&[a-z]+;", " ", source, flags=re.S)
+    assert not re.search(r"[^\W\d_]", source), source.split()
+
 
 # Characterize the pre-card catalog markup, including whitespace.
 LEGACY_TEMPLATE = """<section class="programs">

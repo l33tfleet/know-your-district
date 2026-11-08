@@ -9,7 +9,7 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, HttpUrl
 
-from app.copy import geography_name
+from app.copy import geography_name, load_copy
 from app.counties import load_mapping
 from app.match_cards import MatchCard, to_match_card
 from app.program_contacts import load_contacts
@@ -35,12 +35,31 @@ class CountyContacts(BaseModel):
     contacts: tuple[CardContact, ...]
 
 
+class ProgramCardWording(BaseModel):
+    """Detached display labels, following the shared MatchCard wording adapter."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    evidence: str = "Reason, uncertainty and cited evidence"
+    source_table: str = "Source table"
+    service_areas: str = (
+        "County service areas only; contact listings do not establish local offices, "
+        "appointments or capacity."
+    )
+    verified: str = "Verified"
+    missing_contacts: str = (
+        "County contacts not documented. Use official program information or Aloha United Way 211."
+    )
+
+
 class ProgramCard(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     match: MatchCard
     guidance: str
     counties: tuple[CountyContacts, ...]
+    screen_only: str
+    wording: ProgramCardWording = ProgramCardWording()
 
 
 def load_cards(district: DistrictId) -> tuple[ProgramCard, ...]:
@@ -49,8 +68,10 @@ def load_cards(district: DistrictId) -> tuple[ProgramCard, ...]:
     counties = load_mapping()[district.fact_key]
     contacts = load_contacts()
     organisations = load_organisations()
+    screen_only = load_copy()["brief"]["screen_only"]
     return tuple(
         ProgramCard(
+            screen_only=screen_only,
             match=to_match_card(match),
             guidance=match.program.guidance,
             counties=tuple(
