@@ -23,6 +23,7 @@
     {% if not email|default(false) %}</details>{% endif %}
     <p>{{ card.disclaimer }} {{ program.guidance }}</p>
     <p><a href="{{ card.official_url }}">{{ card.wording.official }}</a> · <a href="{{ card.referral_url }}">{{ card.wording.referral }}</a>. {{ card.checked }}</p>
+    {% if not email|default(false) %}{% include "partials/program-outreach-email.html" %}{% endif %}
     {% for step in card.next_steps %}<p>{{ step }}</p>{% endfor %}
     <p>{{ wording.service_areas }}</p>
     {% for county in program.counties %}
