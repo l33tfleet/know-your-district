@@ -1,6 +1,8 @@
 """#221: canonical, gated match permalinks retain evidence on screen and print."""
 
 import sqlite3
+import subprocess
+import sys
 from datetime import date
 from importlib import import_module
 from pathlib import Path
@@ -18,6 +20,23 @@ from tests.regressions.test_wo149_matches import matching_store
 __all__ = ["browser", "matching_store", "page"]
 ROOT = Path(__file__).resolve().parents[2]
 PATH = "/match/house/22/snap/below_poverty_no_snap"
+
+
+@pytest.mark.parametrize("module", ["app.web.matches", "app.main"])
+def test_permalink_registration_preserves_startup_case_loading(module: str) -> None:
+    """Registering the permalink must leave case validation to application startup."""
+    program = (
+        f"import {module}\n"
+        "import sys\n"
+        "assert 'app.cases' not in sys.modules\n"
+        "from app.main import validate_startup\n"
+        "validate_startup()\n"
+        "assert 'app.cases' in sys.modules\n"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", program], cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    assert done.returncode == 0, done.stderr
 
 
 @pytest.mark.parametrize("chamber", ["house", "senate"])

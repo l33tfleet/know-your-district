@@ -8,7 +8,6 @@ from fastapi.templating import Jinja2Templates
 
 from app.copy import geography_name
 from app.features import register_feature, require_feature
-from app.match_cards import to_match_card
 from app.page_state import page_state
 from app.populations import load_populations
 from app.tools.matches import CATALOG, DistrictMatches
@@ -49,6 +48,9 @@ def match_page(
         raise HTTPException(status_code=404)
     card = None
     if resolved.status == "active":
+        # The adapter imports cases; keep case loading at startup, not route registration.
+        from app.match_cards import to_match_card
+
         mappings = tuple(
             m
             for m in load_mappings()
