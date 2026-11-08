@@ -66,7 +66,8 @@ def test_legacy_serialization_and_one_extended_pilot() -> None:
         serialized = json.dumps(program.model_dump(mode="json"), sort_keys=True)
         assert hashlib.sha256(serialized.encode()).hexdigest() == digest
     pilot = next(p for p in programs if p.id == "hawaii-able")
-    assert pilot.rules and pilot.next_steps and pilot.enrichment
+    # Keep the retained comparison regression focused on the enriched ABLE pilot.
+    assert pilot.rules and pilot.next_steps and pilot.enrichment and programs[-1] == pilot
     assert Program.model_validate_json(pilot.model_dump_json()) == pilot
     for ref in pilot.enrichment.fact_references:
         assert FactStore.default().get([(ref.variable, ref.geography)], ref.vintage)
