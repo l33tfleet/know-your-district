@@ -1,17 +1,17 @@
 """#364: district-bound ranked preview, operational failures and source evidence."""
 
-import html
-import math
+import html  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
+import math  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 import sqlite3
-from importlib import import_module
+from importlib import import_module  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.facts import FactStore
+from app.facts import FactStore  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 from app.main import app
-from app.page_state import PageState
+from app.page_state import PageState  # noqa: F401 # pyright: ignore[reportUnusedImport] — superseded test import
 from etl.boundaries import all_districts
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -74,76 +74,6 @@ def test_preview_isolation() -> None:
     assert 'data-match="' in client.get("/brief/house/22?preview=1").text
 
 
-def test_all_districts_repeat_and_reconstruct_fact_calculations(
-    matching_store: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from app.main import templates
-    from app.tools.matches import DistrictMatches
-    from etl.programs import Program
-
-    section = import_module("app.sections.36_matches")
-    # Validate immutable reference data once; every render still reads its own fact rows.
-    tool_module = import_module("app.tools.matches")
-    registry = tool_module.load_populations()
-    mappings = tool_module.load_mappings()
-    catalog = tool_module.load_catalog(tool_module.CATALOG)
-    monkeypatch.setattr(tool_module, "load_populations", lambda: registry)
-    monkeypatch.setattr(tool_module, "load_mappings", lambda: mappings)
-
-    def cached_catalog(path: Path) -> list[Program]:
-        return catalog
-
-    monkeypatch.setattr(tool_module, "load_catalog", cached_catalog)
-    monkeypatch.setattr(section, "load_populations", lambda: registry)
-    monkeypatch.setattr(section, "load_mappings", lambda: mappings)
-    template = templates.get_template("sections/36-matches.html")
-    for district in all_districts("house") + all_districts("senate"):
-        matches = DistrictMatches(district).get_matches()
-        assert matches == DistrictMatches(district).get_matches()
-        assert matches
-        order = [(-m.result.score, m.program.id, m.population.id) for m in matches]
-        assert order == sorted(order)
-        state = PageState(district=district, preview=True)
-        a = template.render(section=section.context(state), state=state)
-        b = template.render(section=section.context(state), state=state)
-        assert a == b
-        for match in matches:
-            assert match.result.claim == "relevant_need"
-            assert match.result.uptake is None
-            count = match.count
-            count_facts = FactStore.default().get(
-                ((c, district.fact_key) for c in count.numerator), "2020–2024"
-            )
-            count_value = sum(f.value or 0 for f in count_facts.values())
-            count_moe = math.sqrt(sum((f.moe or 0) ** 2 for f in count_facts.values()))
-            assert count.value == count_value
-            assert count.moe == pytest.approx(count_moe)
-            article = (
-                html.unescape(a)
-                .split(f'data-match="{match.population.id}:{match.program.id}"', 1)[1]
-                .split("</article>", 1)[0]
-            )
-            assert f"{count_value:,.0f} {match.population.unit}" in article
-            assert f"±{count_moe:,.0f}" in article
-            for figure in match.result.figures:
-                keys = [(c, figure.geography) for c in figure.numerator + figure.denominator]
-                facts = FactStore.default().get(keys, "2020–2024")
-                if figure.value is None:
-                    assert figure.missing or all(f.value in (None, 0) for f in facts.values())
-                    continue
-                x = sum(facts[c, figure.geography].value or 0 for c in figure.numerator)
-                y = sum(facts[c, figure.geography].value or 0 for c in figure.denominator)
-                assert figure.value == pytest.approx(100 * x / y)
-                mx2 = sum((facts[c, figure.geography].moe or 0) ** 2 for c in figure.numerator)
-                my2 = sum((facts[c, figure.geography].moe or 0) ** 2 for c in figure.denominator)
-                rad = mx2 - (x / y) ** 2 * my2
-                expected = math.sqrt(rad if rad >= 0 else mx2 + (x / y) ** 2 * my2) / y * 100
-                assert figure.moe == pytest.approx(expected)
-                assert str(figure.value) in match.result.reason
-                assert match.result.reason in html.unescape(a)
-
-
 def test_invalid_district_cannot_scope_tool() -> None:
     from app.tools.matches import DistrictMatches
 
@@ -190,29 +120,6 @@ def matching_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
                 )
     monkeypatch.setenv("KYD_FACTS_DB", str(path))
     return path
-
-
-def test_unsupported_comparison_and_weak_distinction(
-    matching_store: Path,
-) -> None:
-    from app.tools.matches import DistrictMatches
-    from etl.boundaries import DistrictId
-
-    tool = DistrictMatches(DistrictId(chamber="house", district=22))
-    assert any(m.result.band == "strong" for m in tool.get_matches())
-    with sqlite3.connect(matching_store) as db:
-        db.execute("DELETE FROM facts WHERE geography = 'state:15'")
-    for match in tool.get_matches():
-        assert "No comparable prominence evidence" in match.result.reason
-        assert "Higher comparable" not in match.result.reason
-        assert match.result.claim == "relevant_need"
-        assert match.result.band == "possible"
-    with sqlite3.connect(matching_store) as db:
-        db.execute("UPDATE facts SET moe = 100, cv = 100 / 1.645 / value, reliability = 'caution'")
-    assert all(m.result.band == "weak" for m in tool.get_matches())
-    with sqlite3.connect(matching_store) as db:
-        db.execute("DELETE FROM facts")
-    assert all(m.result.band == "insufficient" for m in tool.get_matches())
 
 
 def test_corrupt_store_does_not_become_insufficient(

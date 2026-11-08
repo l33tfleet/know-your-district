@@ -33,3 +33,14 @@
     - Current Hawaiʻi enrollment availability, fees and incentives remain unverified.
   claim: relevant_need
   review_status: pending
+
+# Connection based on the supplied EOEL FAQ verification of 2026-11-08; expert review pending.
+- population_id: children_under_5
+  program_id: public-pre-k
+  relevance: Public pre-K may help with early learning. Under-five residents are a broader outreach audience, not an eligibility or nonparticipation estimate. The agency decides eligibility; consult the official FAQ and Aloha United Way 211.
+  observed_conditions: [Residents under five, from published age cells.]
+  unobserved_conditions: [Exact birthday within the dated cohort and enrollment priority conditions.,
+    "Participating-school access, schedule fit and unavailable before/after-school care.",
+    Available seats and current enrollment.]
+  claim: relevant_need
+  review_status: pending
