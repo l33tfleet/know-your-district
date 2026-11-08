@@ -6,6 +6,7 @@ import sys
 from datetime import date
 from importlib import import_module
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +15,7 @@ from playwright.sync_api import Page
 from app.main import app
 from app.tools.matches import DistrictMatches
 from etl.programs import Program, load_catalog
+from etl.programs.mappings import load_mappings
 from tests.regressions.test_wo122_browser_checks import axe_problems, browser, page
 from tests.regressions.test_wo149_matches import matching_store
 
@@ -79,6 +81,27 @@ def test_permalink_uses_shared_cited_card(chamber: str, matching_store: Path) ->
 def test_invalid_or_unmapped_permalink_is_404(suffix: str) -> None:
     query = "" if "?" in suffix else "?preview=1"
     assert TestClient(app).get("/match" + suffix + query).status_code == 404
+
+
+@pytest.mark.parametrize("review_status,expected", [("reviewed", 200), ("rejected", 404)])
+def test_permalink_rejects_mapping_before_matching(
+    review_status: str,
+    expected: int,
+    monkeypatch: pytest.MonkeyPatch,
+    matching_store: Path,
+) -> None:
+    mapping = next(
+        m
+        for m in load_mappings()
+        if m.program_id == "snap" and m.population_id == "below_poverty_no_snap"
+    ).model_copy(update={"review_status": review_status})
+    monkeypatch.setattr(import_module("app.web.matches"), "load_mappings", lambda: (mapping,))
+    # Observe the route boundary so the tool's own rejection filter cannot mask a regression.
+    with patch.object(
+        DistrictMatches, "get_matches", autospec=True, side_effect=DistrictMatches.get_matches
+    ) as get_matches:
+        assert TestClient(app).get(PATH + "?preview=1").status_code == expected
+        assert get_matches.call_count == (1 if review_status == "reviewed" else 0)
 
 
 @pytest.mark.parametrize(
