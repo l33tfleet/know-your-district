@@ -42,3 +42,32 @@ and questions), timeout, Bearer authentication and typed response validation;
 only then is the reservation a bound on billed input. UI wiring renders
 `Paused` through the existing canned copy. Never trust arbitrary forwarded IP
 headers; configure trusted proxy handling at deployment.
+
+## Recorded outage answers (#390)
+
+The Ask route first runs live classification. A typed `Paused` result (missing
+credentials, transport/HTTP failure, timeout, exhausted admission or input budget)
+can replay an exact question/chamber/district match. Live refusals, clarifiers
+and successful routes are preserved. Unmatched questions retain the paused
+notice; replay never interprets an action request as a successful save or edit.
+Clarification buttons still resolve their chosen topic without a provider call.
+
+House 22 supports these exact scripts, with SNAP first for story step 3:
+
+- “Where could food-assistance outreach help here?” (`data/ask/story.json`)
+- “How many kūpuna live here?” (`data/ask/scripts.json`)
+- “Is income higher than the county?” (`data/ask/scripts.json`)
+
+These files store typed routing envelopes and recording dates, not demographic
+snapshots. The facade's decoder validates them without transport slots or live
+admission. Every replay shows the live-unavailable notice, “Recorded answer, not
+live” and the recording date. SNAP cards and district/county/state figures still
+read current tool facts, including citations, uncertainty and comparison rules.
+Missing local files or invalid recording metadata raise local errors; invalid
+provider envelopes retain the decoder’s fail-closed paused behavior.
+
+For an offline rehearsal, set `[ask].force_recordings = true` in `config.toml`
+and restart the single worker. This validated boolean bypasses provider calls
+and budget reservations; exact scripts replay and unmatched questions pause.
+Restore `false` and restart to resume live classification. The default is false.
+Briefs, case cards and folder operations remain independent of live Ask.

@@ -1,0 +1,42 @@
+[
+  {
+    "question": "How many kūpuna live here?",
+    "chamber": "house",
+    "district": 22,
+    "recorded_on": "2026-11-05",
+    "response": {
+      "model": "jev-1.14.0",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "age_65_share",
+          "confidence": 1,
+          "probabilities": {"snap_no_receipt": 0, "age_65_share": 1, "median_household_income": 0, "population": 0, "none": 0}
+        },
+        "individual": {"type": "noul", "noul": 0.15},
+        "compare": {"type": "noul", "noul": 0.08}
+      },
+      "usage": {"input_tokens": 480, "output_tokens": 30}
+    }
+  },
+  {
+    "question": "Is income higher than the county?",
+    "chamber": "house",
+    "district": 22,
+    "recorded_on": "2026-11-05",
+    "response": {
+      "model": "jev-1.14.0",
+      "answers": {
+        "topic": {
+          "type": "choice",
+          "choice": "median_household_income",
+          "confidence": 1,
+          "probabilities": {"snap_no_receipt": 0, "age_65_share": 0, "median_household_income": 1, "population": 0, "none": 0}
+        },
+        "individual": {"type": "noul", "noul": 0.1},
+        "compare": {"type": "noul", "noul": 0.74}
+      },
+      "usage": {"input_tokens": 480, "output_tokens": 30}
+    }
+  }
+]

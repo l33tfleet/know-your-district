@@ -112,6 +112,8 @@ model = "jev-latest"
 timeout_seconds = 8
 request_input_tokens = 8192
 daily_input_tokens = 100000
+# Operator rehearsal switch: bypass live Ask; only exact recorded scripts replay.
+force_recordings = false
 
 [ask_routing]
 confidence_threshold = 0.6

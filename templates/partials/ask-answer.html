@@ -1,4 +1,5 @@
 {% if recorded_on %}
+<p>{{ copy.live_unavailable }}</p>
 <p class="ask-recording"><strong>{{ recording_label }}</strong> · <time datetime="{{ recorded_on }}">{{ recorded_on }}</time></p>
 {% endif %}
 {% if clarify %}
