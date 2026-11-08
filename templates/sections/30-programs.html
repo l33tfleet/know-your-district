@@ -1,5 +1,7 @@
 <section class="programs">
-  <h2>{{ copy.heading }}</h2>
+  <h2>{{ copy.heading }}</h2>{% if section.program_cards %}
+  {% with program_cards=section.program_cards %}{% include "partials/program-cards.html" %}{% endwith %}
+  {% endif %}
   <ul class="program-list">
     {% for p in section.programs %}
     <li class="program" data-program="{{ p.name }}">

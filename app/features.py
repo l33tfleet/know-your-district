@@ -131,3 +131,4 @@ def load_features() -> Features:
 # and page parts explicitly; filenames never add names to this registry.
 register_feature("outreach")
 register_feature("source_links")
+register_feature("program_cards")
