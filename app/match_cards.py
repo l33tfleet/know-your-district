@@ -38,10 +38,40 @@ ACTIONS = {
 }
 
 
+class CardWording(BaseModel):
+    """Detached display labels so the shared partial contains no prose."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    not_available: str = "Not available"
+    moe: str = "90% margin of error"
+    no_moe: str = "Margin of error unavailable"
+    unavailable: str = "unavailable"
+    missing: str = "Missing measurement"
+    method: str = "Method"
+    gap: str = "Kind of gap"
+    action: str = "Action"
+    review: str = "Program-expert review"
+    band: str = "Outreach band"
+    known: str = "What we know"
+    unknown: str = "What we don't"
+    none_documented: str = "None documented."
+    next_step: str = "Next step"
+    official: str = "Official program information"
+    referral: str = "Aloha United Way 211"
+    county: str = "County/state context"
+    outreach: str = "DHS SNAP outreach providers"
+    checked: str = "Checked"
+    no_county_steps: str = (
+        "County next steps not documented. Use official program information or 211."
+    )
+
+
 class MatchCard(BaseModel):
     """Immutable snapshot: no mutable catalog records or case dictionaries retained."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
+    wording: CardWording = CardWording()
     id: str
     case_id: str | None
     program_id: str

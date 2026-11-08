@@ -1,5 +1,6 @@
 """#220: shared opening-case content and detached evidence survive adaptation."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,13 @@ from etl.programs import load_catalog
 from etl.programs.mappings import load_mappings
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_shared_partial_keeps_wording_out_of_template() -> None:
+    source = (ROOT / "templates/partials/match_card.html").read_text()
+    source = re.sub(r"{#.*?#}|{%.*?%}|{{.*?}}", " ", source, flags=re.S)
+    source = re.sub(r"<!--.*?-->|<[^>]*>|&[a-z]+;", " ", source, flags=re.S)
+    assert not re.search(r"[^\W\d_]", source)
 
 
 def example(*, missing: bool = False, caution: bool = False) -> tuple[ProgramMatch, SnapResult]:
