@@ -5,3 +5,10 @@ auw211:
   source_url: https://www.auw211.org/
   public_contacts:
     - https://www.auw211.org/
+# Public DHS information/application routing documented in
+# data/snap/evidence/dhs-snap.html; reviewed 2026-10-28 in referrals.json.
+dhs_bessd:
+  name: Hawaiʻi Department of Human Services, Benefit, Employment & Support Services Division
+  source_url: https://humanservices.hawaii.gov/bessd/snap/
+  public_contacts:
+    - https://humanservices.hawaii.gov/bessd/snap/
