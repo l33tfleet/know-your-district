@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · {{ geography }}{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<h2>{{ geography }}</h2>
+{% if card %}
+{% include "partials/match_card.html" %}
+{% else %}
+<article class="case" aria-label="{{ program.name }}">
+  <h3>{{ program.name }}</h3>
+  <p>{{ program.agency }} · {{ retirement }}</p>
+  <p><a href="{{ program.official_url }}">{{ official }}</a> · <a href="{{ program.referral_url }}">{{ referral }}</a></p>
+</article>
+{% endif %}
+{% endblock %}
