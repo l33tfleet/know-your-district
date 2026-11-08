@@ -85,7 +85,15 @@ sections:
     not_available: not available
     no_moe: no margin of error published
     no_cv: none
+    # Used by the outreach and SNAP tables (pinned by tests/regressions/test_wo136_*).
     no_row: No published figure in the fact table yet.
+    # Shown in a figure's "Source and uncertainty" box when that figure has no published row.
+    no_row_plain: No published figure for this place yet.
+    # Shown once at the top of the section when none of the brief's figures has a row yet;
+    # {vintage} is the pinned ACS vintage from config.toml.
+    not_loaded: >-
+      The figures for this district haven't been loaded yet. They will come from the
+      U.S. Census Bureau, American Community Survey 5-year estimates, {vintage}.
     # Reliability in words, one per flag from app/analysis/reliability.py (thresholds in docs/data.md).
     reliability:
       reliable: reliable

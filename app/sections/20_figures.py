@@ -73,6 +73,7 @@ def companion(figure: str, district: str) -> Fact | None:
 
 def context(state: PageState) -> dict[str, object]:
     copy = section_copy("figures")
+    vintage, _ = acs_config()
     checks_enabled = enabled("source_links", state)
     selected = BriefFacts(state.district, load_mapping()[state.district.fact_key])
     district = selected.district
@@ -106,7 +107,12 @@ def context(state: PageState) -> dict[str, object]:
                 "district": readings[0],
                 "state": readings[-1],
                 "counties": readings[1:-1],
-                "sentence": sentence(figure, readings, found, copy),
+                # A card with no row for any geography (#129) falls back to stacked readings,
+                # each one short phrase, not a sentence of blanks; with nothing loaded at all the
+                # section's notice also says so once.
+                "sentence": sentence(figure, readings, found, copy)
+                if any(f is not None for f in found)
+                else [],
                 "count_sentence": count_sentence,
                 "count_unavailable": copy["count_unavailable"]
                 if KINDS[figure].kind == "share" and count is None
@@ -133,4 +139,5 @@ def context(state: PageState) -> dict[str, object]:
         ]
         if checks_enabled
         else [],
+        "not_loaded": None if facts else copy["not_loaded"].format(vintage=vintage),
     }
