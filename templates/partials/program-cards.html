@@ -5,22 +5,9 @@
   {% if not email|default(false) %}<p class="screen-only-note">{{ program_cards[0].screen_only }}</p>{% endif %}
   {% for program in program_cards %}
   {% set card = program.match %}
-  <article data-program-card="{{ card.program_id }}:{{ card.population_id }}" aria-label="{{ card.program_name }}">
+  <div data-program-card="{{ card.program_id }}:{{ card.population_id }}">
     <h3>{{ card.program_name }} · {{ card.population }}</h3>
     <p>{{ card.agency }}</p>
-    <p>{{ card.claim_label }}. {{ card.wording.review }}: {{ card.review_status }}. {{ card.wording.band }}: {{ card.band }}.</p>
-    <p>{% if card.figure.value is not none %}{{ card.figure.value }} {{ card.unit }}{% else %}{{ card.wording.not_available }}{% endif %}; {% if card.figure.moe is not none %}{{ card.wording.moe }} ±{{ card.figure.moe }}{% else %}{{ card.wording.no_moe }}{% endif %}; {{ card.reliability_word }}.</p>
-    <p>{{ card.case_claim }}</p>
-    {% if not email|default(false) %}<details class="source"><summary>{{ wording.evidence }}</summary>{% endif %}
-      <p>{{ card.reason }}</p>
-      <p>{{ card.figure.geography }} · {{ card.universe }} · {{ card.figure.method }}</p>
-      {% for exclusion in card.exclusions %}<p>{{ exclusion }}</p>{% endfor %}
-      {% for fact in card.figure.inputs %}
-      <p>{{ fact.source }}, {{ fact.table_id }}, {{ fact.variable }}, {{ fact.vintage }}, {{ fact.geography }}. {{ card.wording.method }}: {{ fact.method }}. <a href="{{ fact.endpoint }}">{{ wording.source_table }}</a>.</p>
-      {% endfor %}
-      <p><strong>{{ card.wording.known }}:</strong> {% for label, text in card.known %}{{ text }} {% else %}{{ card.wording.none_documented }}{% endfor %}</p>
-      <p><strong>{{ card.wording.unknown }}:</strong> {% for label, text in card.unknown %}{{ text }} {% else %}{{ card.wording.none_documented }}{% endfor %}</p>
-    {% if not email|default(false) %}</details>{% endif %}
     <p>{{ card.disclaimer }} {{ program.guidance }}</p>
     <p><a href="{{ card.official_url }}">{{ card.wording.official }}</a> · <a href="{{ card.referral_url }}">{{ card.wording.referral }}</a>. {{ card.checked }}</p>
     {% if not email|default(false) %}{% include "partials/program-outreach-email.html" %}{% endif %}
@@ -34,7 +21,10 @@
       {% else %}<p>{{ wording.missing_contacts }}</p>{% endfor %}
     </div>
     {% endfor %}
-  </article>
+    {% if not email|default(false) %}<details class="source"><summary>{{ wording.evidence }}</summary>{% endif %}
+      {% include "partials/match_card.html" %}
+    {% if not email|default(false) %}</details>{% endif %}
+  </div>
   {% endfor %}
 </div>
 {% endif %}
