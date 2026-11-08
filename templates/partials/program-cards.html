@@ -1,0 +1,36 @@
+{# Set email=True for a standalone, expanded excerpt with the same evidence and links. #}
+<div{% if not email|default(false) %} class="screen-only"{% endif %}>
+  {% if not email|default(false) %}<p class="screen-only-note">Not on the printout</p>{% endif %}
+  {% for program in program_cards %}
+  {% set card = program.match %}
+  <article data-program-card="{{ card.program_id }}:{{ card.population_id }}" aria-label="{{ card.program_name }}">
+    <h3>{{ card.program_name }} · {{ card.population }}</h3>
+    <p>{{ card.agency }}</p>
+    <p>{{ card.claim_label }}. {{ card.wording.review }}: {{ card.review_status }}. {{ card.wording.band }}: {{ card.band }}.</p>
+    <p>{% if card.figure.value is not none %}{{ card.figure.value }} {{ card.unit }}{% else %}{{ card.wording.not_available }}{% endif %}; {% if card.figure.moe is not none %}{{ card.wording.moe }} ±{{ card.figure.moe }}{% else %}{{ card.wording.no_moe }}{% endif %}; {{ card.reliability_word }}.</p>
+    <p>{{ card.case_claim }}</p>
+    {% if not email|default(false) %}<details class="source"><summary>Reason, uncertainty and cited evidence</summary>{% endif %}
+      <p>{{ card.reason }}</p>
+      <p>{{ card.figure.geography }} · {{ card.universe }} · {{ card.figure.method }}</p>
+      {% for exclusion in card.exclusions %}<p>{{ exclusion }}</p>{% endfor %}
+      {% for fact in card.figure.inputs %}
+      <p>{{ fact.source }}, {{ fact.table_id }}, {{ fact.variable }}, {{ fact.vintage }}, {{ fact.geography }}. {{ card.wording.method }}: {{ fact.method }}. <a href="{{ fact.endpoint }}">Source table</a>.</p>
+      {% endfor %}
+      <p><strong>{{ card.wording.known }}:</strong> {% for label, text in card.known %}{{ text }} {% else %}{{ card.wording.none_documented }}{% endfor %}</p>
+      <p><strong>{{ card.wording.unknown }}:</strong> {% for label, text in card.unknown %}{{ text }} {% else %}{{ card.wording.none_documented }}{% endfor %}</p>
+    {% if not email|default(false) %}</details>{% endif %}
+    <p>{{ card.disclaimer }} {{ program.guidance }}</p>
+    <p><a href="{{ card.official_url }}">{{ card.wording.official }}</a> · <a href="{{ card.referral_url }}">{{ card.wording.referral }}</a>. {{ card.checked }}</p>
+    {% for step in card.next_steps %}<p>{{ step }}</p>{% endfor %}
+    <p>County service areas only; contact listings do not establish local offices, appointments or capacity.</p>
+    {% for county in program.counties %}
+    <div data-county="{{ county.geography }}">
+      <h4>{{ county.name }}</h4>
+      {% for contact in county.contacts %}
+      <p>{{ contact.kind }}: <a href="{{ contact.url }}">{{ contact.name }}</a>. Verified {{ contact.verified_on }}.</p>
+      {% else %}<p>County contacts not documented. Use official program information or Aloha United Way 211.</p>{% endfor %}
+    </div>
+    {% endfor %}
+  </article>
+  {% endfor %}
+</div>

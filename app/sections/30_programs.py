@@ -2,12 +2,14 @@
 """Programs that may help: each program's name, agency, purpose and official page, with the
 line that the agency decides eligibility and a link to Aloha United Way 211.
 
-Only wording and links reach the template; the catalog's thresholds, proxies and dates do not,
-so no catalog number can show on the page."""
+The default catalog exposes wording and links only. The separate program_cards
+flag adds strong, ranked district connections from the fact-reading match tool;
+the catalog and its printable rendering remain available regardless of that flag."""
 
 from functools import cache
 from pathlib import Path
 
+from app.features import enabled
 from app.page_state import PageState
 from etl.programs import load_catalog
 
@@ -30,4 +32,9 @@ def programs() -> tuple[dict[str, str], ...]:
 
 
 def context(state: PageState) -> dict[str, object]:
-    return {"programs": programs()}
+    result: dict[str, object] = {"programs": programs()}
+    if enabled("program_cards", state):
+        from app.program_cards import load_cards
+
+        result["program_cards"] = load_cards(state.district)
+    return result
