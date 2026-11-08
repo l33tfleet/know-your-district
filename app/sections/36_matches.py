@@ -5,22 +5,14 @@ Use the canonical population registry and mapping contracts. Missing facts remai
 unavailable; neither review status nor a survey count establishes eligibility.
 """
 
-from app.analysis.reliability import FLAG_WORDS
-from app.copy import geography_name
+from app.match_cards import to_match_card
 from app.page_state import PageState
-from app.populations import load_populations
 from app.tools.matches import DistrictMatches
 from etl.programs.mappings import load_mappings
 
 # The expanded evidence belongs on screen to preserve the one-page print brief.
 FEATURE = "matches"
 PRINT = False
-CLAIMS = {
-    "relevant_need": "Relevant need only — potential outreach audience",
-    "modeled_eligibility": "Modeled eligibility — agency confirmation required",
-    "comparable_nonparticipation": "Comparable nonparticipation — aggregate estimate",
-}
-
 # Keep the existing section wording contract; templates contain no literal prose.
 WORDS = {
     "heading": "Ranked population connections to programs",
@@ -54,30 +46,5 @@ WORDS = {
 
 
 def context(state: PageState) -> dict[str, object]:
-    registry = load_populations()
     ranked = DistrictMatches(state.district).get_matches(load_mappings())
-    geography = state.district.fact_key
-    matches: list[dict[str, object]] = []
-    for match in ranked:
-        mapping, population, figure = match.mapping, match.population, match.count
-        matches.append(
-            {
-                "mapping": mapping,
-                "population": population,
-                "program": match.program,
-                "result": match.result,
-                "claim": CLAIMS[match.result.claim],
-                "figure": figure,
-                "value": "Not available" if figure.value is None else f"{figure.value:,.0f}",
-                "moe": "no margin of error" if figure.moe is None else f"±{figure.moe:,.0f}",
-                "reliability": FLAG_WORDS[figure.reliability],
-            }
-        )
-    return {
-        "matches": matches,
-        "words": WORDS,
-        "source": registry.source,
-        "vintage": registry.vintage,
-        "geography": geography,
-        "geography_name": geography_name(geography),
-    }
+    return {"matches": [to_match_card(match) for match in ranked], "words": WORDS}
