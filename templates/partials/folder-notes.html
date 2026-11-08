@@ -11,7 +11,7 @@
 {# While the server checks the words, they show at once in a status line, so the office (and a
    screen reader) sees what was sent before the confirm step or a refusal replaces this form. #}
 <form class="note-form" method="post" action="{{ action }}{{ query }}"
-      hx-post="{{ action }}{{ query }}" hx-target="#notes-{{ card_id }}" hx-swap="outerHTML"
+      hx-post="{{ action }}{{ query }}" hx-target="#notes-{{ card_id }}" hx-swap="outerHTML settle:0"
       hx-on::before-request="const s = this.querySelector('.note-pending'); s.textContent = s.dataset.label + ' ' + this.elements.body.value">
   <label for="{{ field_id }}">{{ label }}</label>
   {% if refusal %}
