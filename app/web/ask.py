@@ -25,9 +25,10 @@ from app.analysis.outreach import compare_facts
 from app.brief_facts import FORMATS, citation, reading
 from app.copy import geography_name, section_copy
 from app.counties import load_mapping
-from app.features import register_feature, require_feature
+from app.features import enabled, register_feature, require_feature
 from app.page_state import PageState, page_state
 from app.tools.facts import DistrictFacts
+from app.tools.matches import find_matches
 
 FEATURE = "ask"
 register_feature(FEATURE)
@@ -151,6 +152,16 @@ def answer_context(state: PageState, fields: dict[str, str], address: str) -> di
                 for g, fact in zip(geographies[1:], facts[1:], strict=True)
             ]
     else:
+        if isinstance(answer, Routed) and answer.case_id is not None and enabled("matches", state):
+            from app.cases import case
+
+            answer = answer.model_copy(
+                update={
+                    "match_references": find_matches(
+                        state.district, case(answer.case_id).population
+                    )
+                }
+            )
         context["answer"] = AnswerRenderer(state.district, []).render(answer)
     return context
 

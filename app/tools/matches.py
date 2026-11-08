@@ -12,9 +12,10 @@ from app.analysis.matching import MatchResult, rank_matches, score_match
 from app.analysis.populations import Derived, compare
 from app.facts import FactStore
 from app.populations import Population, load_populations
+from app.sources import Identifier
 from etl.boundaries import DistrictId
 from etl.programs import Program, load_catalog
-from etl.programs.mappings import ProgramMapping, load_mappings
+from etl.programs.mappings import ProgramId, ProgramMapping, load_mappings
 
 CATALOG = Path(__file__).resolve().parents[2] / "data/programs.yaml"
 
@@ -73,3 +74,42 @@ class DistrictMatches:
             )
         ranked = rank_matches([m.result for m in matches.values()])
         return tuple(matches[r.population_id, r.program_id] for r in ranked)
+
+
+class MatchReference(BaseModel):
+    """Selection identity only: card content can come only from the matching tool."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    district: DistrictId
+    population_id: Identifier
+    program_id: ProgramId
+
+
+def find_matches(district: object, population: str | None = None) -> tuple[MatchReference, ...]:
+    """Find ranked references in one validated district, optionally for a known population."""
+    scope = DistrictId.model_validate(district)
+    populations = {p.id for p in load_populations().populations}
+    if population is not None and population not in populations:
+        raise ValueError(f"Unknown population; valid: {', '.join(sorted(populations))}")
+    return tuple(
+        MatchReference(district=scope, population_id=m.population.id, program_id=m.program.id)
+        for m in DistrictMatches(scope).get_matches()
+        if population is None or m.population.id == population
+    )
+
+
+def resolve_matches(
+    district: DistrictId, references: tuple[MatchReference, ...]
+) -> tuple[ProgramMatch, ...]:
+    """Resolve selections against current trusted matches; reject foreign/unknown identities."""
+    for reference in references:
+        if reference.district != district:
+            raise ValueError("match reference outside page district")
+    matches = {(m.population.id, m.program.id): m for m in DistrictMatches(district).get_matches()}
+    resolved: list[ProgramMatch] = []
+    for reference in references:
+        key = reference.population_id, reference.program_id
+        if key not in matches:
+            raise ValueError("unknown match reference")
+        resolved.append(matches[key])
+    return tuple(resolved)
