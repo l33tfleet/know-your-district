@@ -21,6 +21,7 @@ from app.facts import acs_config
 from app.models import Fact
 from app.page_state import PageState
 from app.sources import Identifier, Text, VariableId, load_source
+from app.tools.matches import MatchReference, resolve_matches
 from etl.boundaries import DistrictId
 
 # Each route selects a published cell, never a derived count or household intersection.
@@ -79,6 +80,7 @@ class Routed(BaseModel):
     confidence: Probability
     alternatives: tuple[Alternative, ...] = ()
     references: tuple[Reference, ...] = ()
+    match_references: tuple[MatchReference, ...] = ()
 
     @model_validator(mode="after")
     def target(self) -> Self:
@@ -235,6 +237,27 @@ class AnswerRenderer:
             return html
         # Validate even references attached to none/case routes, before producing output.
         facts = [self.resolve(ref) for ref in answer.references]
+        if answer.match_references:
+            from app.cases import case
+            from app.match_cards import to_match_card
+
+            cards = [
+                to_match_card(match)
+                for match in resolve_matches(self.state.district, answer.match_references)
+            ]
+            sentence = (
+                case(answer.case_id).claim
+                if answer.case_id is not None
+                else self.copy["options"].get(
+                    answer.indicator_id, self.copy["refusals"]["out_of_scope"]
+                )
+            )
+            templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
+            return Markup(
+                templates.get_template("partials/ask_answer.html").render(
+                    answer=_paragraph(sentence), match_cards=cards
+                )
+            )
         if answer.indicator_id == "none":
             return escape(self.copy["refusals"]["out_of_scope"])
         html = self._case(answer.case_id) if answer.case_id is not None else Markup("")
