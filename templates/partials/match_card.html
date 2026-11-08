@@ -1,0 +1,42 @@
+{# Generalizes sections/15-case.html; card is a detached MatchCard. #}
+<article class="case" data-match="{{ card.id }}"{% if card.case_id %} data-case="{{ card.case_id }}"{% endif %} aria-label="{{ card.program_name }}">
+  <h3>{{ card.population }} · {{ card.program_name }}</h3>
+  <p>{{ card.agency }}</p>
+  <div class="case-figure">
+    <p class="case-reading">{% if card.figure.value is not none %}{{ card.figure.value }} {{ card.unit }}{% else %}Not available{% endif %}; {% if card.figure.moe is not none %}90% margin of error ±{{ card.figure.moe }}{% else %}Margin of error unavailable{% endif %}; {{ card.reliability_word }}.</p>
+    <p>{{ card.figure.geography }} · {{ card.universe }} · {{ card.figure.method }}</p>
+    {% for exclusion in card.exclusions %}<p>{{ exclusion }}</p>{% endfor %}
+    {% for cell in card.figure.missing %}<p>Missing measurement: {{ cell }}</p>{% endfor %}
+    {% for fact in card.figure.inputs %}
+    <p class="case-citation">{{ fact.label }}: {{ fact.value if fact.value is not none else 'Not available' }}; 90% margin of error {{ fact.moe if fact.moe is not none else 'unavailable' }}. {{ fact.source }}, {{ fact.table_id }}, {{ fact.variable }}, {{ fact.vintage }}, {{ fact.geography }}. Method: {{ fact.method }}. {{ fact.endpoint }}. {{ fact.estimate_annotation or '' }} {{ fact.moe_annotation or '' }}</p>
+    {% endfor %}
+    {% if card.outreach %}<p class="case-undercount">{{ card.outreach.undercount_note }} {{ card.outreach.measure_note }} {{ card.outreach.poverty_note }}</p>{% endif %}
+  </div>
+  <div class="case-understand">
+    <p class="case-why">{{ card.case_claim }}</p>
+    {% if card.gap %}<p class="case-gap"><strong>Kind of gap:</strong> {{ card.gap }}. <strong>Action:</strong> {{ card.action }}.</p>{% endif %}
+    <p>{{ card.claim_label }}. Program-expert review: {{ card.review_status }}. Outreach band: {{ card.band }}.</p>
+    <p>{{ card.reason }}</p>
+  </div>
+  <div class="case-evidence">
+    <p><strong>What we know:</strong> {% for label, text in card.known %}{{ label }}: {{ text }} {% else %}None documented.{% endfor %}</p>
+    <p><strong>What we don't:</strong> {% for label, text in card.unknown %}{{ label }}: {{ text }} {% else %}None documented.{% endfor %}</p>
+  </div>
+  <div class="case-step">
+    <p class="case-next"><strong>Next step:</strong> {{ card.disclaimer }}</p>
+    {% for step in card.next_steps %}<p>{{ step }}</p>{% endfor %}
+    <p><a href="{{ card.official_url }}">Official program information</a> · <a href="{{ card.referral_url }}">Aloha United Way 211</a></p>
+    {% for label, url in card.links %}<p><a href="{{ url }}">{{ label }}</a></p>{% endfor %}
+    <p class="case-source">{{ card.checked }}</p>
+    {% if card.outreach %}
+    <p>{{ card.outreach.referral_note }}</p>
+    {% for county in card.outreach.counties %}<p>County/state context: {{ county.geography_name }} ({{ county.geography }}).</p>{% endfor %}
+    {% if card.outreach.referral %}
+    {% set referral = card.outreach.referral %}
+    <p><a href="{{ referral.outreach_url }}">DHS SNAP outreach providers</a> · Checked {{ referral.verified_on }}. {{ referral.notice }}</p>
+    <p>{{ referral.service_area_limit }} {{ referral.verification_note }}</p>
+    {% for contact in referral.assistance %}<p>{{ contact.name }} · {{ contact.service_area }} · {{ contact.service }} · {{ contact.phone }} · {{ contact.evidence }}</p>{% endfor %}
+    {% else %}<p>County next steps not documented. Use official program information or 211.</p>{% endif %}
+    {% else %}<p>County next steps not documented. Use official program information or 211.</p>{% endif %}
+  </div>
+</article>
