@@ -189,25 +189,34 @@ class Provider:
                 return Paused(kind="paused")
             if isinstance(raw, Exception):
                 raise raw
-            if len(raw) > _RESPONSE_BYTES:
-                return Paused(kind="paused")
-            try:
-                response = _Response.model_validate_json(raw)
-                topic = response.answers.topic
-                probabilities = topic.probabilities
-                if (
-                    set(probabilities) != set(self.topics)
-                    or topic.choice not in self.topics
-                    or not math.isclose(sum(probabilities.values()), 1, abs_tol=0.01)
-                    or probabilities[topic.choice] != max(probabilities.values())
-                ):
-                    return Paused(kind="paused")
-            except ValidationError:
-                return Paused(kind="paused")
+            return self.decode(raw)
         except Empty:
             return Paused(kind="paused")
         finally:
             self.last_latency_seconds = time.monotonic() - started
+
+    def decode(self, raw: bytes) -> Answer:
+        """Validate and route live or recorded Jev bytes without transport or admission.
+
+        Use the same page catalog and routing thresholds as live decisions. Replace
+        the comparison decision on every decode, including malformed responses.
+        """
+        self.compare = False
+        if len(raw) > _RESPONSE_BYTES:
+            return Paused(kind="paused")
+        try:
+            response = _Response.model_validate_json(raw)
+            topic = response.answers.topic
+            probabilities = topic.probabilities
+            if (
+                set(probabilities) != set(self.topics)
+                or topic.choice not in self.topics
+                or not math.isclose(sum(probabilities.values()), 1, abs_tol=0.01)
+                or probabilities[topic.choice] != max(probabilities.values())
+            ):
+                return Paused(kind="paused")
+        except ValidationError:
+            return Paused(kind="paused")
         self.compare = response.answers.compare.noul >= self.routing.compare_threshold
         if response.answers.individual.noul >= self.routing.individual_threshold:
             return Refuse(kind="refuse", reason="individual")
