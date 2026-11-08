@@ -1,0 +1,55 @@
+# County codes follow docs/data.md; Kalawao is outside this county inventory.
+# These are statewide services serving each named county, not local offices.
+# Agency-office records route through the DHS Public Assistance Information Line
+# on its official SNAP page. Partner records reuse the vetted AUW 211 endpoint.
+# Verification is inherited from data/snap/referrals.json (2026-10-28), supported
+# by data/snap/evidence/dhs-snap.html and evidence/auw211.html. No new live check,
+# provider capacity or appointment availability is asserted by this inventory.
+- program_id: snap
+  county: '001'
+  kind: agency_office
+  organisation_id: dhs_bessd
+  url: https://humanservices.hawaii.gov/bessd/snap/
+  verified_on: 2026-10-28
+- program_id: snap
+  county: '003'
+  kind: agency_office
+  organisation_id: dhs_bessd
+  url: https://humanservices.hawaii.gov/bessd/snap/
+  verified_on: 2026-10-28
+- program_id: snap
+  county: '007'
+  kind: agency_office
+  organisation_id: dhs_bessd
+  url: https://humanservices.hawaii.gov/bessd/snap/
+  verified_on: 2026-10-28
+- program_id: snap
+  county: '009'
+  kind: agency_office
+  organisation_id: dhs_bessd
+  url: https://humanservices.hawaii.gov/bessd/snap/
+  verified_on: 2026-10-28
+- program_id: snap
+  county: '001'
+  kind: partner
+  organisation_id: auw211
+  url: https://www.auw211.org/
+  verified_on: 2026-10-28
+- program_id: snap
+  county: '003'
+  kind: partner
+  organisation_id: auw211
+  url: https://www.auw211.org/
+  verified_on: 2026-10-28
+- program_id: snap
+  county: '007'
+  kind: partner
+  organisation_id: auw211
+  url: https://www.auw211.org/
+  verified_on: 2026-10-28
+- program_id: snap
+  county: '009'
+  kind: partner
+  organisation_id: auw211
+  url: https://www.auw211.org/
+  verified_on: 2026-10-28
