@@ -266,8 +266,10 @@ def read_selection(form: dict[str, str], district: str | None) -> Selection:
     else:
         chamber, _, number = district.partition("-")
         state = district_of(chamber, number)
-    if "case_id" in form:
-        return Selection(state, folder, case_id=known_case(form["case_id"]))
+    # A form carrying its own chamber and district is a case form: it needs its case. Only
+    # `?district=` with no selection starts an empty folder.
+    if "case_id" in form or (not is_match and district is None):
+        return Selection(state, folder, case_id=known_case(form.get("case_id")))
     if is_match:
         return Selection(state, folder, match=match_reference(state, form))
     if folder is not None:

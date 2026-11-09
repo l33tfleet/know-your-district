@@ -352,6 +352,7 @@ VALID_CASE = "case_id=snap_no_receipt&chamber=house&district=22"
         ("?district=house-22", "population_id=disability&program_id=snap", "Unknown match"),
         ("?district=house-22", "population_id=Bad%25&program_id=snap", "Unknown match"),
         ("", "case_id=invented&chamber=house&district=22", "Unknown case 'invented'"),
+        ("", "chamber=house&district=22", "Unknown case None"),
         ("?district=house-22", VALID_MATCH + "&folder=../../etc", "Unknown folder link"),
         ("?district=house-22", VALID_MATCH + f"&folder={'a' * 32}%3Fx%3D1", "Unknown folder link"),
         ("?district=house-22", f"folder={'a' * 32}", "Choose a case or a match"),
