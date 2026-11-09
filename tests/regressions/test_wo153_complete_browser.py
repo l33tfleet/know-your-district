@@ -21,6 +21,9 @@ from app.copy import load_copy, section_copy
 from app.folders import retention, store
 from app.folders import routes as folder_routes
 from app.folders.notes import date_label
+from app.folders.references import encode_match
+from app.tools.matches import MatchReference
+from etl.boundaries import DistrictId
 from tests.regressions.test_journey_folder_notes import add_in_browser, check, save, token_in
 from tests.regressions.test_journey_folder_save import (
     FORM,
@@ -51,6 +54,39 @@ HAWAII = timezone(timedelta(hours=-10))
 LONG_REASON = ("Outreach at the Kalihi community center " * 6)[:200].rstrip() + "s"
 UNBROKEN_REASON = "x" * 200
 PHONE = "Call 808-555-0142 about the next session."
+# The published match labels, as `card_names` reads them; the SNAP one is the longest shipped.
+ABLE = "Hawaiʻi ABLE savings program · People with a disability"
+PRE_K = "EOEL Public Pre-K · Children under 5"
+SNAP_MATCH = (
+    "Supplemental Nutrition Assistance Program (SNAP) · Households below poverty reporting no SNAP"
+)
+
+
+def match(population: str, program: str, district: int) -> MatchReference:
+    return MatchReference(
+        district=DistrictId(chamber="house", district=district),
+        population_id=population,
+        program_id=program,
+    )
+
+
+def fill_with_matches(db: store.FolderStore, folder: str) -> None:
+    """House 22's legacy case is saved already; add ABLE and Pre-K in House 1, then the SNAP
+    match in Houses 1-22: 25 cards, all high priority with maximum-length reasons and a note."""
+    db.save_match(folder, match("disability", "hawaii-able", 1))
+    db.save_match(folder, match("children_under_5", "public-pre-k", 1))
+    for district in range(1, 23):
+        db.save_match(folder, match("below_poverty_no_snap", "snap", district))
+    cards = db.get_folder(folder).cards
+    assert len(cards) == 25
+    for number, card in enumerate(cards):
+        db.set_priority(folder, card.id, "high", UNBROKEN_REASON if number % 2 else LONG_REASON)
+        db.add_note(folder, card.id, "n" * 1000, True)
+
+
+# What the matched summary lists, in order: the legacy card, ABLE, Pre-K, then the SNAP match
+# in Houses 1-9; the SNAP match in Houses 10-22 is counted as not printed.
+MATCHED_ROWS = [("SNAP", 22), (ABLE, 1), (PRE_K, 1)] + [(SNAP_MATCH, d) for d in range(1, 10)]
 
 
 def summary(html: str) -> Node:
@@ -200,6 +236,65 @@ def crowded(flag: Flag, tmp_path: Path) -> tuple[TestClient, str]:
         db.add_note(folder, card.id, "n" * 1000, True)
     db.add_note(folder, cards[-1].id, "Tabled at the market.", True)
     return http, f"/f/{folder}"
+
+
+@pytest.fixture
+def matched(flag: Flag, tmp_path: Path) -> tuple[TestClient, str, store.FolderStore]:
+    """A legacy card and 24 saved matches, each with a maximum-length reason and a note."""
+    http = flag("on")
+    db = folder_store(tmp_path / "folders.db")
+    folder = db.create_folder("Office", CASE, "house", 22)
+    fill_with_matches(db, folder)
+    return http, f"/f/{folder}", db
+
+
+def identity(row: str) -> tuple[str, int]:
+    found = re.search(r"Hawaiʻi State House District (\d+)", row)
+    assert found is not None, row
+    name = next(n for n in (SNAP_MATCH, ABLE, PRE_K, "SNAP") if row.startswith(n))
+    return name, int(found[1])
+
+
+def test_saved_matches_are_listed_by_their_published_labels(
+    matched: tuple[TestClient, str, store.FolderStore],
+) -> None:
+    http, path, _ = matched
+    html = http.get(path).text
+    listed = rows(html)
+    assert [identity(row) for row in listed] == MATCHED_ROWS
+    assert all("High priority" in row for row in listed)
+    printed = summary(html)
+    # The encoded selection key is storage only: never on paper.
+    assert "match:v1" not in printed.text
+    assert disclosures(html) == [
+        WORDS["print_cards"].format(shown=12, total=25, omitted=13),
+        WORDS["print_notes_omitted"].format(total=25),
+        WORDS["print_shortened"].format(count=12),
+    ]
+    reasons = [r.text for r in printed.find_all("span", class_="folder-print-reason")]
+    assert len(reasons) == 12
+    assert all(r.endswith("…") and len(r) <= folder_routes.PRINT_REASON for r in reasons)
+    assert not printed.find_all(class_="case") and not printed.find_all(class_="figure")
+    assert "n" * 50 not in printed.text
+    assert html.count('class="folder-card"') == 25
+
+
+def test_a_match_card_write_refreshes_the_summary_with_its_identity(
+    matched: tuple[TestClient, str, store.FolderStore],
+) -> None:
+    http, path, db = matched
+    key = encode_match(match("disability", "hawaii-able", 1))
+    cards = db.get_folder(path.rsplit("/", 1)[-1]).cards
+    able = next(card for card in cards if card.case_id == key)
+    response = post(http, f"{path}/cards/{able.id}/status", "status=done", HTMX)
+    assert response.status_code == 200
+    listed = [row.text for row in oob(response.text, "folder-print").find_all("li")]
+    # Done sorts the ABLE card past the bound; the next SNAP match takes its place.
+    assert (ABLE, 1) not in [identity(row) for row in listed]
+    assert [identity(row) for row in listed][-1] == (SNAP_MATCH, 10)
+    assert WORDS["print_cards"].format(shown=12, total=25, omitted=13) in (
+        oob(response.text, "folder-print").text
+    )
 
 
 def test_the_summary_lists_at_most_the_bound_and_counts_what_it_leaves_out(
@@ -356,23 +451,23 @@ def test_browser_many_cards_print_on_one_page_and_follow_a_change(
     page.wait_for_url("**/f/*")
     folder = page.url.rsplit("/", 1)[-1].partition("?")[0]
     db = store.FolderStore(tmp_path / "know-your-district/folders.db", state(preview=True))
-    for district in range(1, 26):
-        db.save_case(folder, CASE, "house", district)
-    cards = db.get_folder(folder).cards
-    assert len(cards) == 25  # House 22 was saved already
-    for number, card in enumerate(cards):
-        db.set_priority(folder, card.id, "high", UNBROKEN_REASON if number % 2 else LONG_REASON)
-        db.add_note(folder, card.id, "n" * 1000, True)
+    fill_with_matches(db, folder)
     page.reload(timeout=60_000)  # 25 full cards, each read fresh
     mark_document(page)
+    printed = printed_rows(page)
+    assert [identity(row) for row in printed] == MATCHED_ROWS
 
-    first = page.locator(".folder-card").first
-    first.get_by_role("combobox", name="Status").select_option(label="Contacted")
+    # A saved match card changes; its own row follows without a reload.
+    snap_match = page.locator(".folder-card").nth(3)  # the SNAP match in House 1
+    snap_match.get_by_role("combobox", name="Status").select_option(label="Contacted")
     page.locator("#folder-print", has_text="Contacted · High priority").wait_for()
+    changed = [row for row in printed_rows(page) if "Contacted" in row]
+    assert [identity(row) for row in changed] == [(SNAP_MATCH, 1)]
     assert same_document(page)
 
     page.emulate_media(media="print")
     shown = page.locator("#folder-print").inner_text()
+    assert SNAP_MATCH in shown and ABLE in shown and PRE_K in shown
     assert WORDS["print_cards"].format(shown=12, total=25, omitted=13) in shown
     assert WORDS["print_notes_omitted"].format(total=25) in shown
     assert WORDS["print_shortened"].format(count=12) in shown
