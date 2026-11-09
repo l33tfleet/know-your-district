@@ -123,6 +123,11 @@ CV = (MOE / 1.645) / estimate
 | > 30% | use with caution |
 
 - An estimate of 0, or a missing MOE, has no CV: show it as "use with caution".
+- A missing estimate has no flag: show it as "This figure is not available".
+  These four display words live in `app/analysis/reliability.py` (`FLAG_WORDS`)
+  and in `app/copy.yaml` (`sections.figures.reliability`); the flag values
+  (`reliable`, `moderate`, `caution`, `unavailable`) and thresholds do not change
+  with the words.
 - The outreach indicators (poverty 65+, limited English, no vehicle, uninsured)
   cross the caution line in many House districts. **Caution is a normal state,
   not an error**: show the figure with its flag, don't hide it.

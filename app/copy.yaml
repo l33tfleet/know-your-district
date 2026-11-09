@@ -4,17 +4,17 @@
 
 site:
   name: Know Your District
-  tagline: Hawaiʻi State Legislature district briefs
+  tagline: Hawaiʻi State House and Senate district briefs
   footer: >-
-    Figures come only from published tables, starting with the U.S. Census Bureau's
-    American Community Survey 5-year estimates. Every figure is cited.
+    Figures come only from published tables. The first source is the U.S. Census
+    Bureau's American Community Survey 5-year estimates. Every figure is cited.
 
 home:
   heading: Know Your District
   intro: >-
-    Pick a Hawaiʻi State House or Senate district and get a one-page, printable,
-    cited brief: who lives there, how sure the numbers are, and which public
-    programs may help.
+    Pick a Hawaiʻi State House or Senate district. Get a one-page brief you can
+    print, with sources. It shows who lives there, how sure the numbers are, and
+    which public programs may help.
   picker:
     legend: Choose a district
     chamber_label: Chamber
@@ -74,16 +74,19 @@ sections:
   figures:
     heading: Who lives here
     names:
-      population: Total population
+      population: Total residents
       age_65_share: Share of residents age 65 and over
       median_household_income: Median household income
     multi_county: This district lies in more than one county.
-    county_area: Share of county-covered district area
+    county_area: Share of the district's area in this county
     mapping_summary: County boundary sources and method
     mapping_source: State of Hawaiʻi official district boundaries and U.S. Census Bureau county boundaries
     state_label: "State of Hawaiʻi:"
-    not_available: not available
+    not_available: This figure is not available
     no_moe: no margin of error published
+    # Opens a SNAP count line ("The count is 773 households; ±172; reliable") on the case
+    # card and in the outreach table, so the line reads as a sentence (WO187).
+    count_lead: The count is
     no_cv: none
     # Used by the outreach and SNAP tables (pinned by tests/regressions/test_wo136_*).
     no_row: No published figure in the fact table yet.
@@ -99,7 +102,7 @@ sections:
       reliable: reliable
       moderate: "moderate: use with care"
       caution: use with caution
-      unavailable: not available
+      unavailable: This figure is not available
     # Sentence templates per figure kind (KINDS in app/brief_facts.py). Placeholders only:
     # every number comes from a Fact and is rendered by the template, never written here.
     # {reading} is one geography's figure with its margin of error and reliability word.
@@ -110,51 +113,51 @@ sections:
     count_reference: "{name} has {reading}"
     comparison_clause: "{lead} {name}, {reading}"
     comparison_tail: ", {tail}"
-    clause_separator: "; "
+    clause_separator: ". "
     sentence_end: "."
     companion_sentence: "Published count of residents age 65 and over in {geography}: {reading}."
     # A share's margin of error is in percentage points, not a percent of the share.
     moe_units:
       age_65_share: points
     count_unavailable: >-
-      The number of residents age 65 and over is not yet published here; it is
+      The number of residents age 65 and over is not yet published here. It is
       never computed from the share.
     # #30 comparison wording per kind, one per group from app/analysis/compare.py.
     # The reference figure goes between lead and tail.
     comparisons:
       share:
         higher:
-          lead: a larger share than
+          lead: That is a larger share than
         lower:
-          lead: a smaller share than
+          lead: That is a smaller share than
         indeterminate:
-          lead: about the same share as
+          lead: That is about the same share as
           tail: within the margins of error
         caution:
-          lead: "use with caution; no comparison claim with"
+          lead: "Use with caution. There is no comparison claim with"
         missing:
-          lead: "comparable published estimates are not available; no comparison claim with"
+          lead: "Figures to compare are not available. No comparison claim with"
       dollars:
         higher:
-          lead: higher than
+          lead: That is higher than
         lower:
-          lead: lower than
+          lead: That is lower than
         indeterminate:
-          lead: about the same as
+          lead: That is about the same as
           tail: within the margins of error
         caution:
-          lead: "use with caution; no comparison claim with"
+          lead: "Use with caution. There is no comparison claim with"
         missing:
-          lead: "comparable published estimates are not available; no comparison claim with"
-    source_summary: Source and uncertainty
+          lead: "Figures to compare are not available. No comparison claim with"
+    source_summary: Source and margin of error
     check_figure: Check this figure
     check_links:
       table: Published table on data.census.gov
       api: Census API query (may require an API key)
-      evidence: Recorded source evidence (see method above)
+      evidence: Saved copy of the source (see method above)
       district_source: District boundary source
       county_source: County boundary source
-      mapping_file: Committed county area mapping (see method above)
+      mapping_file: The county area file we keep (see method above)
     fields:
       source: Source
       table_id: Table
@@ -166,14 +169,14 @@ sections:
       endpoint: Data endpoint
 
   outreach:
-    measure: Households below poverty reporting no SNAP — an outreach signal
+    measure: "Households below poverty that say they got no SNAP: a sign for outreach"
     basis: "State of Hawaiʻi average per {chamber} district"
     caveat: >-
-      These are households, not people or an estimate of program eligibility.
+      These are households, not people. They are not an estimate of who is eligible.
       ACS uses national Census poverty thresholds, which differ from Hawaiʻi
       program guidelines. Survey answers undercount benefit receipt.
-      The state reference is the average count per district in the same chamber,
-      not a household rate. Differences in district household totals can affect
+      The state reference is the average count per district in the same chamber.
+      It is not a household rate. Gaps in district household totals can change
       this signal. The agency decides eligibility.
     program_url: https://humanservices.hawaii.gov/bessd/snap/
     groups:
@@ -181,7 +184,7 @@ sections:
       indeterminate: No clear difference from the state average per district
       lower: Clearly lower than the state average per district
       caution: "Use with caution; no comparison claim"
-      missing: Comparable published estimates are not available
+      missing: Figures to compare are not available here
 
   # The opening outreach case (#286). The record's own words are in data/cases.yaml.
   case:
@@ -193,21 +196,21 @@ sections:
     known_label: What we know
     unknown_label: What we don't
     problems:
-      geography: Geography
-      population: Population
+      geography: Place
+      population: People
       program: Program
     gap_label: Kind of gap
     action_label: Action
     gaps:
-      unused_appropriation: Unused appropriation
-      eligible_nonparticipation: Possible nonparticipation
-      application_or_renewal_barrier: Application or renewal barrier
-      underpayment: Underpayment
-      redemption_or_expiration_loss: Redemption or expiration loss
-      service_capacity_or_fit: Service capacity or fit
+      unused_appropriation: Unused funds
+      eligible_nonparticipation: May not be signed up
+      application_or_renewal_barrier: Hard to apply or renew
+      underpayment: Paid too little
+      redemption_or_expiration_loss: Benefits not used or lost
+      service_capacity_or_fit: Service is full or a poor fit
     actions:
-      targeted_information: Targeted information
-      navigator_referral: Navigator referral
+      targeted_information: Share facts with the group
+      navigator_referral: Refer to a helper
       outreach_planning_lead: Outreach-planning lead
       agency_follow_up: Agency follow-up
     next_label: Next step
@@ -224,28 +227,28 @@ sections:
 
   snap:
     brief:
-      heading: Households in poverty reporting no SNAP receipt
+      heading: Households in poverty that say they got no SNAP
       measure_note: >-
-        ACS survey-reported receipt over the past 12 months, not current enrollment or eligibility.
-        This published joint cell counts households with income under the poverty threshold that
-        reported no Food Stamps/SNAP receipt during that period.
+        ACS asks if a household got SNAP in the past 12 months. This is not current
+        enrollment or eligibility. This published joint cell counts households with income
+        under the poverty threshold that reported no Food Stamps/SNAP in that time.
       poverty_note: >-
-        ACS uses national Census poverty thresholds, not Hawaiʻi HHS poverty guidelines
-        (which exceed Census thresholds). This count does not determine eligibility or identify
-        unenrolled households that meet SNAP eligibility rules.
-    heading: Households below poverty reporting no SNAP receipt
+        ACS uses national Census poverty thresholds. They are lower than the Hawaiʻi HHS
+        poverty guidelines. This count does not decide who is eligible. It does not find
+        households that could get SNAP but are not enrolled.
+    heading: Households below poverty that say they got no SNAP
     units: households
     measure_note: >-
-      ACS survey-reported receipt over the past 12 months, not current enrollment or eligibility.
-      This published joint cell counts households with income below poverty that
-      reported no Food Stamps/SNAP receipt during that period.
+      ACS asks if a household got SNAP in the past 12 months. This is not current
+      enrollment or eligibility. This published joint cell counts households with
+      income below poverty that reported no Food Stamps/SNAP in that time.
     undercount_note: >-
-      Survey answers undercount benefit receipt; reported nonreceipt does not
-      establish that a household received no benefits.
+      Survey answers undercount benefit receipt. A household that says it got none
+      may still have had some.
     poverty_note: >-
-      ACS uses national Census poverty thresholds, not the higher Hawaiʻi HHS
-      poverty guidelines. This count does not determine eligibility or identify
-      households eligible for SNAP but not enrolled.
+      ACS uses national Census poverty thresholds. They are lower than the Hawaiʻi
+      HHS poverty guidelines. This count does not decide who is eligible. It does
+      not find households that could get SNAP but are not enrolled.
     referral_note: >-
       SNAP may help. DHS decides eligibility. Contact DHS or Aloha United Way 211
       for assistance.
@@ -256,12 +259,12 @@ sections:
   snap_question:
     heading: Ask about this district
     question: >-
-      How many households here have income under the poverty threshold and report
-      no SNAP receipt?
+      How many households here have income under the poverty line and say they got
+      no SNAP?
     submit: Show the answer
     answer_label: Answer
-    caption: District, county and state published estimates
-    estimate_label: Estimate and uncertainty
+    caption: Published counts for the district, county and state
+    estimate_label: Count and margin of error
     official_label: Official SNAP program page
     referral_label: Aloha United Way 211
 
@@ -270,15 +273,15 @@ sections:
     label: Ask about this district
     placeholder: What would you like to understand about this district?
     submit: Ask
-    working: Looking for published evidence…
+    working: Looking for published figures…
     answer_label: Answer
     paused: Ask is paused. The published brief is still available.
     live_unavailable: Live Ask is unavailable. The published brief is still available.
     clarify: Which population did you mean?
     fixed_income: >-
-      No published measure defines fixed income. Choose a separately measured population.
-      Social Security and retirement income populations overlap; they are never added
-      together and do not identify kūpuna or income adequacy.
+      No published measure defines fixed income. Choose one of the populations that is
+      measured on its own. Social Security and retirement income groups overlap. They
+      are never added together. They do not show who is kūpuna or whether income is enough.
     unavailable: "{label} · {geography}: not available. No published figure in the fact table yet."
     reading: "{label} · {geography}: {value} ({moe}; {reliability})."
     citation: "Source: {source}, table {table_id}, variable {variable}, {vintage}, geography {geography}. Method: {method}."
@@ -286,7 +289,7 @@ sections:
     percentage_moe: "margin of error (90%): ±{value} percentage points"
     geography_labels:
       published: Published for district
-      estimated: Estimated for district
+      estimated: Built from published figures
       context: County/state context
     comparison: "{label} · {district} compared with {reference}: {conclusion}."
     comparisons:
@@ -294,46 +297,46 @@ sections:
       lower: Clearly lower
       indeterminate: No clear difference within the margins of error
       caution: Use with caution; no comparison claim
-      missing: Comparable published estimates are not available
+      missing: Figures to compare are not available here
     refusals:
-      individual: I can describe district populations, but cannot look up or infer information about a person.
-      partisan: I can provide nonpartisan population evidence, but cannot give opinions on candidates, parties, votes or bills.
-      eligibility: I cannot determine eligibility. Programs may help; the agency decides eligibility. Use the official program page or Aloha United Way 211 for assistance.
-      unsupported: The published evidence does not support that claim. No count or eligibility estimate is available here.
+      individual: I can share facts on groups of people in the district. I cannot look up or guess facts about a person.
+      partisan: I give nonpartisan facts on groups of people. I cannot give views on candidates, parties, votes or bills.
+      eligibility: I cannot say who is eligible. Programs may help. The agency decides eligibility. Use the official program page or Aloha United Way 211 for help.
+      unsupported: The published figures do not support that claim. No count or estimate of who is eligible is here.
       out_of_scope: I can help with the published district populations and outreach cases shown in this brief. Please choose one of those topics.
     options:
-      population: Total population
+      population: Total residents
       age_65_share: Share of residents age 65 and over
       median_household_income: Median household income
       poverty_65_rate: Poverty rate, age 65 and over
       older_living_alone: Households with a person age 65 and over living alone
-      social_security_households: Households with Social Security income
-      retirement_households: Households with retirement income
-      below_poverty_no_snap: Households below poverty reporting no SNAP
+      social_security_households: Households that got Social Security in the past year
+      retirement_households: Households that got retirement income in the past year
+      below_poverty_no_snap: Households in poverty that say they got no SNAP
 
   profiles:
     heading: Program profiles
     official: Official program page
     referral: Aloha United Way 211
-    jurisdiction: Jurisdiction
-    category: Category
+    jurisdiction: Governed by
+    category: Program type
     unit: Assistance unit
     income_basis: Income basis
     income_period: Income period
     bases:
-      census_poverty: National Census poverty thresholds
+      census_poverty: The Census poverty line for the whole nation
       hawaii_hhs: Hawaiʻi HHS poverty guidelines
       smi: State median income
       ami: Area median income
-      not_applicable: Not applicable
+      not_applicable: Does not apply
     periods:
       monthly: Monthly
       annual: Annual
       past_12_months: Past twelve months
-      not_applicable: Not applicable
+      not_applicable: Does not apply
     conditions: Conditions
     exceptions: Exceptions
-    availability_label: Application availability
+    availability_label: Intake status
     availability:
       open: Open
       closed: Closed
@@ -343,27 +346,27 @@ sections:
     unknown: Unknown
     enacted: Enactment date
     effective: Effective date
-    applications: Application opening date
+    applications: Opening date
     rules: Official rule source
-    application: Application information
+    application: How to apply
     verified: Rule source last checked
-    next_steps: Organisational next steps
-    checked: Contact information checked
+    next_steps: Next steps for groups
+    checked: Contact details checked
     owner: Refresh owner
     refresh: Refresh deadline
-    statistics: Population context
-    limitations: These figures describe population context, not an eligibility or nonparticipation estimate. Program conditions and comparable participation evidence require separate review.
+    statistics: People in the area
+    limitations: These figures describe the people who live here. They do not estimate who is eligible or who is not taking part. Program rules and data on who takes part need a separate review.
     district: Published for district
     context: County/state context
-    unavailable: not available
-    missing: No matching published observation for this brief; catalog statistics are not displayed.
+    unavailable: This figure is not available
+    missing: No matching published figure for this brief. Catalog figures are not shown.
     moe: "margin of error (90%): ±{value}"
     no_moe: no margin of error published
     reliability:
       reliable: reliable
       moderate: "moderate: use with care"
       caution: use with caution
-      unavailable: not available
+      unavailable: This figure is not available
     citation: "Source: {source}, table {table_id}, variable {variable}, {vintage}, geography {geography}. Method: {method}."
     source: Published fact source
     permission: Dated reuse permission
@@ -394,7 +397,7 @@ folders:
   reason_label: Reason, one line
   reason_hint: Optional, up to 200 characters. Do not name or describe a person.
   status_label: Status
-  summary: "Priority: {priority}{reason}. Status: {status}."
+  summary: "Priority is {priority}{reason}. Status is {status}."
   summary_reason: " ({reason})"
   priorities:
     high: High
@@ -414,14 +417,14 @@ folders:
   # Notes on a saved case (#289). A personal detail is always refused; no confirmation lifts it.
   notes_heading: Notes
   note_label: Add a note
-  note_hint: Notes are about outreach and populations, not individual residents.
+  note_hint: Notes are about outreach and groups of people, not one resident.
   add_note: Add note
   checking_note: "Checking this note:"
   edit_note: Edit note
   edit_label: Edit this note
   update_note: Update note
   delete_note: Delete note
-  confirm_statement: This note is about outreach and populations, not individual residents.
+  confirm_statement: This note is about outreach and groups of people, not one resident.
   save_note: Save note
   cancel_note: Cancel
   no_notes: No notes yet.

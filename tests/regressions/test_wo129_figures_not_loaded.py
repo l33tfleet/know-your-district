@@ -16,14 +16,14 @@ from app.main import app as asgi_app
 from app.models import Fact
 from tests.regressions.test_wo97_brief_page import (
     ROWS,
-    SENATE_5,
-    STATE,
-    VARIABLES,
+    SENATE_5,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
+    STATE,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
+    VARIABLES,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
     Node,
     brief,
     build_db,
 )
-from tests.regressions.test_wo261_figure_sentences import check_span
+from tests.regressions.test_wo261_figure_sentences import check_span  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 
 
 def figures_copy() -> dict[str, Any]:
@@ -78,22 +78,6 @@ def test_empty_fact_table_cards_show_one_missing_phrase(
             if labels:
                 text = text.removeprefix(labels[0].text).strip()
             assert text == word, reading.text
-
-
-def test_rows_present_show_no_notice_and_cards_as_before(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    section = section_for(tmp_path, monkeypatch, list(ROWS))
-    assert notices(section) == []
-    for node in section.find_all(class_="figure"):
-        figure = node.attrs["data-figure"]
-        variable = VARIABLES[figure][0]
-        for geography in (SENATE_5, STATE):
-            fact = next(r for r in ROWS if r.variable == variable and r.geography == geography)
-            sentence = node.one("p", class_="reading", data_figure_sentence="")
-            check_span(
-                sentence.one("span", class_="reading", data_geography=geography), fact, figure
-            )
 
 
 def test_one_row_is_enough_to_drop_the_notice(

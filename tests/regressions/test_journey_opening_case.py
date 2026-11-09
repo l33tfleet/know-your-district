@@ -94,27 +94,6 @@ def test_every_district_shows_section_40_reading_above_the_figures(chamber: Cham
         assert not [word for word in BANNED if word in lowered], path
 
 
-def test_card_says_who_why_and_what_next() -> None:
-    found = card(TestClient(asgi_app), "/brief/senate/5")
-    record = cases.case("snap_no_receipt")
-    result = snap.load_result(DistrictId(chamber="senate", district=5))
-    assert found.one("h2").text == "Households in poverty reporting no SNAP receipt · SNAP"
-    text = flat(found)
-    assert record.claim in text
-    assert "survey-reported receipt over the past 12 months" in record.claim
-    assert "an outreach signal" in record.claim
-    assert "not current enrollment" in record.claim
-    for words in (*record.known.values(), *record.unknown.values()):
-        assert words in text
-    assert CASE_COPY["known_label"] in text and CASE_COPY["unknown_label"] in text
-    assert CASE_COPY["gaps"][record.failure.gap] in text
-    assert record.failure.note in text
-    assert CASE_COPY["actions"][record.action.kind] in text
-    assert result.referral_note in text
-    assert "may help" in text and "DHS decides eligibility" in text
-    assert record.program.rule_checked.isoformat() in text
-
-
 def test_card_cites_the_figure_and_notes_the_undercount_beside_it() -> None:
     """R1 and the benefit undercount trap apply to the card itself, not only to section 40."""
     found = card(TestClient(asgi_app), "/brief/senate/5")

@@ -54,6 +54,38 @@ author JSONL, one object per answer, with `id` (a nonempty, unique stable string
 above; use `[]` when no citations occur). This step creates no answer file or
 collector. Keep the original text unchanged when recording offsets.
 
+## Page rule (WO187)
+
+Every page string reads at grade 8 or below. "Page strings" are every block of
+every rendered page that `scripts/readability_corpus.py` collects (home, the
+not-found page, both picker lists, all 76 briefs, the multi-county fixture and
+the missing-figures fixture), plus every leaf of `app/copy.yaml` except a bare
+URL. `check_reading()` applies the rule; `tests/regressions/test_wo187_*.py`
+enforce it.
+
+- **Citations.** Citation spans (`data-field` source, table ID, vintage,
+  geography, endpoint) are excluded exactly as above. Methods, uncertainty,
+  labels, summaries and caveats are still scored.
+- **Fixed names.** Before scoring, each exact, case-sensitive occurrence of a
+  fixed name becomes the one-syllable word `Name`; the rest of the sentence is
+  still scored. The list is read from the data, never typed by hand: every
+  program `name` and `agency` in `data/programs.yaml`, the county names in
+  `app/copy.yaml` (`counties`), the island names in
+  `data/geo/islands/islands.json`, "Aloha United Way", and the sentence
+  "The agency decides eligibility." Longer names are replaced first. A near
+  miss (a misspelled name, "the agency may decide eligibility") is scored in
+  full. Official names and that sentence stay verbatim on the page.
+- **Labels.** A string of 1–3 words with no `.`, `!` or `?` (a label, button or
+  heading) gets no grade. Instead every word, other than `Name` or an exempt
+  Hawaiian name, must have 3 or fewer syllables by the heuristic above. So
+  "Answer" passes and "Check eligibility" fails. Every longer string, and every
+  string with sentence punctuation, must score grade 8 or below.
+- **Method notes.** Clauses in a stored fact method end as sentences
+  ("published estimate and 90% margin of error. MOE controlled. MOE
+  annotation: *****"), not with semicolons. Every word and annotation stays.
+- **Reliability words** stay those in `docs/data.md`; a missing figure reads
+  "This figure is not available".
+
 ## Editing glossary
 
 | Term | Prefer in reader-facing prose |

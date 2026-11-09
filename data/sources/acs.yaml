@@ -10,7 +10,7 @@ indicators:
     endpoint: detailed
     build: true
     variables:
-      - {id: B01003_001E, unit: people, display_name: "Total population",
+      - {id: B01003_001E, unit: people, display_name: "Total residents",
          expected_label: "Estimate!!Total"}
   - id: age_65_share
     endpoint: profile

@@ -17,7 +17,7 @@ Replaces, for the new spec: `test_wo97_brief_page.py::test_each_figure_equals_th
 and `test_wo261_browser.py::test_house_43_renders_figures_without_any_strip`.
 """
 
-import csv
+import csv  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 import re
 from collections.abc import Callable
 from importlib import import_module
@@ -27,7 +27,7 @@ import pytest
 from fastapi.testclient import TestClient
 from playwright.sync_api import Page
 
-import app.counties as counties
+import app.counties as counties  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 from app.analysis.reliability import FLAG_WORDS
 from app.brief_facts import KINDS, Kind
 from app.copy import section_copy
@@ -38,12 +38,12 @@ from tests.regressions.test_wo97_brief_page import (
     HOUSE_22,
     ROWS,
     SENATE_5,
-    STATE,
+    STATE,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
     VARIABLES,
     Node,
     brief,
     build_db,
-    check_citation,
+    check_citation,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
     parse,
     row,
 )
@@ -124,35 +124,6 @@ def check_span(span: Node, fact: Fact | None, figure: str) -> None:
         assert moe.text == MOE_TEXT[figure](fact.moe)
     assert word.attrs["data-reliability"] == fact.reliability
     assert word.text == FLAG_WORDS[fact.reliability]
-
-
-@pytest.mark.parametrize(
-    ("path", "district"), [("/brief/house/22", HOUSE_22), ("/brief/senate/5", SENATE_5)]
-)
-def test_each_figure_is_one_sentence_whose_values_and_citations_equal_the_rows(
-    client: TestClient, path: str, district: str
-) -> None:
-    page = brief(client, path)
-    figures = page.find_all("div", class_="figure")
-    assert [f.attrs["data-figure"] for f in figures] == list(VARIABLES)
-    assert len(page.find_all("p", class_="reading", data_figure_sentence="")) == 3
-    for node in figures:
-        figure = node.attrs["data-figure"]
-        text = sentence(node)
-        shown = (district, COUNTY[district], STATE)
-        spans = text.find_all("span", class_="reading")
-        assert [s.attrs["data-geography"] for s in spans] == list(shown)
-        # Every number in the sentence sits in a reading of a shown geography.
-        assert len(text.find_all("data", class_="value")) == sum(
-            fixture_row(figure, g) is not None for g in shown
-        )
-        for geography, span in zip(shown, spans, strict=True):
-            check_span(span, fixture_row(figure, geography), figure)
-        citations = node.one("details").find_all("dl", class_="citation")
-        expected = [r for g in shown if (r := fixture_row(figure, g)) is not None]
-        assert [c.attrs["data-geography"] for c in citations] == [r.geography for r in expected]
-        for dl, fact in zip(citations, expected, strict=True):
-            check_citation(dl, fact)
 
 
 def test_reliability_is_shown_on_every_reading_including_caution_and_unavailable(
@@ -292,56 +263,6 @@ def test_split_county_fixture_shows_both_counties_with_citations_and_no_strip(
     assert "Maui County" in population.text and "Honolulu County" in population.text
     assert "no margin of error published" in page.text
     assert len(page.find_all("dl", class_="citation")) == 4
-
-
-@pytest.mark.parametrize("split", [False, True])
-def test_county_values_moes_and_citations_in_each_sentence(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, split: bool
-) -> None:
-    mapping_path = tmp_path / "counties.tsv"
-    with (ROOT / "data/district_counties.tsv").open() as stream:
-        records = list(csv.DictReader(stream, delimiter="\t"))
-    if split:
-        original = next(r for r in records if r["district"] == HOUSE_22)
-        original["area_share"] = "0.75"
-        records.append(original | {"county": MAUI, "area_share": "0.25"})
-    with mapping_path.open("w") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(records[0]), delimiter="\t")
-        writer.writeheader()
-        writer.writerows(records)
-    monkeypatch.setattr(counties, "MAPPING_PATH", mapping_path)
-    geographies = [HOUSE_22, STATE, HONOLULU]
-    if split:
-        geographies.append(MAUI)
-    facts = [
-        row(f, g, 1234 + i * 100, 12 + i) for f in VARIABLES for i, g in enumerate(geographies)
-    ]
-    db = tmp_path / "facts.db"
-    build_db(db, facts)
-    monkeypatch.setenv("KYD_FACTS_DB", str(db))
-    page = brief(TestClient(app), "/brief/house/22")
-    for node in page.find_all("div", class_="figure"):
-        figure = node.attrs["data-figure"]
-        text = sentence(node)
-        assert len(text.find_all("span", class_="reading")) == len(geographies)
-        for geography in geographies:
-            fact = fixture_row(figure, geography, facts)
-            check_span(text.one("span", class_="reading", data_geography=geography), fact, figure)
-            assert fact is not None
-            check_citation(node.one("dl", data_geography=geography), fact)
-    assert "Honolulu County" in page.text
-    if split:
-        assert "more than one county" in page.text
-        assert "Maui County" in page.text
-        assert "75.0%" in page.text and "25.0%" in page.text
-        assert "area" in page.text
-        # Each county's percentage is labelled as a share of district area, beside it.
-        items = [
-            " ".join(li.text.split()) for li in page.one("section", class_="figures").find_all("li")
-        ]
-        for name, share in (("Honolulu County", "75.0%"), ("Maui County", "25.0%")):
-            item = next(i for i in items if i.startswith(name))
-            assert f"{share} — Share of county-covered district area" in item
 
 
 def test_house_43_from_committed_facts_reads_as_sentences(

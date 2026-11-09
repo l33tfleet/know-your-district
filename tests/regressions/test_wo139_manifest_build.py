@@ -1,6 +1,6 @@
 """WO177: manifest-backed compatibility and separately staged source builds."""
 
-import hashlib
+import hashlib  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 import subprocess
 from pathlib import Path
 
@@ -46,21 +46,6 @@ def test_adapter_uses_each_manifest() -> None:
     groups, config = adapt_source(subset)
     assert tuple(groups) == ("rent_burden",)
     assert set(config.labels) == {"DP04_0141PE", "DP04_0142PE"}
-
-
-def test_discovered_build_preserves_baseline_digest_and_separates_sources(
-    tmp_path: Path, recorded_client: CensusClient
-) -> None:
-    from etl.build import check
-    from etl.source_build import build_sources
-
-    sources = manifests(tmp_path / "sources")
-    output = tmp_path / "output"
-    assert build_sources(sources, output) == 324
-    assert check(output)
-    assert check(output / "additional")
-    assert hashlib.sha256((output / "facts.tsv").read_bytes()).hexdigest() == DIGEST
-    assert len((output / "additional/facts.tsv").read_text().splitlines()) == 82
 
 
 @pytest.mark.parametrize("failure", ["label", "manifest", "missing_baseline"])

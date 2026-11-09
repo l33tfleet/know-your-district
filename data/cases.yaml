@@ -13,13 +13,15 @@ cases:
       gap: eligible_nonparticipation
       note: "not measured: survey receipt is an outreach signal"
     claim: >-
-      A place to start: survey-reported receipt over the past 12 months is an outreach signal,
-      not current enrollment.
+      A place to start: survey-reported receipt over the past 12 months is an outreach signal.
+      This is not current enrollment.
     known:
       geography: The count is published for this district.
       population: A published joint cell, B22003_006, not built from separate totals.
     unknown:
-      program: Hawaiʻi household, deduction and nonfinancial rules are not in the survey.
+      program: >-
+        Hawaiʻi rules cover who counts as a household, which costs can be deducted,
+        and more than income. The survey does not cover all these rules.
     action:
       kind: navigator_referral
       links:

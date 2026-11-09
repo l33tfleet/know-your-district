@@ -6,7 +6,7 @@
   purpose: SNAP may help households pay for food.
   official_url: https://humanservices.hawaii.gov/bessd/snap/
   last_verified: 2026-10-25
-  guidance: The agency decides eligibility; contact Aloha United Way 211 for help finding services.
+  guidance: The agency decides eligibility. Call Aloha United Way 211 to find help.
   referral_url: https://www.auw211.org/
   agency_guideline:
     threshold: 2.0
@@ -32,10 +32,10 @@
   name: General Assistance (GA)
   agency: Hawaiʻi Department of Human Services, Benefit, Employment & Support Services Division
   level: state
-  purpose: General Assistance may help temporarily disabled adults pay for basic needs.
+  purpose: GA may help adults who cannot work for a while pay for basic needs.
   official_url: https://humanservices.hawaii.gov/bessd/ga/
   last_verified: 2026-10-25
-  guidance: The agency decides eligibility; contact Aloha United Way 211 for help finding services.
+  guidance: The agency decides eligibility. Call Aloha United Way 211 to find help.
   referral_url: https://www.auw211.org/
   agency_guideline:
     threshold: null
@@ -58,7 +58,7 @@
 # EOEL FAQ verified 2026-11-08 by work-order reviewer; supplied to offline writer.
 # Dated FAQ cohort supersedes older portal text; program-expert review pending.
 - {id: public-pre-k, name: EOEL Public Pre-K, agency: Hawaiʻi Executive Office on Early Learning, level: state,
-  purpose: Public pre-K may help families access early learning at participating public schools., official_url: 'https://earlylearning.ehawaii.gov/wf/page/help.html', last_verified: 2026-11-08, guidance: The agency decides eligibility; contact Aloha United Way 211 for help finding services., referral_url: 'https://www.auw211.org/', agency_guideline: {description: 'The 2026–27 cohort is children born August 1, 2021–July 31, 2023; enrollment priorities apply.', effective_date: null, poverty_line: not applicable, source_url: 'https://earlylearning.ehawaii.gov/wf/page/help.html', threshold: null},
+  purpose: Public pre-K may help families find early learning at public schools that take part., official_url: 'https://earlylearning.ehawaii.gov/wf/page/help.html', last_verified: 2026-11-08, guidance: The agency decides eligibility. Call Aloha United Way 211 to find help., referral_url: 'https://www.auw211.org/', agency_guideline: {description: 'The 2026–27 cohort is children born August 1, 2021–July 31, 2023; enrollment priorities apply.', effective_date: null, poverty_line: not applicable, source_url: 'https://earlylearning.ehawaii.gov/wf/page/help.html', threshold: null},
   eligibility_proxy: {acs_fields: [], geography: 'Hawaiʻi legislative districts, 2022 plan', method: 'Under-five residents are a broader outreach audience, not an eligibility or nonparticipation estimate.', poverty_line: null, source_url: 'https://earlylearning.ehawaii.gov/wf/page/help.html', status: unavailable, threshold: null, vintage: null},
   rules: {application_url: 'https://earlylearning.ehawaii.gov/wf/index.html', assistance_unit_definition: Child applying for a participating public-school classroom., availability: unknown, category: 'Public pre-K; distinct from Preschool Open Doors (POD), child-care subsidy and Head Start', conditions: ['For 2026–27, children born August 1, 2021–July 31, 2023; enrollment priorities apply.', Schedules follow participating schools; before/after-school care is unavailable., Available seats and current enrollment remain unconfirmed; ask EOEL about school access and schedule fit.], exceptions: [], income_basis: not_applicable, income_period: not_applicable, jurisdiction: Hawaiʻi, rule_url: 'https://earlylearning.ehawaii.gov/wf/page/help.html'},
   next_steps: {checked_at: 2026-11-08, contact: {organisation_id: auw211, url: 'https://www.auw211.org/'}, instructions: [Review the dated official FAQ and linked application portal; the agency decides eligibility.], refresh_after: 2026-12-08, refresh_owner: Program catalog maintainers}}
@@ -68,10 +68,10 @@
   name: Hawaiʻi ABLE savings program
   agency: Hawaiʻi Department of Budget and Finance
   level: state
-  purpose: Hawaiʻi ABLE may help people with disabilities save for disability-related expenses.
+  purpose: Hawaiʻi ABLE may help people with a disability save for costs that come with it.
   official_url: https://www.ssa.gov/ssi/spotlights/spot-able.html
   last_verified: 2026-11-05
-  guidance: The agency decides eligibility; contact Aloha United Way 211 for help finding services.
+  guidance: The agency decides eligibility. Call Aloha United Way 211 to find help.
   referral_url: https://www.auw211.org/
   agency_guideline:
     threshold: null
