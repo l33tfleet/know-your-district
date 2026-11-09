@@ -13,6 +13,11 @@ Creations spend the creation limits and every other write spends the write limit
 Notes take two posts: the first checks the words and, when they are clean, answers with a confirm
 step carrying a token for exactly those words; the second sends the token back and saves. A
 personal detail is always refused (`app/folders/notes.py`). Delete needs no confirmation.
+
+The page states how long the folder lives, from `retention.RETENTION`, and carries a one-page
+summary that is all the printout shows: at most `PRINT_ROWS` cards, reasons cut to `PRINT_REASON`
+characters, no note's words and no figure, with what it leaves out counted. Every successful htmx
+write answers with both again, out of band (`folder_updates`), so neither goes stale on screen.
 """
 
 import importlib
@@ -21,9 +26,9 @@ import re
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
-from typing import cast
+from typing import cast, get_args
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Request
@@ -34,7 +39,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from app.copy import Copy, geography_name, load_copy, section_copy
 from app.features import enabled, require_feature
-from app.folders import notes
+from app.folders import notes, retention
 from app.folders.attention import needs_attention
 from app.folders.notes import Draft
 from app.folders.references import decode_match, encode_match
@@ -77,6 +82,14 @@ FOLDER_LINK = re.compile(
     r"(?:https?://[^/\s?#%]+)?/f/(?P<linked>[0-9a-f]{32})(?:\?preview=1)?(?:#card-[0-9]+)?"
     r"|(?P<bare>[0-9a-f]{32})"
 )
+
+# The printed summary's bounds: with the longest reasons, this many rows fit one Letter page.
+PRINT_ROWS = 12
+PRINT_REASON = 100
+# Hawaiʻi keeps no daylight time, so its offset is fixed.
+HAWAII = timezone(timedelta(hours=-10))
+# The page's blocks that a write answers with, out of band.
+UPDATES = ("folder_retention", "folder_print")
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
@@ -402,6 +415,124 @@ def render_notes(
     )
 
 
+def retention_notice(saved: datetime | None) -> str:
+    """The rule, from `RETENTION`; after a write, also the day it ends, in Hawaiʻi time.
+
+    Only a write knows its own moment: the store keeps the folder's last write to itself, so a
+    plain page load states the rule alone.
+    """
+    words: Copy = load_copy()["folders"]
+    rule = str(words["retention"]).format(days=retention.RETENTION.days)
+    if saved is None:
+        return rule
+    until = (saved + retention.RETENTION).astimezone(HAWAII).date()
+    dated = words["retention_saved"].format(
+        saved=notes.date_label(saved.astimezone(HAWAII).date().isoformat()),
+        until=notes.date_label(until.isoformat()),
+    )
+    return f"{rule} {dated}"
+
+
+@dataclass(frozen=True)
+class PrintRow:
+    """One card on the printed summary: names and office state, never a figure or a note's words."""
+
+    name: str
+    district: str
+    state: str
+    reason: str | None
+    notes: str
+
+
+@dataclass(frozen=True)
+class PrintSummary:
+    rows: tuple[PrintRow, ...]
+    omitted: tuple[str, ...]  # what the printout leaves out, one sentence each, always all three
+
+
+def shortened(text: str, limit: int) -> tuple[str, bool]:
+    """`text` within `limit` characters, the cut marked with an ellipsis; True when cut."""
+    if len(text) <= limit:
+        return text, False
+    return text[: limit - 1].rstrip() + "…", True
+
+
+def print_summary(cards: Sequence[Card], saved: Sequence[Note]) -> PrintSummary:
+    """High priority first, open before done, then in saving order; at most `PRINT_ROWS`."""
+    words: Copy = load_copy()["folders"]
+    order = get_args(Priority)
+    ranked = sorted(cards, key=lambda c: (order.index(c.priority), c.status == "done", c.id))
+    listed = ranked[:PRINT_ROWS]
+    names = card_names(listed)
+    live = {card.id for card in cards}
+    kept = [note for note in saved if note.card_id in live]
+    rows: list[PrintRow] = []
+    cut = 0
+    for card in listed:
+        reason = None
+        if card.reason:
+            reason, was_cut = shortened(card.reason, PRINT_REASON)
+            cut += was_cut
+        own = [note.dated for note in kept if note.card_id == card.id]
+        counted = (
+            words["print_notes"].format(count=len(own), dated=notes.date_label(max(own)))
+            if own
+            else words["print_no_notes"]
+        )
+        card_state = page_state(card.chamber, str(card.district))
+        assert card_state is not None
+        rows.append(
+            PrintRow(
+                name=names[card.case_id],
+                district=geography_name(card_state.district.fact_key),
+                state=words["print_row"].format(
+                    status=words["statuses"][card.status],
+                    priority=words["priorities"][card.priority],
+                ),
+                reason=reason,
+                notes=counted,
+            )
+        )
+    note_line = (
+        words["print_notes_omitted"].format(total=len(kept)) if kept else words["print_notes_none"]
+    )
+    return PrintSummary(
+        rows=tuple(rows),
+        omitted=(
+            words["print_cards"].format(
+                shown=len(listed), total=len(cards), omitted=len(cards) - len(listed)
+            ),
+            note_line,
+            words["print_shortened"].format(count=cut),
+        ),
+    )
+
+
+def share_link(request: Request, state: PageState, folder_id: str) -> str:
+    """The link to share is the folder's, never a form's address or an open editor's."""
+    return str(request.base_url).rstrip("/") + folder_path(folder_id, state)
+
+
+def folder_updates(request: Request, state: PageState, folder_id: str) -> Markup:
+    """The notice and summary blocks of `folder.html`, marked out of band, read after a write."""
+    with known_folder():
+        db = open_store(state)
+        folder = db.get_folder(folder_id)
+        saved = db.list_notes(folder_id)
+    template = templates.get_template("folder.html")
+    context = template.new_context(
+        {
+            "link": share_link(request, state, folder_id),
+            "oob": True,
+            "retention": retention_notice(datetime.now(UTC)),
+            "summary": print_summary(folder.cards, saved),
+            "words": load_copy()["folders"],
+        }
+    )
+    # The environment escapes on output, so the rendered blocks are markup already.
+    return Markup("".join(chunk for name in UPDATES for chunk in template.blocks[name](context)))
+
+
 def folder_page(
     request: Request,
     state: PageState,
@@ -419,8 +550,7 @@ def folder_page(
     from app.main import page_context
 
     words: Copy = load_copy()["folders"]
-    # The link to share is the folder's, never a form's address or an open editor's.
-    link = str(request.base_url).rstrip("/") + folder_path(folder_id, state)
+    link = share_link(request, state, folder_id)
     context = page_context() | {
         "attention": needs_attention(folder.cards, saved, datetime.now(UTC).date()),
         "case_names": card_names(folder.cards),
@@ -434,8 +564,11 @@ def folder_page(
         ],
         "folder": folder,
         "link": link,
+        "oob": False,
         "preview": state.preview,
         "reopen": folder_path(folder_id, state),
+        "retention": retention_notice(None),
+        "summary": print_summary(folder.cards, saved),
         "title": words["title"].format(name=folder.name),
         "words": words,
     }
@@ -455,24 +588,33 @@ def fork_redirect(
 
 
 def after_write(request: Request, state: PageState, folder_id: str, card_id: int) -> Response:
-    """htmx swaps the summary out of the card partial; a plain form goes back to the folder."""
+    """htmx swaps the summary out of the card partial; a plain form goes back to the folder.
+
+    The answer also carries the page's notice and printed summary, out of band.
+    """
     if request.headers.get("HX-Request") != "true":
         return RedirectResponse(folder_path(folder_id, state), status_code=303)
     with known_folder():
         folder = open_store(state).get_folder(folder_id)
     card = next(card for card in folder.cards if card.id == card_id)
-    return HTMLResponse(render_card(card, state, folder_id))
+    html = render_card(card, state, folder_id) + folder_updates(request, state, folder_id)
+    return HTMLResponse(html)
 
 
 def after_note(
     request: Request, state: PageState, folder_id: str, card_id: int, draft: Draft | None
 ) -> Response:
-    """htmx swaps the card's notes; a plain form sees its draft on the folder, else goes back."""
+    """htmx swaps the card's notes; a plain form sees its draft on the folder, else goes back.
+
+    No draft means a write just happened, so htmx also gets the notice and summary out of band.
+    """
     status_code = 422 if draft is not None and draft.refusal else 200
     if request.headers.get("HX-Request") == "true":
         with known_folder():
             saved = open_store(state).list_notes(folder_id)
         html = render_notes(state, folder_id, card_id, saved, draft)
+        if draft is None:
+            html += folder_updates(request, state, folder_id)
         return HTMLResponse(html, status_code=status_code)
     if draft is not None:
         return folder_page(request, state, folder_id, draft, status_code)

@@ -1,0 +1,93 @@
+/* The district folder's retention notice and one-page summary (#398). Every value comes from
+   tokens.css; the page itself is tokens.css's Letter @page. */
+
+.folder-retention {
+  font-size: var(--size-small);
+}
+
+.folder-print {
+  border-top: var(--rule-width) solid var(--color-rule);
+  border-bottom: var(--rule-width) solid var(--color-rule);
+  margin: var(--space-gap) 0;
+}
+
+.folder-print p {
+  margin: 0;
+}
+
+.folder-print-intro,
+.folder-print-order,
+.folder-omitted {
+  font-size: var(--size-small);
+}
+
+/* The screen shows the link in its own field; paper needs it written out. */
+.folder-print-link {
+  display: none;
+}
+
+.folder-print-rows {
+  margin: var(--headline-space) 0;
+}
+
+/* A reason may be one unbroken word of 200 characters; it wraps, never widens the page. */
+.folder-print-row {
+  margin: var(--headline-space) 0;
+  overflow-wrap: anywhere;
+}
+
+.folder-omitted {
+  font-weight: var(--weight-bold);
+}
+
+/* Paper gets the notices and the summary only: the full cards carry every figure with its
+   source and margin of error, and every note's words, so they stay on the screen, as the
+   summary says. */
+@media print {
+  .folder-link,
+  .folder-reopen,
+  .folder-attention,
+  .folder-full {
+    display: none;
+  }
+
+  .folder {
+    font-size: var(--print-text-size);
+    line-height: var(--print-line-height);
+  }
+
+  .folder h1 {
+    font-size: var(--print-headline-size);
+    margin: 0;
+  }
+
+  .folder h2 {
+    font-size: var(--print-heading-size);
+    margin: var(--print-space) 0;
+  }
+
+  .folder p {
+    margin: 0;
+  }
+
+  .folder-print {
+    margin: var(--print-space) 0;
+  }
+
+  .folder-print-link {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+
+  .folder-print-intro,
+  .folder-print-order,
+  .folder-omitted,
+  .folder-retention {
+    font-size: var(--print-text-size);
+  }
+
+  .folder-print-rows,
+  .folder-print-row {
+    margin: var(--print-space) 0;
+  }
+}
