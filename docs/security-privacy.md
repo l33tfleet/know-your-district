@@ -11,8 +11,8 @@ district, case IDs, priorities, statuses, timestamps, office-written reasons
 (at most 200 characters) and dated notes (at most 1,000 characters).
 Keep personal details out of folder names, reasons and notes; notes holding
 contact details are always refused. 128-bit link holders can edit. Removal soft-deletes
-(`deleted_at`). Cleanup purges folders unwritten for 180 days (startup, daily); a failed pass is logged and retried next day. Folder
-answers: no-store, no-referrer, noindex; bodies over 16 KiB: 413. Folders #155 owns future
+(`deleted_at`). Cleanup purges folders unwritten for 180 days (startup, daily); failed passes are logged, retried daily. Folder
+answers: no-store, no-referrer, noindex; bodies over 16 KiB: 413. #155 owns future
 storage.
 
 **Ask (#183).** The model facade sends TypeSafe one question, chamber/district
@@ -22,11 +22,11 @@ Upstream retention is unverified. Questions, responses, keys and exception
 messages are neither stored nor logged by Ask.
 
 `TYPESAFE_API_KEY` stays in the environment, never TOML. Missing keys pause.
-The shared runtime reserves input tokens atomically before calls; failures retain
-reservations. In-memory IP/token limits require one worker; UTC rollover clears
-counters and restarts reset limits. See [settings](agent.md).
+Input tokens are reserved atomically before calls; failures retain
+reservations. In-memory IP/token limits require one worker; UTC rollover and
+restarts reset counters. See [settings](agent.md).
 
-Complete serialized input and responses are bounded. No retries; configured
+Inputs and responses are bounded. No retries; configured
 wall-clock timeouts and four transport slots bound waiting/concurrency. Timed-out
 transports retain slots until completion. Invalid responses and upstream failures
 pause; programming errors expose only type names. Latency stays in memory.
