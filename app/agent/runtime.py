@@ -34,6 +34,7 @@ class Settings(BaseModel):
     timeout_seconds: Annotated[float, Field(gt=0, allow_inf_nan=False)] = 8
     request_input_tokens: PositiveInt = 8192
     daily_input_tokens: PositiveInt = 100000
+    force_recordings: Annotated[bool, Field(strict=True)] = False
 
 
 def load_settings() -> Settings:
@@ -73,7 +74,7 @@ class Runtime:
         """
         address = str(ip_address(ip))
         key = os.environ.get("TYPESAFE_API_KEY", "").strip()
-        if not key:
+        if self.settings.force_recordings or not key:
             return Paused(kind="paused")
         with self._lock:
             now = self._clock().astimezone(UTC)
