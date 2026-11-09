@@ -7,12 +7,13 @@ other write to the store.
 `app/main.py` runs `scheduled_cleanup` once at startup, before serving, then `run_cleanups`
 repeats it every `CLEANUP_INTERVAL_SECONDS` (a day) until shutdown. A scheduled pass skips while
 the flag is off and before the file exists (it only removes rows, so it never creates the file);
-a store that cannot be opened is logged as an error and the site keeps serving, as the folder
-routes answer 503 for the same fault.
+a store that cannot be opened, or that SQLite cannot read (locked, damaged), is logged as an error
+and the site keeps serving; the next pass tries again.
 """
 
 import asyncio
 import logging
+import sqlite3
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
@@ -73,6 +74,9 @@ def scheduled_cleanup(open_store: "Callable[[], FolderStore]") -> Purged | None:
         log.info("folder cleanup skipped: the folders flag is off")
     except StoreConfigError as exc:
         log.error("folder cleanup could not open the store: %s", exc)
+    except sqlite3.Error as exc:
+        # Locked past the busy timeout or damaged: the next pass retries; startup must not fail.
+        log.error("folder cleanup failed in SQLite: %s", exc)
     return None
 
 

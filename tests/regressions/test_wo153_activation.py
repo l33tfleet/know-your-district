@@ -328,6 +328,34 @@ def test_a_misplaced_store_is_logged_and_the_app_still_starts(
     assert not Path(__file__).with_name("inside.db").exists()
 
 
+def test_a_store_sqlite_cannot_read_is_logged_and_the_app_still_starts(
+    client: TestClient, db_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A damaged or locked file fails in SQLite, not in the store's config checks."""
+    db_path.write_bytes(b"not a database" * 100)
+    db_path.chmod(0o600)
+    with client:
+        assert client.get("/healthz").status_code == 200
+    errors = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert any("folder cleanup" in r.getMessage() for r in errors)
+
+
+def test_a_failed_scheduled_pass_does_not_stop_the_schedule(
+    client: TestClient, db_path: Path, clock: Clock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(retention, "CLEANUP_INTERVAL_SECONDS", 0.05)
+    db_path.write_bytes(b"not a database" * 100)
+    db_path.chmod(0o600)
+    with client:
+        db_path.unlink()
+        make_folder(db_path)
+        clock.advance(days=181)
+        deadline = time.monotonic() + 5
+        while folder_count(db_path) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert folder_count(db_path) == 0
+
+
 # --- the privacy note states the store and its guards as built ---
 # Replaces test_journey_folder_save.py::test_privacy_note_states_the_folder_store_facts, whose
 # "no automatic purge or retention period" stopped being true when cleanup was scheduled.

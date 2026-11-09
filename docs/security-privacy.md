@@ -11,7 +11,7 @@ district, case IDs, priorities, statuses, timestamps, office-written reasons
 (at most 200 characters) and dated notes (at most 1,000 characters).
 Keep personal details out of folder names, reasons and notes; notes holding
 contact details are always refused. 128-bit link holders can edit. Removal soft-deletes
-(`deleted_at`). Cleanup purges folders unwritten for 180 days (startup, daily). Folder
+(`deleted_at`). Cleanup purges folders unwritten for 180 days (startup, daily); a failed pass is logged and retried next day. Folder
 answers: no-store, no-referrer, noindex; bodies over 16 KiB: 413. Folders #155 owns future
 storage.
 
