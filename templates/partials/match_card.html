@@ -1,4 +1,11 @@
-{# Generalizes sections/15-case.html; card is a detached MatchCard. #}
+{# Generalizes sections/15-case.html; card is a detached MatchCard.
+   A surface that offers saving passes `save_words`, `save_action` and `save_surface` from
+   `app.folders.routes.save_context`, at the top level or in its `section`. The form sits after
+   the article, so every surface's article stays identical; it never prints. #}
+{% set context_section = section if section is defined and section is mapping else {} %}
+{% set card_save_words = save_words if save_words is defined else context_section.save_words %}
+{% set card_save_action = save_action if save_action is defined else context_section.save_action %}
+{% set card_save_surface = save_surface if save_surface is defined else context_section.save_surface %}
 <article class="case" data-match="{{ card.id }}"{% if card.case_id %} data-case="{{ card.case_id }}"{% endif %} aria-label="{{ card.program_name }}">
   <h3>{{ card.population }} · {{ card.program_name }}</h3>
   <p>{{ card.agency }}</p>
@@ -41,3 +48,13 @@
     {% else %}<p>{{ card.wording.no_county_steps }}</p>{% endif %}
   </div>
 </article>
+{% if card_save_words %}
+{% set save_id = "save-" ~ card_save_surface ~ "-" ~ card.population_id ~ "-" ~ card.program_id %}
+<form class="match-save screen-only" method="post" action="{{ card_save_action }}">
+  <input type="hidden" name="population_id" value="{{ card.population_id }}">
+  <input type="hidden" name="program_id" value="{{ card.program_id }}">
+  <label for="{{ save_id }}">{{ card_save_words.existing }}</label>
+  <input id="{{ save_id }}" name="folder" type="text" autocomplete="off" spellcheck="false">
+  <button type="submit">{{ card_save_words.label }}</button>
+</form>
+{% endif %}
