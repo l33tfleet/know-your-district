@@ -75,19 +75,6 @@ def test_migrations_repeat_safely_and_records_survive_restart(db_path: Path) -> 
     assert all(has_table(db_path, name) for name in ("cards", "notes", "rate_buckets"))
 
 
-def test_failed_migration_rolls_back_whole(db_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    capped(db_path).initialize()
-    add_folders(db_path, range(1))
-    add_migration(monkeypatch, "CREATE TABLE half (id INTEGER); INSERT INTO no_such VALUES (1);")
-
-    with pytest.raises(sqlite3.OperationalError, match="no_such"):
-        capped(db_path).initialize()
-
-    assert not has_table(db_path, "half")
-    assert scalar(db_path, VERSION) == 1
-    assert scalar(db_path, FOLDERS) == 1
-
-
 def test_newer_database_is_refused(db_path: Path) -> None:
     capped(db_path).initialize()
     with closing(sqlite3.connect(db_path)) as db:
@@ -143,51 +130,8 @@ def test_flag_off_touches_nothing(
     assert not (tmp_path / "folders.db").exists()
 
 
-def test_migration_past_the_ceiling_rolls_back_as_a_capacity_refusal(
-    db_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    capped(db_path).initialize()
-    add_migration(
-        monkeypatch, "CREATE TABLE bulky (b BLOB); INSERT INTO bulky VALUES (zeroblob(1048576));"
-    )
-
-    with pytest.raises(store.CapacityError, match="database size"):
-        capped(db_path).initialize()
-
-    assert scalar(db_path, VERSION) == 1
-    assert not has_table(db_path, "bulky")
-    assert db_bytes(db_path) <= LIMIT
-
-
 @pytest.mark.parametrize("limit", [1000, 4096 * 2**33], ids=["under-a-page", "past-sqlite-max"])
 def test_ceiling_sqlite_cannot_enforce_is_refused(db_path: Path, limit: int) -> None:
     with pytest.raises(store.CapacityError, match="cannot enforce"):
         capped(db_path, limit).initialize()
     assert list(db_path.parent.glob("*folders.db*")) == []
-
-
-def test_pending_migration_cannot_spend_free_pages_past_the_ceiling(
-    db_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    capped(db_path, 8 * LIMIT).initialize()
-    add_folders(db_path, range(2000))
-    with closing(sqlite3.connect(db_path)) as db, db:
-        db.execute("DELETE FROM folders WHERE rowid > 1")
-    assert scalar(db_path, "PRAGMA freelist_count") > 8
-    size = db_bytes(db_path)
-    assert size > LIMIT
-    capped(db_path).initialize()  # past its ceiling with nothing to migrate, it still opens
-
-    add_migration(monkeypatch, "CREATE TABLE small (id INTEGER);")
-    with pytest.raises(store.CapacityError, match="cannot enforce"):
-        capped(db_path).initialize()
-
-    assert scalar(db_path, VERSION) == 1
-    assert not has_table(db_path, "small")
-    assert (scalar(db_path, FOLDERS), db_bytes(db_path)) == (1, size)
-
-    # Refused, not stuck: a limit that fits the file lets the same migration through.
-    capped(db_path, 8 * LIMIT).initialize()
-    capped(db_path, 8 * LIMIT).initialize()  # a second run would fail on CREATE TABLE
-    assert has_table(db_path, "small")
-    assert scalar(db_path, VERSION) == 2

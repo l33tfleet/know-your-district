@@ -7,11 +7,11 @@ records, chat history, profiles or user content persist.
 With `folders` enabled, only `app/folders/store.py` writes: mode 0600, outside
 the checkout, at `KYD_FOLDERS_DB` or
 `$XDG_STATE_HOME/know-your-district/folders.db` (else `~/.local/state`). Stored: folder name,
-district, case IDs, priorities, statuses, timestamps, office-written reasons
+district, case IDs, [decisions](suggestions.md), priorities, statuses, timestamps, office-written reasons
 (at most 200 characters) and dated notes (at most 1,000 characters).
 Keep personal details out of folder names, reasons and notes; notes holding
 contact details are always refused. 128-bit link holders can edit. Removal soft-deletes
-(`deleted_at`). Cleanup purges folders unwritten for 180 days (startup, daily); failed passes are logged, retried daily. Folder
+(`deleted_at`). Cleanup purges folders unwritten for 180 days (startup, daily); failed passes are logged, retried. Folder
 answers: no-store, no-referrer, noindex; bodies over 16 KiB: 413. #155 owns future
 storage.
 
@@ -39,5 +39,5 @@ Only app logs redact folder links. Git exclusions only prevent staging.
 Evidence: [handlers](../app/main.py), [facts](../app/facts.py),
 [agent](../app/agent/__init__.py), [provider](../app/agent/provider.py),
 [ETL](../etl/census.py), [exclusions](../.gitignore), [server](../Makefile),
-[folders](../app/folders/store.py), [schema](../app/folders/schema.sql),
+[folders](../app/folders/store.py), [schema](../app/folders/schema.sql) [v2](../app/folders/suggestions.sql),
 [retention](../app/folders/retention.py).
