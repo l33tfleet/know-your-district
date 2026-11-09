@@ -3,6 +3,11 @@
 Every folder route that writes goes through `FolderService` (#153): creations spend the creation
 limits, every other write spends the write limit. Writes stay in `app/folders/store.py`.
 
+The guards are live in the production app (`app/main.py`): `FolderHttpGuard` wraps every request,
+so `/f/…` and `/folders` answers carry `PRIVATE_HEADERS` (refusals and 404s too, flag on or off)
+and a body over `MAX_BODY_BYTES` is refused with 413 before any route reads it; startup calls
+`install_log_redaction`, so Uvicorn's access and error lines show `/f/[redacted]`.
+
 Environment: `KYD_FOLDERS_SECRET` (at least 32 bytes) keys the address hash and the note
 confirmations; changing it voids unused confirmations and restarts the per-address counts.
 Without it, notes answer 503 while saves and status changes are still counted, keyed per process.

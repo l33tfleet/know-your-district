@@ -1,10 +1,14 @@
 """ASGI entry point: `uvicorn app.main:app`.
 
 Startup validates section declarations, their templates and features.toml before serving.
+It then installs the folder guards (#153): folder links are redacted from the log lines, and
+expired folders are removed at startup and once a day after. Every folder route answers with
+private headers and a capped request body (`FolderHttpGuard`).
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,8 +23,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app import places
 from app.brief import discover, render_section
 from app.copy import geography_name, load_copy
-from app.features import validate_features
+from app.features import enabled, validate_features
+from app.folders import retention
 from app.folders import routes as folders
+from app.folders.service import FolderHttpGuard, install_log_redaction
+from app.folders.store import FEATURE as FOLDERS
+from app.folders.store import FoldersDisabledError, FolderStore
 from app.page_state import page_state
 from app.web import ask, matches, snap
 from etl.boundaries import DISTRICT_COUNTS
@@ -51,13 +59,32 @@ def validate_startup() -> None:
     load_cases()
 
 
+def cleanup_store() -> FolderStore:
+    """The store as cleanup sees it: writable whenever any request may write (flag on or preview).
+
+    The flag is checked before the path, so an off flag never makes the store's directory.
+    """
+    state = page_state("house", "1", preview=True)
+    assert state is not None
+    if not enabled(FOLDERS, state):
+        raise FoldersDisabledError
+    return folders.open_store(state)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     validate_startup()
+    install_log_redaction()
+    await asyncio.to_thread(retention.scheduled_cleanup, cleanup_store)
+    schedule = asyncio.create_task(retention.run_cleanups(cleanup_store))
     yield
+    schedule.cancel()
+    with suppress(asyncio.CancelledError):
+        await schedule
 
 
 app = FastAPI(title="Know Your District", docs_url=None, redoc_url=None, lifespan=lifespan)
+app.add_middleware(FolderHttpGuard)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 app.include_router(snap.router)
 app.include_router(ask.router)
