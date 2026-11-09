@@ -5,6 +5,7 @@ Use the canonical population registry and mapping contracts. Missing facts remai
 unavailable; neither review status nor a survey count establishes eligibility.
 """
 
+from app.folders.routes import save_context
 from app.match_cards import to_match_card
 from app.page_state import PageState
 from app.tools.matches import DistrictMatches
@@ -47,4 +48,5 @@ WORDS = {
 
 def context(state: PageState) -> dict[str, object]:
     ranked = DistrictMatches(state.district).get_matches(load_mappings())
-    return {"matches": [to_match_card(match) for match in ranked], "words": WORDS}
+    cards = [to_match_card(match) for match in ranked]
+    return {"matches": cards, "words": WORDS} | save_context(state, "ranked")
