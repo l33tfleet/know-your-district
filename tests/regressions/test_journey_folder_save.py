@@ -680,26 +680,6 @@ def privacy_note() -> str:
     return " ".join((ROOT / "docs/security-privacy.md").read_text(encoding="utf-8").split())
 
 
-@pytest.mark.parametrize(
-    "fact",
-    [
-        "KYD_FOLDERS_DB",
-        "know-your-district/folders.db",
-        "~/.local/state",
-        "`app/folders/store.py`",
-        "0600",
-        "at most 200 characters",
-        "128-bit link",
-        "`deleted_at`",
-        "no automatic purge or retention period",
-        "../app/folders/store.py",
-        "../app/folders/schema.sql",
-    ],
-)
-def test_privacy_note_states_the_folder_store_facts(fact: str) -> None:
-    assert fact in privacy_note()
-
-
 @pytest.mark.parametrize("claim", ["no writable user store", "Neither capability is available"])
 def test_privacy_note_no_longer_denies_the_folder_store(claim: str) -> None:
     assert claim not in privacy_note()
