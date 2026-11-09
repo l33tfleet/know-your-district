@@ -296,6 +296,51 @@ def test_save_reopen_track_and_add_to_an_existing_folder(
     assert len(folder_cards(site, path)) == 1
 
 
+@pytest.mark.parametrize("preview", ["", "?preview=1"])
+def test_a_copied_link_after_an_existing_folder_save_takes_another_save(
+    site: TestClient, policy: Path, preview: str
+) -> None:
+    """The redirect after a save into a folder ends in `#card-N`; Copy link copies it as is."""
+    if preview:
+        policy.write_text(FLAGS.replace('folders = "on"', 'folders = "preview"'), encoding="utf-8")
+    brief = parse(site.get(f"{BRIEF}{preview}").text)
+    first, second = [f for f in save_forms(brief) if "population_id" in fields(f)][:2]
+    empty = site.post(f"{EMPTY}{preview.replace('?', '&')}", content="", headers=FORM)
+    folder = empty.headers["location"]
+    into = submit(site, first, folder=f"http://testserver{folder}")
+    assert into.status_code == 303
+    copied = f"http://testserver{into.headers['location']}"
+    assert re.fullmatch(r"http://testserver/f/[0-9a-f]{32}(\?preview=1)?#card-[0-9]+", copied)
+    again = submit(site, second, folder=copied)
+    assert again.status_code == 303, again.text
+    assert again.headers["location"].partition("#")[0] == folder
+    assert {c.one("article").attrs["data-match"] for c in folder_cards(site, folder)} == {
+        selection(first),
+        selection(second),
+    }
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        f"/f/{'a' * 32}#card-",
+        f"/f/{'a' * 32}#card-1x",
+        f"/f/{'a' * 32}#note-1",
+        f"{'a' * 32}#card-1",
+        f"/f/{'a' * 32}#card-1#card-2",
+    ],
+)
+def test_only_the_app_card_fragment_is_accepted_on_a_folder_link(
+    site: TestClient, tmp_path: Path, link: str
+) -> None:
+    refused = site.post(
+        EMPTY, content=urlencode({"folder": link}) + "&" + VALID_MATCH, headers=FORM
+    )
+    assert refused.status_code == 422
+    assert refused.json()["detail"] == WORDS["bad_folder"]
+    assert count(tmp_path, "cards") == 0
+
+
 def test_ask_answer_saves_the_selected_match(site: TestClient, policy: Path) -> None:
     forms = save_forms(surface(site, policy, "ask"))
     assert {fields(f)["population_id"] for f in forms} == {"below_poverty_no_snap"}

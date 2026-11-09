@@ -71,9 +71,11 @@ NOTE_IDS: TypeAdapter[int] = TypeAdapter(NoteId)
 # No proxy is trusted yet, so behind one every office shares the proxy's write count.
 TRUSTED_PROXIES: tuple[Network, ...] = ()
 SAVE_FIELDS = ("case_id", "chamber", "district", "population_id", "program_id", "folder")
-# A folder link as the folder page shows it, or its bare id; nothing else is guessed at.
+# A folder link as the folder page shows it (with the `#card-N` a save redirects to, which
+# Copy link copies as is), or its bare id; nothing else is guessed at.
 FOLDER_LINK = re.compile(
-    r"(?:https?://[^/\s?#%]+)?/f/(?P<linked>[0-9a-f]{32})(?:\?preview=1)?|(?P<bare>[0-9a-f]{32})"
+    r"(?:https?://[^/\s?#%]+)?/f/(?P<linked>[0-9a-f]{32})(?:\?preview=1)?(?:#card-[0-9]+)?"
+    r"|(?P<bare>[0-9a-f]{32})"
 )
 
 router = APIRouter()
