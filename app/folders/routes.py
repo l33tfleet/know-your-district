@@ -8,7 +8,7 @@ Every card surface posts one save form to `POST /folders`: a case (`case_id`, `c
 `district`) or a match (`population_id`, `program_id`, with `?district=house-22`), plus an
 optional `folder` link to save into an existing folder. No selection starts an empty folder.
 Creations spend the creation limits and every other write spends the write limit, both keyed by
-`KYD_FOLDERS_SECRET`; without it, writes answer 503.
+`KYD_FOLDERS_SECRET` or, when it is unset, a key this process keeps; only notes answer 503.
 
 Notes take two posts: the first checks the words and, when they are clean, answers with a confirm
 step carrying a token for exactly those words; the second sends the token back and saves. A
@@ -38,7 +38,7 @@ from app.folders import notes
 from app.folders.attention import needs_attention
 from app.folders.notes import Draft
 from app.folders.references import decode_match, encode_match
-from app.folders.service import FolderService, Network, client_ip, load_secret
+from app.folders.service import FolderService, Network, client_ip, load_secret, rate_secret
 from app.folders.store import (
     FEATURE,
     CapacityError,
@@ -122,18 +122,23 @@ def known_folder() -> Generator[None]:
         ) from exc
 
 
-def note_service(state: PageState, message: str = "no_secret") -> FolderService:
-    """Writes need `KYD_FOLDERS_SECRET` for their counts, notes also for confirmations; else 503."""
+def note_service(state: PageState) -> FolderService:
+    """Notes need `KYD_FOLDERS_SECRET` for their confirmations and counts; without it, 503."""
     try:
         secret = load_secret()
     except StoreConfigError as exc:
-        raise HTTPException(status_code=503, detail=load_copy()["folders"][message]) from exc
+        raise HTTPException(status_code=503, detail=load_copy()["folders"]["no_secret"]) from exc
     with known_folder():
         return FolderService(open_store(state), secret)
 
 
 def write_service(state: PageState) -> FolderService:
-    return note_service(state, "no_write_secret")
+    """Saves and status changes: always counted, keyed per process when the secret is unset.
+
+    Never used for a note: its confirmations need the real secret (`note_service`).
+    """
+    with known_folder():
+        return FolderService(open_store(state), rate_secret())
 
 
 def save_context(state: PageState, surface: str) -> dict[str, object]:

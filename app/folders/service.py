@@ -5,6 +5,7 @@ limits, every other write spends the write limit. Writes stay in `app/folders/st
 
 Environment: `KYD_FOLDERS_SECRET` (at least 32 bytes) keys the address hash and the note
 confirmations; changing it voids unused confirmations and restarts the per-address counts.
+Without it, notes answer 503 while saves and status changes are still counted, keyed per process.
 """
 
 import hashlib
@@ -13,6 +14,7 @@ import ipaddress
 import logging
 import os
 import re
+import secrets
 from collections.abc import Awaitable, Callable, Generator, Mapping
 from contextlib import contextmanager
 from typing import cast
@@ -38,6 +40,7 @@ from etl.boundaries import Chamber
 
 SECRET_ENV = "KYD_FOLDERS_SECRET"
 MIN_SECRET_BYTES = 32
+_PROCESS_RATE_KEY = secrets.token_bytes(MIN_SECRET_BYTES)
 # A full note, every character four UTF-8 bytes percent-encoded, plus its form fields.
 MAX_BODY_BYTES = 16 * 1024
 CREATE_PER_IP = RateRule(scope="create:ip:", limit=10, window_seconds=60 * 60)
@@ -83,6 +86,20 @@ def load_secret() -> bytes:
     if len(secret) < MIN_SECRET_BYTES:
         raise StoreConfigError(f"{SECRET_ENV} must be at least {MIN_SECRET_BYTES} bytes")
     return secret
+
+
+def rate_secret() -> bytes:
+    """The key for the per-address counts: `KYD_FOLDERS_SECRET`, else this process's own key.
+
+    Saves and status changes worked before they were throttled, with or without the secret, so
+    a missing secret must not stop them. The fallback key is random and never stored: the counts
+    restart with the process, and nothing that outlives it links a hash to an address. Note
+    confirmations still need the real secret (`load_secret`).
+    """
+    try:
+        return load_secret()
+    except StoreConfigError:
+        return _PROCESS_RATE_KEY
 
 
 def _screen(text: str) -> None:

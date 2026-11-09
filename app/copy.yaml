@@ -433,7 +433,6 @@ folders:
   note_rate: "Too many changes in a short time. Try again in {seconds} seconds."
   no_secret: Notes are not available here because KYD_FOLDERS_SECRET is not set to at least 32 bytes.
   # Saving a card from any surface (#153); nothing is written when one of these is refused.
-  no_write_secret: Folders cannot be saved or changed here because KYD_FOLDERS_SECRET is not set to at least 32 bytes.
   unknown_fields: "Unknown form fields: {fields}. Valid fields: {valid}."
   district_twice: Give the district once, in the form or in the address, not both.
   mixed_selection: Save a case or a population and program match, not both.

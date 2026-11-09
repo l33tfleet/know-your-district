@@ -502,23 +502,65 @@ def test_every_existing_folder_write_is_throttled(
     assert count(tmp_path, "cards") == 1
 
 
-def test_without_a_secret_no_folder_is_created_or_changed(
+def test_without_a_secret_saves_still_work_and_are_still_throttled(
     site: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    path = site.post(EMPTY, content=VALID_MATCH, headers=FORM).headers["location"]
-    number = card_number(folder_cards(site, path)[0])
+    """Story step 5 ran without `KYD_FOLDERS_SECRET` before saves were throttled; it still must.
+
+    Throttling then keys its counts per process; notes still need the real secret.
+    """
     monkeypatch.delenv(service.SECRET_ENV)
-    for endpoint, body in (
-        (EMPTY, ""),
-        (EMPTY, VALID_MATCH),
-        ("/folders", VALID_CASE),
-        (f"{path}/cards/{number}/status", "status=done"),
-    ):
-        refused = site.post(endpoint, content=body, headers=FORM)
-        assert refused.status_code == 503, endpoint
-        assert service.SECRET_ENV in refused.json()["detail"]
-    assert (count(tmp_path, "folders"), count(tmp_path, "cards")) == (1, 1)
-    assert summary(site, path, number) == "Priority: Normal. Status: Idea."
+    for endpoint, body in ((EMPTY, ""), (EMPTY, VALID_MATCH), ("/folders", VALID_CASE)):
+        saved = site.post(endpoint, content=body, headers=FORM)
+        assert saved.status_code == 303, (endpoint, saved.text)
+    assert (count(tmp_path, "folders"), count(tmp_path, "cards")) == (3, 2)
+    path = site.post("/folders", content=VALID_CASE, headers=FORM).headers["location"]
+    number = card_number(folder_cards(site, path)[0])
+    for field, value in (("priority", "high"), ("status", "planned")):
+        changed = site.post(
+            f"{path}/cards/{number}/{field}", content=f"{field}={value}", headers=HTMX
+        )
+        assert changed.status_code == 200, changed.text
+    assert summary(site, path, number) == "Priority: High. Status: Planned."
+    note = site.post(
+        f"{path}/cards/{number}/notes", content=urlencode({"body": NOTE}), headers=HTMX
+    )
+    assert note.status_code == 503
+    assert service.SECRET_ENV in note.json()["detail"]
+    assert count(tmp_path, "notes") == 0
+    # The priority and status changes above already count: a limit of 3 leaves one more.
+    rule: store.RateRule = service.WRITE_PER_IP
+    monkeypatch.setattr(service, "WRITE_PER_IP", rule.model_copy(update={"limit": 3}))
+    first = site.post(f"{path}/cards/{number}/status", content="status=done", headers=FORM)
+    assert first.status_code == 303
+    refused = site.post(f"{path}/cards/{number}/status", content="status=idea", headers=FORM)
+    assert refused.status_code == 429
+    assert summary(site, path, number) == "Priority: High. Status: Done."
+    tight(monkeypatch, "CREATE_PER_IP")
+    site.post(EMPTY, content="", headers=FORM)
+    assert site.post(EMPTY, content="", headers=FORM).status_code == 429
+
+
+def test_story_step_5_saves_from_the_snap_region_without_a_secret(
+    site: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The story server runs without `KYD_FOLDERS_SECRET`: the SNAP save must still land."""
+    monkeypatch.delenv(service.SECRET_ENV)
+    region = parse(site.get(BRIEF).text).one("section", aria_label="SNAP")
+    (form,) = save_forms(region)
+    saved = submit(site, form)
+    assert saved.status_code == 303, saved.text
+    page = site.get(saved.headers["location"])
+    assert page.status_code == 200
+    number = card_number(folder_cards(site, saved.headers["location"])[0])
+    path = saved.headers["location"]
+    for field, value in (("priority", "high"), ("status", "planned")):
+        changed = site.post(
+            f"{path}/cards/{number}/{field}", content=f"{field}={value}", headers=HTMX
+        )
+        assert changed.status_code == 200, changed.text
+        assert "Saved" in changed.text
+    assert summary(site, path, number) == "Priority: High. Status: Planned."
 
 
 # --- the browser: htmx updates on a saved match card ---
