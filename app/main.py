@@ -3,7 +3,7 @@
 Startup validates section declarations, their templates and features.toml before serving.
 It then installs the folder guards (#153): folder links are redacted from the log lines, and
 expired folders are removed at startup and once a day after. Every folder route answers with
-private headers and a capped request body (`FolderHttpGuard`).
+private headers and a capped request body (`FolderHttpGuard`, outermost, so a 500 is private too).
 """
 
 import asyncio
@@ -19,6 +19,7 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import ASGIApp
 
 from app import places
 from app.brief import discover, render_section
@@ -83,8 +84,18 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
         await schedule
 
 
-app = FastAPI(title="Know Your District", docs_url=None, redoc_url=None, lifespan=lifespan)
-app.add_middleware(FolderHttpGuard)
+class KnowYourDistrict(FastAPI):
+    """The app with `FolderHttpGuard` outermost.
+
+    `add_middleware` would place it inside Starlette's ServerErrorMiddleware, so the 500 that
+    middleware writes for an unhandled folder-route error would miss the private headers.
+    """
+
+    def build_middleware_stack(self) -> ASGIApp:
+        return FolderHttpGuard(super().build_middleware_stack())
+
+
+app = KnowYourDistrict(title="Know Your District", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 app.include_router(snap.router)
 app.include_router(ask.router)

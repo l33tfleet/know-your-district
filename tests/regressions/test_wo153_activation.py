@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 from uvicorn.logging import AccessFormatter
 
 from app import features
-from app.folders import retention, service, store
+from app.folders import retention, routes, service, store
 from app.main import app as asgi_app
 from app.page_state import PageState, page_state
 
@@ -128,6 +128,20 @@ def test_folder_answers_are_private_with_the_flag_off(flag: Flag) -> None:
     flag("off")
     response = TestClient(asgi_app).get(f"/f/{ABSENT}")
     assert response.status_code == 404
+    assert private(response.headers) == PRIVATE
+
+
+def test_an_unhandled_folder_route_error_is_private(
+    flag: Flag, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Starlette's ServerErrorMiddleware writes the 500; the guard must sit outside it."""
+
+    def broken(_state: PageState) -> store.FolderStore:
+        raise RuntimeError("injected folder-route failure")
+
+    monkeypatch.setattr(routes, "open_store", broken)
+    response = TestClient(asgi_app, raise_server_exceptions=False).get(f"/f/{ABSENT}")
+    assert response.status_code == 500
     assert private(response.headers) == PRIVATE
 
 
@@ -340,19 +354,51 @@ def test_a_store_sqlite_cannot_read_is_logged_and_the_app_still_starts(
     assert any("folder cleanup" in r.getMessage() for r in errors)
 
 
+def wait_for(condition: Callable[[], bool], seconds: float = 5) -> bool:
+    deadline = time.monotonic() + seconds
+    while not condition() and time.monotonic() < deadline:
+        time.sleep(0.02)
+    return condition()
+
+
 def test_a_failed_scheduled_pass_does_not_stop_the_schedule(
-    client: TestClient, db_path: Path, clock: Clock, monkeypatch: pytest.MonkeyPatch
+    client: TestClient,
+    db_path: Path,
+    clock: Clock,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """The file stays damaged until a background pass has failed; a later pass then purges."""
     monkeypatch.setattr(retention, "CLEANUP_INTERVAL_SECONDS", 0.05)
+    passes: list[tuple[retention.Purged | None, int]] = []
+    original = retention.scheduled_cleanup
+
+    def sqlite_failures() -> int:
+        return sum(
+            r.levelno == logging.ERROR and "folder cleanup failed in SQLite" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def recorded(open_store: Callable[[], store.FolderStore]) -> retention.Purged | None:
+        result = original(open_store)
+        passes.append((result, sqlite_failures()))
+        return result
+
+    monkeypatch.setattr(retention, "scheduled_cleanup", recorded)
     db_path.write_bytes(b"not a database" * 100)
     db_path.chmod(0o600)
     with client:
+        # Startup's pass failed; now a scheduled pass, in the background, fails the same way.
+        assert passes == [(None, 1)]
+        assert wait_for(lambda: len(passes) >= 2)
+        assert passes[1] == (None, 2)
+        assert client.get("/healthz").status_code == 200
+        failed = len(passes)
         db_path.unlink()
         make_folder(db_path)
+        assert folder_count(db_path) == 1
         clock.advance(days=181)
-        deadline = time.monotonic() + 5
-        while folder_count(db_path) and time.monotonic() < deadline:
-            time.sleep(0.05)
+        assert wait_for(lambda: any(r is not None and r.folders == 1 for r, _ in passes[failed:]))
         assert folder_count(db_path) == 0
 
 
