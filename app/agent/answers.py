@@ -215,8 +215,12 @@ class AnswerRenderer:
             )
         )
 
-    def render(self, answer: Answer) -> Markup:
-        """Only approved copy and resolved facts reach HTML; all row text is escaped."""
+    def render(self, answer: Answer, save: Mapping[str, object] | None = None) -> Markup:
+        """Only approved copy and resolved facts reach HTML; all row text is escaped.
+
+        `save` is the HTTP edge's save-form context for match cards (static copy and public
+        identities only); this package never reaches the folder store.
+        """
         if isinstance(answer, Refuse):
             return escape(self.copy["refusals"][answer.reason])
         if isinstance(answer, Paused):
@@ -255,7 +259,7 @@ class AnswerRenderer:
             templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
             return Markup(
                 templates.get_template("partials/ask_answer.html").render(
-                    answer=_paragraph(sentence), match_cards=cards
+                    answer=_paragraph(sentence), match_cards=cards, **(save or {})
                 )
             )
         if answer.indicator_id == "none":

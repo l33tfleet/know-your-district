@@ -217,6 +217,11 @@ sections:
     evidence_link: County and state figures, and the source
     save_label: Save to folder
 
+  # The save form on every card (#153): one button, an optional link to an existing folder.
+  folder_save:
+    label: Save to folder
+    existing: Link to an existing folder (optional; leave blank to start a new folder)
+
   snap:
     brief:
       heading: Households in poverty reporting no SNAP receipt
@@ -427,6 +432,17 @@ folders:
   note_unconfirmed: This note was not confirmed as written. Check it again, then save.
   note_rate: "Too many changes in a short time. Try again in {seconds} seconds."
   no_secret: Notes are not available here because KYD_FOLDERS_SECRET is not set to at least 32 bytes.
+  # Saving a card from any surface (#153); nothing is written when one of these is refused.
+  no_write_secret: Folders cannot be saved or changed here because KYD_FOLDERS_SECRET is not set to at least 32 bytes.
+  unknown_fields: "Unknown form fields: {fields}. Valid fields: {valid}."
+  district_twice: Give the district once, in the form or in the address, not both.
+  mixed_selection: Save a case or a population and program match, not both.
+  incomplete_match: A match needs both population_id and program_id.
+  unknown_match: "Unknown match {population!r} · {program!r} for this district. Valid matches: {valid}."
+  bad_folder: Unknown folder link. Paste the whole link of a folder (it ends in /f/ and 32 letters and digits), or leave it blank to start a new folder.
+  nothing_to_save: Choose a case or a match to save into an existing folder.
+  capacity: "{detail} Nothing was saved."
+  match_gone: This saved match is no longer among the reviewed connections for this district, so no figure is shown. Use the official program page or Aloha United Way 211.
 
 # Geography names, shared by the headline and the figures' citations.
 geography:

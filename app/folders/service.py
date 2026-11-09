@@ -1,9 +1,7 @@
 """The rules around a folder write, and the guards that keep its link secret.
 
-Dormant by design: no route calls `FolderService` and no app installs these guards yet. #227 adds
-the routes; #228 wraps the app (`FolderHttpGuard(app)`, outermost, so a 500 is private too), calls
-`install_log_redaction()` at startup, and sets the two settings below. Writes stay in
-`app/folders/store.py`.
+Every folder route that writes goes through `FolderService` (#153): creations spend the creation
+limits, every other write spends the write limit. Writes stay in `app/folders/store.py`.
 
 Environment: `KYD_FOLDERS_SECRET` (at least 32 bytes) keys the address hash and the note
 confirmations; changing it voids unused confirmations and restarts the per-address counts.
@@ -35,6 +33,7 @@ from app.folders.store import (
     StoreConfigError,
     VisitorWrite,
 )
+from app.tools.matches import MatchReference
 from etl.boundaries import Chamber
 
 SECRET_ENV = "KYD_FOLDERS_SECRET"
@@ -110,12 +109,26 @@ class FolderService:
     def throttle_write(self, ip: str) -> None:
         self.store.spend_rate((self._for_address(WRITE_PER_IP, ip),))
 
+    def _spend_create(self, ip: str) -> None:
+        # The address rule comes first: one refused address never spends the shared budget.
+        self.store.spend_rate((self._for_address(CREATE_PER_IP, ip), CREATE_GLOBAL))
+
     def create_folder(
         self, name: FolderName, case_id: CaseId, chamber: Chamber, district: int, ip: str
     ) -> str:
-        # The address rule comes first: one refused address never spends the shared budget.
-        self.store.spend_rate((self._for_address(CREATE_PER_IP, ip), CREATE_GLOBAL))
+        self._spend_create(ip)
         return self.store.create_folder(name, case_id, chamber, district)
+
+    def create_empty_folder(self, name: FolderName, ip: str) -> str:
+        """The same creation limits as a folder that starts with a case."""
+        self._spend_create(ip)
+        return self.store.create_empty_folder(name)
+
+    def create_match_folder(self, name: FolderName, reference: MatchReference, ip: str) -> str:
+        """A new folder holding one validated match; the caller resolved the reference first."""
+        folder_id = self.create_empty_folder(name, ip)
+        self.store.save_match(folder_id, reference)
+        return folder_id
 
     def confirmation(self, folder_id: FolderId, body: str) -> str:
         """What the office's confirm step sends back; blocked or invalid text never gets one."""

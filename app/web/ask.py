@@ -4,6 +4,7 @@ The provider facade alone owns upstream HTTP. One shared Runtime admits calls;
 fact tools read detached rows after classification, with no open transaction.
 """
 
+import importlib
 import json
 from datetime import date
 from ipaddress import ip_address
@@ -14,6 +15,7 @@ from urllib.parse import parse_qs
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
 from starlette.concurrency import run_in_threadpool
 
@@ -25,6 +27,7 @@ from app.brief_facts import FORMATS, citation, reading
 from app.copy import geography_name, section_copy
 from app.counties import load_mapping
 from app.features import enabled, register_feature, require_feature
+from app.folders.routes import save_context
 from app.page_state import PageState, page_state
 from app.tools.facts import DistrictFacts
 from app.tools.matches import find_matches
@@ -163,7 +166,14 @@ def answer_context(state: PageState, fields: dict[str, str], address: str) -> di
                     )
                 }
             )
-        context["answer"] = AnswerRenderer(state.district, []).render(answer)
+        save = save_context(state, "ask")
+        context["answer"] = AnswerRenderer(state.district, []).render(answer, save)
+        if save and isinstance(answer, Routed) and answer.case_id and not answer.match_references:
+            # A legacy case answer saves through the case's own form, added here at the edge.
+            control = importlib.import_module("app.sections.15_case").save_control
+            context["answer"] += Markup('<div class="case-save">{}</div>').format(
+                control(state, answer.case_id, "ask")
+            )
     return context
 
 

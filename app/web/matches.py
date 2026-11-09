@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.copy import geography_name
 from app.features import register_feature, require_feature
+from app.folders.routes import save_context
 from app.page_state import page_state
 from app.populations import load_populations
 from app.tools.matches import CATALOG, DistrictMatches
@@ -68,14 +69,18 @@ def match_page(
     from app.main import page_context
 
     title = f"{selected_population.label} · {resolved.program.name}"
-    context = page_context() | {
-        "state": state,
-        "title": title,
-        "geography": geography_name(state.district.fact_key),
-        "card": card,
-        "program": resolved.program,
-        "retirement": resolved.status,
-        "official": "Official program information",
-        "referral": "Aloha United Way 211",
-    }
+    context = (
+        page_context()
+        | {
+            "state": state,
+            "title": title,
+            "geography": geography_name(state.district.fact_key),
+            "card": card,
+            "program": resolved.program,
+            "retirement": resolved.status,
+            "official": "Official program information",
+            "referral": "Aloha United Way 211",
+        }
+        | (save_context(state, "detail") if card is not None else {})
+    )
     return templates.TemplateResponse(request, "match.html", context)

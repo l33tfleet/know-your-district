@@ -34,7 +34,10 @@ def programs() -> tuple[dict[str, str], ...]:
 def context(state: PageState) -> dict[str, object]:
     result: dict[str, object] = {"programs": programs()}
     if enabled("program_cards", state):
+        # Local: a catalog-only brief loads neither the cards nor the folder routes.
+        from app.folders.routes import save_context
         from app.program_cards import load_cards
 
         result["program_cards"] = load_cards(state.district)
+        result |= save_context(state, "program")
     return result

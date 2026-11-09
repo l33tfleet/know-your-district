@@ -67,20 +67,28 @@ def case_card(state: PageState, case_id: str) -> dict[str, object]:
     }
 
 
-def save_control(state: PageState, case_id: str) -> Markup:
-    """The brief's form that starts a folder; the form carries only the case and its district."""
+def save_control(state: PageState, case_id: str, surface: str = "opening") -> Markup:
+    """The form that saves the case: blank link starts a folder, a pasted link adds to that one.
+
+    The form carries only the case and its district. `surface` keeps the field's id unique when
+    Ask shows the same case on the brief.
+    """
     district = state.district
     return Markup(
         '<form method="post" action="/folders{query}">'
         '<input type="hidden" name="case_id" value="{case_id}">'
         '<input type="hidden" name="chamber" value="{chamber}">'
         '<input type="hidden" name="district" value="{district}">'
+        '<label for="{field}">{existing}</label>'
+        '<input id="{field}" name="folder" type="text" autocomplete="off" spellcheck="false">'
         '<button type="submit">{label}</button></form>'
     ).format(
         query="?preview=1" if state.preview else "",
         case_id=case_id,
         chamber=district.chamber,
         district=district.district,
+        field=f"save-{surface}-{case_id}",
+        existing=section_copy("folder_save")["existing"],
         label=section_copy("case")["save_label"],
     )
 
