@@ -34,8 +34,10 @@ from pydantic import (
 
 from app.features import enabled, register_feature
 from app.folders import pii
+from app.folders.references import encode_match
 from app.folders.retention import Purged, expiry_cutoff
 from app.page_state import PageState
+from app.tools.matches import MatchReference
 from etl.boundaries import Chamber
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -289,6 +291,13 @@ def _insert_card(
         " DO NOTHING",
         (folder_id, case_id, chamber, district, stamp, stamp),
     )
+    if (
+        db.execute(
+            "SELECT count(*) FROM cards WHERE folder_id = ? AND deleted_at IS NULL", (folder_id,)
+        ).fetchone()[0]
+        > 200
+    ):
+        raise CapacityError("A folder can keep at most 200 cards.")
 
 
 def _update_card(
@@ -304,6 +313,19 @@ def _update_card(
     if changed.rowcount != 1:
         raise FolderNotFoundError
     _touch(db, folder_id)
+
+
+def _require_note_capacity(db: sqlite3.Connection, folder_id: str) -> None:
+    if (
+        db.execute(
+            "SELECT count(*) FROM notes JOIN cards ON cards.id = notes.card_id"
+            " WHERE cards.folder_id = ? AND cards.deleted_at IS NULL"
+            " AND notes.deleted_at IS NULL",
+            (folder_id,),
+        ).fetchone()[0]
+        > 1000
+    ):
+        raise CapacityError("A folder can keep at most 1,000 notes.")
 
 
 def _open(path: Path, max_bytes: int) -> sqlite3.Connection:
@@ -410,6 +432,7 @@ class FolderStore:
                     " SELECT id, ?, ?, 1, ?, ? FROM cards WHERE folder_id = ? AND card_key = ?",
                     (card.dated, card.body, stamp, stamp, DEMO_ID, card.case_id),
                 )
+            _require_note_capacity(db, DEMO_ID)
 
     @contextmanager
     def visitor_write(self, folder_id: str) -> Generator[VisitorWrite]:
@@ -450,19 +473,43 @@ class FolderStore:
                 self._transaction = None
 
     @checked
+    def create_empty_folder(self, name: FolderName) -> str:
+        """Create an empty office folder; district identities belong to its later cards."""
+        with self._write() as db:
+            return self._insert_folder(db, name)
+
+    def _insert_folder(self, db: sqlite3.Connection, name: str) -> str:
+        folder_id = new_folder_id()
+        stamp = now()
+        db.execute(
+            "INSERT INTO folders (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+            (folder_id, name, stamp, stamp),
+        )
+        return folder_id
+
+    @checked
     def create_folder(
         self, name: FolderName, case_id: CaseId, chamber: Chamber, district: District
     ) -> str:
         """A folder and its first case in one transaction: a folder's district is its cards'."""
-        folder_id = new_folder_id()
         with self._write() as db:
-            stamp = now()
-            db.execute(
-                "INSERT INTO folders (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
-                (folder_id, name, stamp, stamp),
-            )
+            folder_id = self._insert_folder(db, name)
             _insert_card(db, folder_id, case_id, chamber, district)
         return folder_id
+
+    @checked
+    def save_match(self, folder_id: FolderId, reference: MatchReference) -> None:
+        """Keep a validated selection, never its figures; repeated saves retain office state."""
+        with self._write() as db:
+            _require_mutable(db, folder_id)
+            _insert_card(
+                db,
+                folder_id,
+                encode_match(reference),
+                reference.district.chamber,
+                int(reference.district.district),
+            )
+            _touch(db, folder_id)
 
     @checked
     def save_case(
@@ -525,6 +572,7 @@ class FolderStore:
             ).fetchall()
             if not added:
                 raise FolderNotFoundError
+            _require_note_capacity(db, folder_id)
             _touch(db, folder_id)
         return int(added[0]["id"])
 
