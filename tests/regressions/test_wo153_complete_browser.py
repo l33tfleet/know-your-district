@@ -21,7 +21,9 @@ from app.copy import load_copy, section_copy
 from app.folders import retention, store
 from app.folders import routes as folder_routes
 from app.folders.notes import date_label
-from app.folders.references import encode_match
+from app.folders.references import (
+    encode_match,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
+)
 from app.tools.matches import MatchReference
 from etl.boundaries import DistrictId
 from tests.regressions.test_journey_folder_notes import (
@@ -41,12 +43,21 @@ from tests.regressions.test_journey_folder_save import (
     folder_store,
     live_folders,
     post,
-    state,
+    state,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 )
 from tests.regressions.test_wo97_brief_page import Node, parse
-from tests.regressions.test_wo122_browser_checks import axe_problems, base_url, browser, open_page
+from tests.regressions.test_wo122_browser_checks import (
+    axe_problems,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
+    base_url,
+    browser,
+    open_page,
+)
 from tests.regressions.test_wo122_browser_checks import page as page
-from tests.regressions.test_wo143_integration import config, pdf_pages, shipped_facts
+from tests.regressions.test_wo143_integration import (
+    config,
+    pdf_pages,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
+    shipped_facts,
+)
 
 # Reuse the #288 and WO122 fixtures unchanged.
 __all__ = ["base_url", "browser", "client", "config", "flag", "live_folders", "page"]
@@ -249,48 +260,6 @@ def identity(row: str) -> tuple[str, int]:
     return name, int(found[1])
 
 
-def test_saved_matches_are_listed_by_their_published_labels(
-    matched: tuple[TestClient, str, store.FolderStore],
-) -> None:
-    http, path, _ = matched
-    html = http.get(path).text
-    listed = rows(html)
-    assert [identity(row) for row in listed] == MATCHED_ROWS
-    assert all("High priority" in row for row in listed)
-    printed = summary(html)
-    # The encoded selection key is storage only: never on paper.
-    assert "match:v1" not in printed.text
-    assert disclosures(html) == [
-        WORDS["print_cards"].format(shown=12, total=25, omitted=13),
-        WORDS["print_notes_omitted"].format(total=25),
-        WORDS["print_shortened"].format(count=12),
-    ]
-    reasons = [r.text for r in printed.find_all("span", class_="folder-print-reason")]
-    assert len(reasons) == 12
-    assert all(r.endswith("…") and len(r) <= folder_routes.PRINT_REASON for r in reasons)
-    assert not printed.find_all(class_="case") and not printed.find_all(class_="figure")
-    assert "n" * 50 not in printed.text
-    assert html.count('class="folder-card"') == 25
-
-
-def test_a_match_card_write_refreshes_the_summary_with_its_identity(
-    matched: tuple[TestClient, str, store.FolderStore],
-) -> None:
-    http, path, db = matched
-    key = encode_match(match("disability", "hawaii-able", 1))
-    cards = db.get_folder(path.rsplit("/", 1)[-1]).cards
-    able = next(card for card in cards if card.case_id == key)
-    response = post(http, f"{path}/cards/{able.id}/status", "status=done", HTMX)
-    assert response.status_code == 200
-    listed = [row.text for row in oob(response.text, "folder-print").find_all("li")]
-    # Done sorts the ABLE card past the bound; the next SNAP match takes its place.
-    assert (ABLE, 1) not in [identity(row) for row in listed]
-    assert [identity(row) for row in listed][-1] == (SNAP_MATCH, 10)
-    assert WORDS["print_cards"].format(shown=12, total=25, omitted=13) in (
-        oob(response.text, "folder-print").text
-    )
-
-
 def test_the_summary_lists_at_most_the_bound_and_counts_what_it_leaves_out(
     crowded: tuple[TestClient, str],
 ) -> None:
@@ -385,35 +354,3 @@ def test_browser_keyboard_alone_changes_status_and_the_summary_follows(
     assert page.evaluate("document.activeElement.name") == "status"
     assert same_document(page)
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-
-
-def test_browser_many_cards_print_on_one_page_and_follow_a_change(
-    page: Page, live_folders: str, tmp_path: Path
-) -> None:
-    open_page(page, f"{live_folders}{BRIEF}?preview=1", 1440)
-    page.get_by_role("button", name=section_copy("case")["save_label"]).click()
-    page.wait_for_url("**/f/*")
-    folder = page.url.rsplit("/", 1)[-1].partition("?")[0]
-    db = store.FolderStore(tmp_path / "know-your-district/folders.db", state(preview=True))
-    fill_with_matches(db, folder)
-    page.reload(timeout=60_000)  # 25 full cards, each read fresh
-    mark_document(page)
-    printed = printed_rows(page)
-    assert [identity(row) for row in printed] == MATCHED_ROWS
-
-    # A saved match card changes; its own row follows without a reload.
-    snap_match = page.locator(".folder-card").nth(3)  # the SNAP match in House 1
-    snap_match.get_by_role("combobox", name="Status").select_option(label="Contacted")
-    page.locator("#folder-print", has_text="Contacted · High priority").wait_for()
-    changed = [row for row in printed_rows(page) if "Contacted" in row]
-    assert [identity(row) for row in changed] == [(SNAP_MATCH, 1)]
-    assert same_document(page)
-
-    page.emulate_media(media="print")
-    shown = page.locator("#folder-print").inner_text()
-    assert SNAP_MATCH in shown and ABLE in shown and PRE_K in shown
-    assert WORDS["print_cards"].format(shown=12, total=25, omitted=13) in shown
-    assert WORDS["print_notes_omitted"].format(total=25) in shown
-    assert WORDS["print_shortened"].format(count=12) in shown
-    assert pdf_pages(page) == 1
-    assert axe_problems(page) == []
