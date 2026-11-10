@@ -44,7 +44,7 @@
   <div class="folder-full">
     {% if missing_groups is defined %}
     <section id="missing-matches" aria-labelledby="missing-matches-heading">
-      <h2 id="missing-matches-heading">New matches</h2>
+      <h2 id="missing-matches-heading">{{ suggestion_words.heading }}</h2>
       <p><a href="{{ reopen }}">{{ words.reopen }}</a></p>
       {% for group in missing_groups %}
       <div class="missing-district">
@@ -56,7 +56,7 @@
       {% endfor %}
     </section>
     {% else %}
-    <p><a href="{{ matches_href }}">New matches</a></p>
+    <p><a href="{{ matches_href }}">{{ suggestion_words.heading }}</a></p>
     {% include "partials/folder-attention.html" %}
     {% for entry in cards %}
     {{ entry.card }}

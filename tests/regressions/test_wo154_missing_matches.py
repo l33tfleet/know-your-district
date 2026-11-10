@@ -1,13 +1,15 @@
 """#407: folder-wide missing matches subtract saved identities and durable decisions."""
 
 import sqlite3
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from playwright.sync_api import Page
 
-from app.copy import section_copy
+from app.copy import load_copy, section_copy
+from app.folders import routes as folder_routes
 from app.folders.references import decode_match
 from app.tools.suggest_matches import suggest_matches
 from app.tools.suggestions import propose
@@ -52,7 +54,7 @@ __all__ = [
 
 
 def missing(client: TestClient, path: str) -> Node:
-    response = client.get(f"{path}/matches")
+    response = client.get(f"{path}?matches=1")
     assert response.status_code == 200, response.text
     return parse(response.text).one("section", id="missing-matches")
 
@@ -73,7 +75,7 @@ def test_missing_matches_subtract_legacy_and_saved_identities_per_district(
     db.save_case(folder_id(path), "snap_no_receipt", "house", 22)  # repeated identity
     db.save_match(folder_id(path), proposal(PRE_K).match)
     db.save_case(folder_id(path), "snap_no_receipt", "senate", 3)
-    assert f'href="{path}/matches"' in client.get(path).text
+    assert f'href="{path}?matches=1"' in client.get(path).text
     section = missing(client, path)
     groups = section.find_all("div", class_="missing-district")
     assert len(groups) == 2
@@ -90,7 +92,7 @@ def test_missing_matches_subtract_legacy_and_saved_identities_per_district(
     ]
     ids = [
         n.attrs["id"]
-        for n in parse(client.get(f"{path}/matches").text).find_all()
+        for n in parse(client.get(f"{path}?matches=1").text).find_all()
         if "id" in n.attrs
     ]
     assert len(ids) == len(set(ids))
@@ -152,8 +154,8 @@ def test_empty_unknown_and_disabled_folders(client: TestClient, tmp_path: Path, 
     db = folder_store(tmp_path / "folders.db")
     path = f"/f/{db.create_empty_folder('Outreach')}"
     assert offered(missing(client, path)) == {}
-    assert client.get(f"/f/{'0' * 32}/matches").status_code == 404
-    assert flag("off").get(f"{path}/matches").status_code == 404
+    assert client.get(f"/f/{'0' * 32}?matches=1").status_code == 404
+    assert flag("off").get(f"{path}?matches=1").status_code == 404
 
 
 def test_browser_reopens_missing_matches_after_decisions(page: Page, live_folders: str) -> None:
@@ -161,7 +163,7 @@ def test_browser_reopens_missing_matches_after_decisions(page: Page, live_folder
     page.get_by_role("button", name=section_copy("case")["save_label"]).click()
     page.wait_for_url("**/f/*")
     folder = page.url.split("#")[0]
-    page.get_by_role("link", name="New matches", exact=True).click()
+    page.get_by_role("link", name=WORDS["heading"], exact=True).click()
     page.context.grant_permissions(["clipboard-read", "clipboard-write"])
     page.locator("button.copy-link").click()
     page.get_by_text("Link copied").wait_for()
@@ -172,11 +174,34 @@ def test_browser_reopens_missing_matches_after_decisions(page: Page, live_folder
     ).click()
     page.wait_for_url("**#card-*")
     assert page.locator(".folder-card").count() == 2
-    page.get_by_role("link", name="New matches", exact=True).click()
+    page.get_by_role("link", name=WORDS["heading"], exact=True).click()
     page.locator(f'[data-suggestion="{key(ABLE)}"]').get_by_role(
         "button", name=WORDS["dismiss"]
     ).click()
     page.wait_for_url("**#card-*")
     page.goto(folder)
-    page.get_by_role("link", name="New matches", exact=True).click()
+    page.get_by_role("link", name=WORDS["heading"], exact=True).click()
     assert page.locator(".folder-suggestion").count() == 0
+
+
+def test_missing_view_uses_shared_copy(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = create(client)
+    words = deepcopy(load_copy())
+    words["suggestions"]["heading"] = "Catalog connections marker"
+    monkeypatch.setattr(folder_routes, "load_copy", lambda: words)
+    document = parse(client.get(path).text)
+    link = document.one("a", href=f"{path}?matches=1")
+    assert link.text == "Catalog connections marker"
+    heading = missing(client, path).one("h2", id="missing-matches-heading")
+    assert heading.text == link.text
+
+
+@pytest.mark.parametrize("value", ["0", "true", "", "1%0A"])
+def test_unknown_matches_view_is_refused(client: TestClient, value: str) -> None:
+    path = create(client)
+    response = client.get(f"{path}?matches={value}")
+    assert response.status_code == 422
+    error = response.json()["detail"][0]
+    assert error["loc"] == ["query", "matches"]
+    assert error["type"] == "literal_error"
+    assert error["ctx"]["expected"] == "'1'"

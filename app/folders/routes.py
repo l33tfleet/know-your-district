@@ -28,7 +28,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
-from typing import cast, get_args
+from typing import Literal, cast, get_args
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Request
@@ -564,7 +564,8 @@ def folder_page(
             for card in (() if missing else folder.cards)
         ],
         "folder": folder,
-        "matches_href": f"/f/{folder_id}/matches{query_of(state)}",
+        "matches_href": f"/f/{folder_id}?matches=1{'&preview=1' if state.preview else ''}",
+        "suggestion_words": load_copy()["suggestions"],
         "link": link,
         "oob": False,
         "preview": state.preview,
@@ -741,25 +742,22 @@ def missing_groups(folder_id: str, state: PageState) -> list[dict[str, object]]:
     return groups
 
 
-@router.get("/f/{folder_id}/matches", response_class=HTMLResponse)
-def missing_matches(request: Request, folder_id: str, preview: str | None = None) -> HTMLResponse:
-    """New matches reuse suggestion forms and atomic decisions through a district's saved card.
-
-    A separate view keeps shared partial ids unique alongside lazy per-card suggestions.
-    """
-    state = guard(preview)
-    return folder_page(request, state, folder_id_or_404(folder_id), missing=True)
-
-
 @router.get("/f/{folder_id}", response_class=HTMLResponse)
 def show_folder(
-    request: Request, folder_id: str, preview: str | None = None, edit: str | None = None
+    request: Request,
+    folder_id: str,
+    preview: str | None = None,
+    edit: str | None = None,
+    matches: Literal["1"] | None = None,
 ) -> HTMLResponse:
-    """`?edit=<note>` opens that note's edit box; htmx selects the card's notes from the page."""
+    """`?edit=<note>` opens its editor; `?matches=1` shows missing catalog connections.
+
+    A separate view keeps suggestion ids unique and reuses atomic card decision forms.
+    """
     state = guard(preview)
     folder_id = folder_id_or_404(folder_id)
     editor = None if edit is None else id_or_404(edit, NOTE_IDS)
-    return folder_page(request, state, folder_id, open_editor=editor)
+    return folder_page(request, state, folder_id, open_editor=editor, missing=matches == "1")
 
 
 @router.post("/f/{folder_id}/cases")
