@@ -10,7 +10,9 @@ from dataclasses import asdict, dataclass
 from functools import cache
 from html.parser import HTMLParser
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Literal, cast
+from unittest.mock import patch
 
 import yaml
 from pydantic import BaseModel, ConfigDict, StrictInt
@@ -334,6 +336,38 @@ def rendered_pages() -> dict[str, str]:
     )
     with TestClient(app) as client:
         pages = {path: client.get(path).text for path in paths}
+    # Exercise real folder routes with a disposable store outside the checkout.
+    with (
+        TemporaryDirectory(prefix="kyd-reading-") as directory,
+        patch.dict("os.environ", {"KYD_FOLDERS_DB": f"{directory}/folders.db"}),
+        TestClient(app, follow_redirects=False) as client,
+    ):
+        created = client.post(
+            "/folders",
+            data={"case_id": "snap_no_receipt", "chamber": "house", "district": "22"},
+        )
+        assert created.status_code == 303, created.text
+        folder = created.headers["location"]
+        saved = client.post(
+            "/folders?district=house-22",
+            data={
+                "population_id": "below_poverty_no_snap",
+                "program_id": "snap",
+                "folder": folder,
+            },
+        )
+        assert saved.status_code == 303, saved.text
+        for suffix in ("", "?matches=1"):
+            response = client.get(folder + suffix)
+            assert response.status_code == 200, response.text
+            pages["fixture:folder" + suffix] = response.text
+        # The full population store exercises the same saved match with published inputs,
+        # while the brief store above also covers missing match inputs.
+        with patch.dict("os.environ", {"KYD_FACTS_DB": str(_ROOT / "data/populations/facts.db")}):
+            for suffix in ("", "?matches=1"):
+                response = client.get(folder + suffix)
+                assert response.status_code == 200, response.text
+                pages["fixture:folder-populations" + suffix] = response.text
     section = next(s for s in discover() if s.name == "figures")
     context = render_context(section, PageState(district=DistrictId(chamber="house", district=1)))
     content = cast(dict[str, object], context["section"])

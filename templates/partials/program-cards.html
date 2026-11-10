@@ -6,7 +6,7 @@
   {% for program in program_cards %}
   {% set card = program.match %}
   <div data-program-card="{{ card.program_id }}:{{ card.population_id }}">
-    <h3>{{ card.program_name }} · {{ card.population }}</h3>
+    <h3>{{ card.wording.next_step }}: {{ card.program_name }}. {{ card.population }}</h3>
     <p>{{ card.agency }}</p>
     <p>{{ card.disclaimer }} {{ program.guidance }}</p>
     <p><a href="{{ card.official_url }}">{{ card.wording.official }}</a> · <a href="{{ card.referral_url }}">{{ card.wording.referral }}</a>. {{ card.checked }}</p>

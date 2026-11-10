@@ -8,7 +8,7 @@
   <ol>
     {% for item in attention %}
     <li>
-      <a href="#card-{{ item.case.id }}">{{ case_names[item.case.case_id] }} · {{ geography_name(item.case.chamber ~ ':15:' ~ item.case.district ~ ':2022') }}</a>
+      <a href="#card-{{ item.case.id }}">{{ case_names[item.case.case_id] }}. {{ geography_name(item.case.chamber ~ ':15:' ~ item.case.district ~ ':2022') }}</a>
       <p><strong>{{ item.next_step }}</strong> — {{ item.reason }}</p>
     </li>
     {% endfor %}

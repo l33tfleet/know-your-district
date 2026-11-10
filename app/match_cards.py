@@ -16,23 +16,23 @@ from app.snap import SnapResult
 from app.tools.matches import ProgramMatch
 
 CLAIMS = {
-    "relevant_need": "Relevant need only — potential outreach audience",
-    "modeled_eligibility": "Modeled eligibility — agency confirmation required",
-    "comparable_nonparticipation": "Comparable nonparticipation — aggregate estimate",
+    "relevant_need": "Relevant need only — a group to reach",
+    "modeled_eligibility": "Model of who may meet the rules. The agency must check",
+    "comparable_nonparticipation": "Matched counts estimate how many meet the rules but lack aid",
 }
 
 # Mirrors the opening case labels in app/copy.yaml; adaptation performs no I/O.
 GAPS = {
-    "unused_appropriation": "Unused appropriation",
-    "eligible_nonparticipation": "Possible nonparticipation",
-    "application_or_renewal_barrier": "Application or renewal barrier",
-    "underpayment": "Underpayment",
-    "redemption_or_expiration_loss": "Redemption or expiration loss",
-    "service_capacity_or_fit": "Service capacity or fit",
+    "unused_appropriation": "Unused funds",
+    "eligible_nonparticipation": "May not be signed up",
+    "application_or_renewal_barrier": "Hard to apply or renew",
+    "underpayment": "Paid too little",
+    "redemption_or_expiration_loss": "Benefits not used or lost",
+    "service_capacity_or_fit": "Service is full or a poor fit",
 }
 ACTIONS = {
-    "targeted_information": "Targeted information",
-    "navigator_referral": "Navigator referral",
+    "targeted_information": "Share facts with the group",
+    "navigator_referral": "Refer to a helper",
     "outreach_planning_lead": "Outreach-planning lead",
     "agency_follow_up": "Agency follow-up",
 }
@@ -43,12 +43,12 @@ class CardWording(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    survey: str = "Survey population:"
-    not_available: str = "Not available"
+    survey: str = "Survey population: the group we could reach."
+    not_available: str = "Not available for this count"
     moe: str = "90% margin of error"
-    no_moe: str = "Margin of error unavailable"
-    unavailable: str = "unavailable"
-    missing: str = "Missing measurement"
+    no_moe: str = "Margin of error unavailable. The survey gives no range"
+    unavailable: str = "no range given"
+    missing: str = "Missing count"
     method: str = "Method"
     gap: str = "Kind of gap"
     action: str = "Action"
@@ -56,16 +56,14 @@ class CardWording(BaseModel):
     band: str = "Outreach band"
     known: str = "What we know"
     unknown: str = "What we don't"
-    none_documented: str = "None documented."
+    none_documented: str = "No facts on file."
     next_step: str = "Next step"
-    official: str = "Official program information"
+    official: str = "Official program information: read the steps to get help"
     referral: str = "Aloha United Way 211"
     county: str = "County/state context"
     outreach: str = "DHS SNAP outreach providers"
     checked: str = "Checked"
-    no_county_steps: str = (
-        "County next steps not documented. Use official program information or 211."
-    )
+    no_county_steps: str = "County next steps not documented. Ask the state for help. Use the official program page or 211."
 
 
 class MatchCard(BaseModel):
@@ -122,12 +120,12 @@ def to_match_card(
         record.population != population.id or record.program.url != p.official_url
     ):
         raise ValueError("case evidence must match the population and program")
-    known = tuple(("Observed condition", text) for text in mapping.observed_conditions)
-    unknown = tuple(("Unobserved condition", text) for text in mapping.unobserved_conditions)
+    known = tuple(("What we see", text) for text in mapping.observed_conditions)
+    unknown = tuple(("What we still need to know", text) for text in mapping.unobserved_conditions)
     links: tuple[tuple[str, HttpUrl], ...] = ()
     steps = tuple(p.next_steps.instructions) if p.next_steps else ()
     if p.next_steps:
-        links += (("Program assistance", p.next_steps.contact.url),)
+        links += (("Get help with the program", p.next_steps.contact.url),)
     if record:
         known += tuple(
             (key.capitalize(), record.known[key]) for key in PROBLEMS if key in record.known
@@ -157,8 +155,8 @@ def to_match_card(
         review_status=mapping.review_status,
         official_url=p.official_url,
         referral_url=HttpUrl(p.referral_url),
-        disclaimer="Program may help; the agency decides eligibility. "
-        "Bands rank outreach signals; they are not eligibility probabilities.",
+        disclaimer="The program may help. The agency decides eligibility. "
+        "Bands rank groups to reach. They are not the odds that a person meets the rules.",
         known=known,
         unknown=unknown,
         case_claim=record.claim if record else mapping.relevance,

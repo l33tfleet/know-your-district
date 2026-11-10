@@ -7,11 +7,11 @@
 {% set card_save_action = save_action if save_action is defined else context_section.save_action %}
 {% set card_save_surface = save_surface if save_surface is defined else context_section.save_surface %}
 <article class="case" data-match="{{ card.id }}"{% if card.case_id %} data-case="{{ card.case_id }}"{% endif %} aria-label="{{ card.program_name }}">
-  <h3>{{ card.population }} · {{ card.program_name }}</h3>
+  <h3>{{ card.wording.survey }} {{ card.population }}. {{ card.program_name }}</h3>
   <p>{{ card.agency }}</p>
   <div class="case-figure" data-match="{{ card.population_id }}:{{ card.program_id }}">
     <p>{{ card.wording.survey }} {{ card.population }}. {{ card.definition }}</p>
-    <p class="case-reading">{% if card.figure.value is not none %}{{ "{:,.0f}".format(card.figure.value) }} {{ card.unit }}{% else %}{{ card.wording.not_available }}{% endif %}; {% if card.figure.moe is not none %}{{ card.wording.moe }} ±{{ "{:,.0f}".format(card.figure.moe) }}{% else %}{{ card.wording.no_moe }}{% endif %}; {{ card.reliability_word }}.</p>
+    <p class="case-reading">{% if card.figure.value is not none %}{{ "{:,.0f}".format(card.figure.value) }} {{ card.unit }}{% else %}{{ card.wording.not_available }}{% endif %}. {% if card.figure.moe is not none %}{{ card.wording.moe }} ±{{ "{:,.0f}".format(card.figure.moe) }}{% else %}{{ card.wording.no_moe }}{% endif %}. {{ card.reliability_word }}.</p>
     <p>{{ card.figure.geography }} · {{ card.universe }} · {{ card.figure.method }}</p>
     {% for exclusion in card.exclusions %}<p>{{ exclusion }}</p>{% endfor %}
     {% for cell in card.figure.missing %}<p>{{ card.wording.missing }}: {{ cell }}</p>{% endfor %}

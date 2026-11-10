@@ -215,11 +215,11 @@ populations:
     unit: households
     universe: Households
     exclusions:
-      - Households at or above poverty are excluded from both terms.
+      - Both counts leave out households at or above the poverty line.
     definition: >-
-      Households below poverty that reported no SNAP in the past 12 months, as a share of
-      households below poverty. Self-reported receipt is undercounted; this does not establish
-      unmet need or eligibility.
+      This is the share of households below poverty that said they had no SNAP in the past
+      12 months. The survey misses some receipt. This does not prove unmet need or that
+      a household meets program rules.
     numerator: [B22003_006E]
     denominator: [B22003_003E, B22003_006E]
     period: past_12_months

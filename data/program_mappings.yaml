@@ -5,15 +5,15 @@
 - population_id: below_poverty_no_snap
   program_id: snap
   relevance: >-
-    SNAP may help with food costs. The published joint poverty/nonreceipt measure
-    is an outreach signal, not a count of eligible nonparticipants. The agency
-    decides eligibility; official information and Aloha United Way 211 are in the catalog.
+    SNAP may help with food costs. This joint survey count can guide outreach. It does
+    not count those who meet the rules but lack aid. The agency decides eligibility.
+    The catalog links to the official page and Aloha United Way 211.
   observed_conditions:
-    - Households below national Census poverty thresholds reporting no SNAP in the past 12 months.
+    - These households were below the national Census poverty line. They said they had no SNAP in the past 12 months.
   unobserved_conditions:
-    - Current income under applicable Hawaiʻi guidelines and allowed deductions.
-    - SNAP assistance-unit composition and nonfinancial conditions.
-    - Current receipt; self-reported past receipt is undercounted.
+    - Current income under Hawaiʻi rules. Costs the rules let households deduct.
+    - Who counts as part of the SNAP household. Rules beyond income.
+    - Who gets SNAP now. The survey misses some past receipt.
   claim: relevant_need
   review_status: pending
 

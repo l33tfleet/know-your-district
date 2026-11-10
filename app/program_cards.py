@@ -47,16 +47,14 @@ class ProgramCardWording(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     outreach_email: str = "Ask the agency about outreach here"
-    evidence: str = "Reason, uncertainty and cited evidence"
+    evidence: str = "Why, error range and sources"
     source_table: str = "Source table"
     service_areas: str = (
-        "County service areas only; contact listings do not establish local offices, "
-        "appointments or capacity."
+        "These are county service areas only. A contact on this list does not prove a local office exists. "
+        "It does not prove there are appointments or capacity."
     )
     verified: str = "Verified"
-    missing_contacts: str = (
-        "County contacts not documented. Use official program information or Aloha United Way 211."
-    )
+    missing_contacts: str = "County contacts not documented. Use official program information or Aloha United Way 211. Call 211 for help."
 
 
 class ProgramCard(BaseModel):

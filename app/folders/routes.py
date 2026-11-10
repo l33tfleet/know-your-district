@@ -355,7 +355,7 @@ def card_names(cards: Sequence[Card]) -> dict[str, str]:
         reference = decode_match(card.case_id, card.chamber, card.district)
         if reference is not None:
             names[card.case_id] = (
-                f"{programs[reference.program_id]} · {populations[reference.population_id]}"
+                f"{programs[reference.program_id]}. {populations[reference.population_id]}"
             )
     return names
 

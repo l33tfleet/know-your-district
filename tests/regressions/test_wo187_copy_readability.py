@@ -19,12 +19,13 @@ from scripts.readability_corpus import (
     rendered_pages,
     yaml_blocks,
 )
+from tests.regressions.test_wo97_brief_page import parse
 
 ROOT = Path(__file__).resolve().parents[2]
 ZIP_WORDS = "estimated from zip codes"
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def pages() -> dict[str, str]:
     return rendered_pages()
 
@@ -199,3 +200,72 @@ def test_block_ids_name_their_source(pages: dict[str, str]) -> None:
     blocks: list[Block] = page_blocks({"/": pages["/"]})
     assert any(b.id.startswith("/#") for b in blocks)
     assert any(b.id.startswith(str(ROOT / "app/copy.yaml")) for b in blocks)
+
+
+def test_saved_case_and_match_pages_are_scored(pages: dict[str, str]) -> None:
+    for path in (
+        "fixture:folder",
+        "fixture:folder?matches=1",
+        "fixture:folder-populations",
+        "fixture:folder-populations?matches=1",
+    ):
+        assert path in pages
+        page = parse(pages[path])
+        if path.endswith("?matches=1"):
+            assert page.find_all("section", id="missing-matches")
+            assert page.find_all("div", class_="folder-suggestion")
+        else:
+            assert page.find_all("section", class_="case")
+            assert page.find_all("article", class_="case")
+        assert "The agency decides eligibility." in page.text
+        assert page.find_all("a", href="https://www.auw211.org/")
+        failures = hard_blocks(page_blocks({path: pages[path]}))
+        assert not failures, [(b.text, r.grade, r.long_words) for b, r in failures]
+
+
+def test_match_card_labels_read_plainly_and_track_the_opening_case() -> None:
+    from app.copy import section_copy
+    from app.match_cards import ACTIONS, CLAIMS, GAPS, CardWording
+    from app.program_cards import ProgramCardWording
+    from scripts.readability_corpus import check_reading
+
+    words = section_copy("case")
+    assert words["gaps"] == GAPS
+    assert words["actions"] == ACTIONS
+    for text in (
+        *CLAIMS.values(),
+        *CardWording().model_dump().values(),
+        *ProgramCardWording().model_dump().values(),
+    ):
+        assert check_reading(text).ok, text
+
+
+def test_match_copy_keeps_survey_and_agency_limits() -> None:
+    from app.populations import load_populations
+    from etl.programs.mappings import load_mappings
+
+    population = next(p for p in load_populations().populations if p.id == "below_poverty_no_snap")
+    assert population.numerator == ("B22003_006E",)
+    assert population.denominator == ("B22003_003E", "B22003_006E")
+    assert population.unit == "households"
+    assert population.universe == "Households"
+    assert "12 months" in population.definition
+    assert "survey misses some receipt" in population.definition
+    assert "does not prove unmet need" in population.definition
+    mapping = next(m for m in load_mappings() if m.program_id == "snap")
+    assert mapping.claim == "relevant_need"
+    assert mapping.review_status == "pending"
+    assert mapping.modeling_evidence is mapping.comparability_evidence is None
+    assert "The agency decides eligibility." in mapping.relevance
+    assert "does not count those who meet the rules but lack aid" in mapping.relevance
+    assert "Aloha United Way 211" in mapping.relevance
+    unknown = " ".join(mapping.unobserved_conditions)
+    for limit in (
+        "Current income",
+        "deduct",
+        "SNAP household",
+        "Rules beyond income",
+        "gets SNAP now",
+        "misses some past receipt",
+    ):
+        assert limit in unknown
