@@ -17,6 +17,15 @@ home:
     programs may help.
   picker:
     legend: Choose a district
+    # The home picker's one select (#257): a group per chamber, an option per district.
+    district_label: District
+    groups:
+      house: "State House: districts 1–51"
+      senate: "State Senate: districts 1–25"
+    options:
+      house: House District {number}
+      senate: Senate District {number}
+    # Only find.html's older two-select picker still reads these three.
     chamber_label: Chamber
     chambers:
       house: House

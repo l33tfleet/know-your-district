@@ -181,23 +181,6 @@ def picker_form(client: TestClient) -> Node:
     return forms[0]
 
 
-def test_home_picker_is_a_plain_get_form_with_chamber_and_number(client: TestClient) -> None:
-    form = picker_form(client)
-    assert form.attrs.get("method", "get").lower() == "get"
-    chamber = form.one("select", name="chamber")
-    assert [o.attrs["value"] for o in chamber.find_all("option")] == ["house", "senate"]
-    number = form.one("select", name="n")
-    values = [o.attrs["value"] for o in number.find_all("option")]
-    # Without JavaScript one number list must reach every district in both chambers.
-    assert values == [str(n) for n in range(1, 52)]
-    assert form.find_all("button", type="submit")
-    for select in (chamber, number):
-        labels = [
-            lab for lab in form.find_all("label") if lab.attrs.get("for") == select.attrs["id"]
-        ]
-        assert len(labels) == 1 and labels[0].text
-
-
 @pytest.mark.parametrize(
     ("chamber", "number", "heading"),
     [("house", "22", "House District 22"), ("senate", "5", "Senate District 5")],
@@ -212,17 +195,6 @@ def test_choosing_a_district_without_javascript_opens_its_brief(
     assert response.headers["location"] == f"/brief/{chamber}/{number}"
     page = brief(client, response.headers["location"])
     assert heading in page.one("h1").text
-
-
-def test_picker_htmx_enhancement_uses_2x_attributes(client: TestClient) -> None:
-    chamber = picker_form(client).one("select", name="chamber")
-    assert chamber.attrs["hx-get"] == "/picker/numbers"
-    assert (
-        chamber.attrs["hx-target"] == "#" + picker_form(client).one("select", name="n").attrs["id"]
-    )
-    assert chamber.attrs["hx-swap"] == "outerHTML"
-    # htmx 4 renamed/added attributes; none may appear.
-    assert not [a for a in chamber.attrs if a.startswith(("hx-action", "hx-method", "hx-status"))]
 
 
 @pytest.mark.parametrize(("chamber", "count"), [("house", 51), ("senate", 25)])
