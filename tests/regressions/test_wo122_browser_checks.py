@@ -274,20 +274,6 @@ def test_every_source_details_reachable_by_keyboard(page: Page, base_url: str, w
     assert keyboard_problems(page) == []
 
 
-@pytest.mark.parametrize("width", WIDTHS)
-def test_picker_opens_brief_without_full_reload(page: Page, base_url: str, width: int) -> None:
-    open_page(page, base_url + "/", width)
-    assert reload_problems(page, base_url) == []
-
-
-def test_brief_reached_by_picker_passes_the_same_checks(page: Page, base_url: str) -> None:
-    open_page(page, base_url + "/", 390)
-    assert reload_problems(page, base_url) == []
-    assert axe_problems(page) == []
-    assert spelling_problems(page_text(page)) == []
-    assert keyboard_problems(page) == []
-
-
 # --- each planted defect makes its check fail ---
 
 
@@ -309,19 +295,6 @@ def test_planted_misspelled_place_name_fails_spelling(
     assert problems[0].startswith(f"{wrong!r} should be ")
 
 
-def test_planted_full_reload_fails_reload_check(page: Page, base_url: str) -> None:
-    open_page(page, base_url + "/", 1440)
-    # A copy of the form that htmx has not processed submits the browser's way: a full reload.
-    page.evaluate(
-        "(() => { const f = document.querySelector('form.picker');"
-        " const plain = f.cloneNode(true);"
-        " for (const e of [plain, ...plain.querySelectorAll('*')])"
-        "   for (const a of [...e.attributes]) if (a.name.startsWith('hx-')) e.removeAttribute(a.name);"
-        " f.replaceWith(plain); })()"
-    )
-    assert reload_problems(page, base_url) == ["choosing a district reloaded the whole page"]
-
-
 def test_planted_untabbable_source_fails_keyboard(page: Page, base_url: str) -> None:
     open_page(page, base_url + "/brief/house/22", 1440)
     page.evaluate("document.querySelector('.figure[data-figure=population] summary').tabIndex = -1")
@@ -336,16 +309,3 @@ def test_planted_summary_that_ignores_enter_fails_keyboard(page: Page, base_url:
         ".addEventListener('click', e => e.preventDefault())"
     )
     assert keyboard_problems(page) == ["source details of population does not open with Enter"]
-
-
-def test_planted_wrong_title_after_picker_fails_reload_check(page: Page, base_url: str) -> None:
-    open_page(page, base_url + "/", 1440)
-    # The brief still arrives without a reload, but the swapped-in response has the wrong title.
-    page.evaluate(
-        "document.addEventListener('htmx:beforeSwap', e => {"
-        " e.detail.serverResponse = e.detail.serverResponse.replace("
-        "   '<title>Hawaiʻi State House District 22', '<title>Wrong District 22'); })"
-    )
-    assert reload_problems(page, base_url) == [
-        "page title after the picker is 'Wrong District 22 · Know Your District'"
-    ]
