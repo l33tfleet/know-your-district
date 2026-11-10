@@ -117,6 +117,24 @@ def test_bad_combined_choice_is_html_404(client: TestClient, d: str) -> None:
     assert "/" in [a.attrs.get("href") for a in parse(response.text).find_all("a")]
 
 
+@pytest.mark.parametrize("control", ["\n", "\t", "\x00", "\r", "\x7f"], ids=repr)
+@pytest.mark.parametrize(
+    "where",
+    ["|senate-7", "senate-7|", "senate|-7", "senate-|7"],
+    ids=["leading", "trailing", "embedded-dash", "embedded-digit"],
+)
+def test_combined_choice_with_control_characters_is_html_404(
+    client: TestClient, control: str, where: str
+) -> None:
+    """Raw control characters are rejected as they arrive, never stripped into `senate-7`."""
+    d = where.replace("|", control)
+    assert d.replace(control, "") == "senate-7"
+    response = client.get("/brief", params={"d": d}, follow_redirects=False)
+    assert response.status_code == 404
+    assert response.headers["content-type"].startswith("text/html")
+    assert "location" not in response.headers
+
+
 def test_picker_numbers_partial_stays_available(client: TestClient) -> None:
     response = client.get("/picker/numbers", params={"chamber": "senate"})
     assert response.status_code == 200
