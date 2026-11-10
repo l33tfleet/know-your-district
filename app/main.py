@@ -31,7 +31,7 @@ from app.folders.service import FolderHttpGuard, install_log_redaction
 from app.folders.store import FEATURE as FOLDERS
 from app.folders.store import FoldersDisabledError, FolderStore
 from app.page_state import page_state
-from app.web import ask, matches, snap
+from app.web import ask, matches, snap, suggestions
 from etl.boundaries import DISTRICT_COUNTS
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -101,6 +101,7 @@ app.include_router(snap.router)
 app.include_router(ask.router)
 app.include_router(folders.router)
 app.include_router(matches.router)
+app.include_router(suggestions.router)
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
