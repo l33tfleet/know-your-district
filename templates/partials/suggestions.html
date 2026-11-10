@@ -1,0 +1,49 @@
+{# Suggested next steps for one saved card: typed proposals from the matching tool, each with
+   its source, date and program card. The contacts block mirrors partials/program-cards.html.
+   No model prose; the outreach email is a mailto: link the office opens itself. #}
+{% set query = "?preview=1" if preview else "" %}
+{% set base = "/f/" ~ folder_id ~ "/cards/" ~ card_id ~ "/suggestions" %}
+<section class="folder-suggestions" id="suggestions-{{ card_id }}" aria-labelledby="suggestions-heading-{{ card_id }}">
+  <h3 id="suggestions-heading-{{ card_id }}">{{ words.heading }}</h3>
+  <p>{{ words.intro }}</p>
+  {% for offer in offered %}
+  {% set number = loop.index %}
+  {% set proposal = offer.proposal %}
+  {% set program = proposal.card %}
+  {% set card = program.match %}
+  {% set wording = program.wording %}
+  <div class="folder-suggestion" data-suggestion="{{ proposal.match.population_id }}:{{ proposal.match.program_id }}"
+       data-source="{{ proposal.source }}" data-dated="{{ proposal.dated }}">
+    <h4 id="suggestion-{{ card_id }}-{{ number }}">{{ card.program_name }} · {{ card.population }}</h4>
+    <p>{{ card.agency }}. {{ card.claim_label }}.</p>
+    <p class="suggestion-source">{{ words.source.format(dated=proposal.dated) }}</p>
+    <p>{{ card.disclaimer }} {{ program.guidance }}</p>
+    <p><a href="{{ card.official_url }}">{{ card.wording.official }}</a> · <a href="{{ card.referral_url }}">{{ card.wording.referral }}</a></p>
+    {% include "partials/program-outreach-email.html" %}
+    <p>{{ wording.service_areas }}</p>
+    {% for county in program.counties %}
+    <div data-county="{{ county.geography }}">
+      <h5>{{ county.name }}</h5>
+      {% for contact in county.contacts %}
+      <p>{{ contact.kind }}: <a href="{{ contact.url }}">{{ contact.name }}</a>. {{ wording.verified }} {{ contact.verified_on }}.</p>
+      {% else %}<p class="suggestion-fallback">{{ wording.missing_contacts }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+    {% if offer.in_folder %}
+    <p class="suggestion-held">{{ words.in_folder }}</p>
+    {% else %}
+    {% for action, label in (("accept", words.accept), ("dismiss", words.dismiss)) %}
+    <form method="post" action="{{ base }}/{{ action }}{{ query }}">
+      <input type="hidden" name="population_id" value="{{ proposal.match.population_id }}">
+      <input type="hidden" name="program_id" value="{{ proposal.match.program_id }}">
+      <input type="hidden" name="source" value="{{ proposal.source }}">
+      <input type="hidden" name="dated" value="{{ proposal.dated }}">
+      <button type="submit" aria-describedby="suggestion-{{ card_id }}-{{ number }}">{{ label }}</button>
+    </form>
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% else %}
+  <p>{{ words.none }} <a href="{{ words.referral_url }}">{{ words.referral }}</a></p>
+  {% endfor %}
+</section>

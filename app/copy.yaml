@@ -445,6 +445,41 @@ folders:
   nothing_to_save: Choose a case or a match to save into an existing folder.
   capacity: "{detail} Nothing was saved."
   match_gone: This saved match is no longer among the reviewed connections for this district, so no figure is shown. Use the official program page or Aloha United Way 211.
+  # How long a folder lives (#398): from `RETENTION` in app/folders/retention.py.
+  retention: "This folder is deleted {days} days after its last saved change. Each saved change starts the {days} days again; opening, copying or printing it does not."
+  retention_saved: "Change saved {saved}; unless the folder changes again, it is deleted on {until} (Hawaiʻi time)."
+  # The one-page printout (#398): a bounded summary that says what it leaves out.
+  print_heading: One-page summary
+  print_intro: This summary is what prints, on one page. The full cards, with each figure's source, margin of error and reliability, and the words of every note stay on the screen; open the folder link to read them.
+  print_link: "Folder link: {link}"
+  print_order: Listed by priority, open cards before done ones.
+  print_row: "{status} · {priority} priority"
+  print_notes: "Notes: {count}, newest dated {dated}."
+  print_no_notes: "Notes: none."
+  print_cards: "Saved cards listed: {shown} of {total}. Not printed: {omitted}."
+  print_notes_none: This folder has no notes.
+  print_notes_omitted: "Note words not printed: all {total} notes. Each listed card gives its number of notes and the newest one's date."
+  print_shortened: "Reasons shortened to fit, ending in …: {count}."
+  # Suggested next steps under each saved card (#154); the words are in `suggestions` below.
+  suggestions_link: Show suggested next steps
+
+# Suggested next steps on a saved card (#154): proposals from the matching tool, never model prose.
+suggestions:
+  heading: Suggested next steps
+  intro: Each suggestion is a program connection the matching tool offers this district now, with its source and date. Accept one to add it to this folder as a next step; dismiss it to stop seeing it in this folder.
+  source: "Source: district matches over published tables; program record checked {dated}."
+  in_folder: Already in this folder as a next step.
+  accept: Accept as next step
+  dismiss: Dismiss
+  none: No program connections are offered for this district now. Use official program pages or
+  referral: Aloha United Way 211
+  referral_url: https://www.auw211.org/
+  unknown_fields: "Unknown form fields: {fields}. Valid fields: {valid}."
+  incomplete: "Missing form fields: {fields}. A decision needs all of: {valid}."
+  bad_value: Form values cannot hold control characters, ?, # or %.
+  unknown_source: "Unknown source {value!r}. Valid sources: {valid}."
+  unknown: "Unknown suggestion {population!r} · {program!r} for this card's district. Valid suggestions: {valid}."
+  stale: "This suggestion is dated {dated}, not {value!r}. Reopen the folder to see the current suggestion."
 
 # Geography names, shared by the headline and the figures' citations.
 geography:

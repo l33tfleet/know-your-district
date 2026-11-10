@@ -37,6 +37,7 @@ from app.folders import pii
 from app.folders.references import encode_match
 from app.folders.retention import Purged, expiry_cutoff
 from app.page_state import PageState
+from app.suggestions import Decision, SuggestionDecision, SuggestionReference, from_row
 from app.tools.matches import MatchReference
 from etl.boundaries import Chamber
 
@@ -45,12 +46,19 @@ FEATURE = "folders"
 DEMO_ID = "de000000000000000000000000000233"
 BUSY_TIMEOUT_MS = 5000
 # One entry per schema version, in order; each runs once, inside one transaction.
-MIGRATIONS: tuple[str, ...] = (Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"),)
+MIGRATIONS = tuple(
+    Path(__file__).with_name(f).read_text("utf-8") for f in ("schema.sql", "suggestions.sql")
+)
 LIVE_FOLDER = "SELECT id, name FROM folders WHERE id = ? AND deleted_at IS NULL AND updated_at > ?"
 LIVE_CARDS = (
     "SELECT id, card_key AS case_id, chamber, district, priority, reason, status,"
     " created_at, updated_at FROM cards"
     " WHERE folder_id = ? AND deleted_at IS NULL ORDER BY id"
+)
+DECISIONS = (  # a decision's card is its match's live card, whichever call saved it
+    "SELECT s.*, c.id AS card_id FROM suggestions s LEFT JOIN cards c ON c.deleted_at IS NULL AND"
+    " (c.folder_id, c.card_key, c.chamber, c.district) = (s.folder_id, s.suggestion_key,"
+    " s.chamber, s.district) WHERE s.folder_id = ? ORDER BY s.id"
 )
 LIVE_NOTES = (
     "SELECT notes.id, notes.card_id, notes.dated, notes.body FROM notes"
@@ -535,6 +543,31 @@ class FolderStore:
             _update_card(db, folder_id, card_id, "status = ?", status)
 
     @checked
+    def decide(self, folder_id: FolderId, ref: SuggestionReference, decision: Decision) -> None:
+        """One transaction; accepting saves the match as a card, which later decisions keep."""
+        district = ref.match.district
+        place = (folder_id, encode_match(ref.match), district.chamber, int(district.district))
+        with self._write() as db:
+            _require_mutable(db, folder_id)
+            db.execute(
+                "INSERT INTO suggestions (folder_id, suggestion_key, chamber, district, source,"
+                " dated, decision, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)"
+                " ON CONFLICT DO UPDATE SET source = excluded.source, dated = excluded.dated,"
+                " decision = excluded.decision, updated_at = excluded.updated_at",
+                (*place, ref.source, ref.dated.isoformat(), decision, now()),
+            )
+            if decision == "accepted":
+                _insert_card(db, *place)
+            _touch(db, folder_id)
+
+    @checked
+    def list_decisions(self, folder_id: FolderId) -> tuple[SuggestionDecision, ...]:
+        with closing(self._connect()) as db:  # detached: no folder id, note or figure
+            _require_folder(db, folder_id)
+            rows = db.execute(DECISIONS, (folder_id,)).fetchall()
+        return tuple(from_row(dict(row)) for row in rows)
+
+    @checked
     def get_folder(self, folder_id: FolderId) -> Folder:
         with closing(self._connect()) as db:
             row = _require_folder(db, folder_id)
@@ -552,7 +585,10 @@ class FolderStore:
                 " SELECT ?, name, created_at, ? FROM folders WHERE id = ?",
                 (new_id, now(), folder_id),
             )
-            db.execute("UPDATE cards SET folder_id = ? WHERE folder_id = ?", (new_id, folder_id))
+            for table in ("cards", "suggestions"):
+                db.execute(
+                    f"UPDATE {table} SET folder_id = ? WHERE folder_id = ?", (new_id, folder_id)
+                )
             db.execute("DELETE FROM folders WHERE id = ?", (folder_id,))
         return new_id
 

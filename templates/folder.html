@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="/static/folders.css">
 <article class="folder">
   <h1>{{ folder.name }}</h1>
   <p class="folder-notice" id="folder-notice">{{ words.notice }}</p>
+  {# `folder_retention` and `folder_print` are also rendered alone, with `oob` set, as the out of
+     band part of every write's htmx answer (`folder_updates` in app/folders/routes.py). #}
+  {% block folder_retention %}
+  <p class="folder-retention" id="folder-retention"{% if oob %} hx-swap-oob="true"{% endif %}>{{ retention }}</p>
+  {% endblock %}
   <div class="folder-link">
     <label for="folder-link">{{ words.link_label }}</label>
     <input id="folder-link" type="text" readonly value="{{ link }}" aria-describedby="folder-notice">
@@ -11,13 +17,38 @@
             hx-on:click="const button = this; navigator.clipboard.writeText(location.href).then(function () { button.nextElementSibling.textContent = button.dataset.copied })">{{ words.copy_link }}</button>
     <span id="copy-status" role="status"></span>
   </div>
-  <p><a href="{{ reopen }}">{{ words.open_office }}</a> · <a href="{{ reopen }}">{{ words.reopen }}</a></p>
-  {% include "partials/folder-attention.html" %}
-  {% for entry in cards %}
-  {{ entry.card }}
-  {{ entry.notes }}
-  {% else %}
-  <p>{{ words.empty }}</p>
-  {% endfor %}
+  <p class="folder-reopen"><a href="{{ reopen }}">{{ words.open_office }}</a> · <a href="{{ reopen }}">{{ words.reopen }}</a></p>
+  {% block folder_print %}
+  {# The printout: a bounded summary with no figure and no note's words; it counts what it leaves out. #}
+  <section class="folder-print" id="folder-print" aria-labelledby="folder-print-heading"{% if oob %} hx-swap-oob="true"{% endif %}>
+    <h2 id="folder-print-heading">{{ words.print_heading }}</h2>
+    <p class="folder-print-intro">{{ words.print_intro }}</p>
+    <p class="folder-print-link">{{ words.print_link.format(link=link) }}</p>
+    <p class="folder-print-order">{{ words.print_order }}</p>
+    {% if summary.rows %}
+    <ol class="folder-print-rows">
+      {% for row in summary.rows %}
+      <li class="folder-print-row">
+        <p class="folder-print-name"><strong>{{ row.name }}</strong> · {{ row.district }}</p>
+        <p class="folder-print-state">{{ row.state }}{% if row.reason %} · <span class="folder-print-reason">{{ row.reason }}</span>{% endif %}</p>
+        <p class="folder-print-notes">{{ row.notes }}</p>
+      </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+    {% for line in summary.omitted %}
+    <p class="folder-omitted">{{ line }}</p>
+    {% endfor %}
+  </section>
+  {% endblock %}
+  <div class="folder-full">
+    {% include "partials/folder-attention.html" %}
+    {% for entry in cards %}
+    {{ entry.card }}
+    {{ entry.notes }}
+    {% else %}
+    <p>{{ words.empty }}</p>
+    {% endfor %}
+  </div>
 </article>
 {% endblock %}

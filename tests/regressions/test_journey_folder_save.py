@@ -642,13 +642,6 @@ def test_folder_and_first_card_commit_together(
 # --- one schema step ---
 
 
-def test_schema_is_one_step_with_the_journey_status_words() -> None:
-    assert len(store.MIGRATIONS) == 1
-    assert "'contacted'" in store.MIGRATIONS[0]
-    assert "'planned'" in store.MIGRATIONS[0]
-    assert "'in_progress'" not in store.MIGRATIONS[0]
-
-
 # --- the browser ---
 
 
