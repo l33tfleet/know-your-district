@@ -14,7 +14,7 @@
     <label for="folder-link">{{ words.link_label }}</label>
     <input id="folder-link" type="text" readonly value="{{ link }}" aria-describedby="folder-notice">
     <button type="button" class="copy-link" data-copied="{{ words.copied }}"
-            hx-on:click="const button = this; navigator.clipboard.writeText(location.href).then(function () { button.nextElementSibling.textContent = button.dataset.copied })">{{ words.copy_link }}</button>
+            hx-on:click="const button = this; navigator.clipboard.writeText({% if missing_groups is defined %}button.previousElementSibling.value{% else %}location.href{% endif %}).then(function () { button.nextElementSibling.textContent = button.dataset.copied })">{{ words.copy_link }}</button>
     <span id="copy-status" role="status"></span>
   </div>
   <p class="folder-reopen"><a href="{{ reopen }}">{{ words.open_office }}</a> · <a href="{{ reopen }}">{{ words.reopen }}</a></p>
@@ -42,6 +42,21 @@
   </section>
   {% endblock %}
   <div class="folder-full">
+    {% if missing_groups is defined %}
+    <section id="missing-matches" aria-labelledby="missing-matches-heading">
+      <h2 id="missing-matches-heading">New matches</h2>
+      <p><a href="{{ reopen }}">{{ words.reopen }}</a></p>
+      {% for group in missing_groups %}
+      <div class="missing-district">
+        <h2>{{ group.district }}</h2>
+        {{ group.html }}
+      </div>
+      {% else %}
+      <p>{{ words.empty }}</p>
+      {% endfor %}
+    </section>
+    {% else %}
+    <p><a href="{{ matches_href }}">New matches</a></p>
     {% include "partials/folder-attention.html" %}
     {% for entry in cards %}
     {{ entry.card }}
@@ -49,6 +64,7 @@
     {% else %}
     <p>{{ words.empty }}</p>
     {% endfor %}
+    {% endif %}
   </div>
 </article>
 {% endblock %}

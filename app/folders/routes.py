@@ -540,6 +540,7 @@ def folder_page(
     draft: Draft | None = None,
     status_code: int = 200,
     open_editor: int | None = None,
+    missing: bool = False,
 ) -> HTMLResponse:
     """The folder with each card and its notes; a draft shows under its own card."""
     with known_folder():
@@ -560,9 +561,10 @@ def folder_page(
                 "card": render_card(card, state, folder_id),
                 "notes": render_notes(state, folder_id, card.id, saved, draft, open_editor),
             }
-            for card in folder.cards
+            for card in (() if missing else folder.cards)
         ],
         "folder": folder,
+        "matches_href": f"/f/{folder_id}/matches{query_of(state)}",
         "link": link,
         "oob": False,
         "preview": state.preview,
@@ -572,6 +574,8 @@ def folder_page(
         "title": words["title"].format(name=folder.name),
         "words": words,
     }
+    if missing:
+        context["missing_groups"] = missing_groups(folder_id, state)
     return templates.TemplateResponse(request, "folder.html", context, status_code=status_code)
 
 
@@ -707,6 +711,44 @@ async def create_folder(
         else:
             folder_id = folders.create_empty_folder(name, ip)
     return RedirectResponse(folder_path(folder_id, state), status_code=303)
+
+
+def missing_groups(folder_id: str, state: PageState) -> list[dict[str, object]]:
+    """Subtract saved cases, match cards and all decisions for each represented district."""
+    # Local: this adapter imports our router; program cards wait for startup case loading.
+    from app.tools.suggest_matches import suggest_matches
+    from app.web.suggestions import Offer, district_of, in_folder, propose_now
+
+    with known_folder():
+        db = open_store(state)
+        folder = db.get_folder(folder_id)
+        decisions = db.list_decisions(folder_id)
+    groups: list[dict[str, object]] = []
+    represented = dict.fromkeys((card.chamber, card.district) for card in folder.cards)
+    for chamber, number in represented:
+        card = next(c for c in folder.cards if (c.chamber, c.district) == (chamber, number))
+        district = district_of(card)
+        proposals = propose_now(district)
+        saved = in_folder(folder, district, proposals) + [d.reference.match for d in decisions]
+        html = templates.get_template("partials/suggestions.html").render(
+            card_id=card.id,
+            folder_id=folder_id,
+            offered=[Offer(p, False) for p in suggest_matches(proposals, saved)],
+            preview=state.preview,
+            words=load_copy()["suggestions"],
+        )
+        groups.append({"district": geography_name(district.fact_key), "html": Markup(html)})
+    return groups
+
+
+@router.get("/f/{folder_id}/matches", response_class=HTMLResponse)
+def missing_matches(request: Request, folder_id: str, preview: str | None = None) -> HTMLResponse:
+    """New matches reuse suggestion forms and atomic decisions through a district's saved card.
+
+    A separate view keeps shared partial ids unique alongside lazy per-card suggestions.
+    """
+    state = guard(preview)
+    return folder_page(request, state, folder_id_or_404(folder_id), missing=True)
 
 
 @router.get("/f/{folder_id}", response_class=HTMLResponse)
