@@ -24,7 +24,12 @@ from app.folders.notes import date_label
 from app.folders.references import encode_match
 from app.tools.matches import MatchReference
 from etl.boundaries import DistrictId
-from tests.regressions.test_journey_folder_notes import add_in_browser, check, save, token_in
+from tests.regressions.test_journey_folder_notes import (
+    add_in_browser,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
+    check,
+    save,
+    token_in,
+)
 from tests.regressions.test_journey_folder_save import (
     FORM,
     HTMX,
@@ -161,17 +166,6 @@ def test_a_saved_change_dates_the_notice_from_the_last_write(client: TestClient)
 
 
 # --- the summary, refreshed out of band by every write ---
-
-
-def test_a_status_write_refreshes_the_summary_and_keeps_the_card_swap(client: TestClient) -> None:
-    path = create(client)
-    card = card_id(client, path)
-    response = post(client, f"{path}/cards/{card}/status", "status=planned", HTMX)
-    refreshed = oob(response.text, "folder-print")
-    assert "Planned · Normal priority" in refreshed.text
-    # The card's own summary is still in the answer for its `hx-select`.
-    assert f'id="summary-{card}"' in response.text
-    assert "Status: Planned." in parse(response.text).one("p", id=f"summary-{card}").text
 
 
 def test_a_priority_write_refreshes_the_summary_with_its_reason(client: TestClient) -> None:
@@ -375,56 +369,6 @@ def same_document(page: Page) -> bool:
 
 def printed_rows(page: Page) -> list[str]:
     return [" ".join(t.split()) for t in page.locator("#folder-print li").all_inner_texts()]
-
-
-def test_browser_complete_journey_create_to_print(page: Page, live_folders: str) -> None:
-    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
-    open_page(page, f"{live_folders}{BRIEF}?preview=1", 1440)
-    page.get_by_role("button", name=section_copy("case")["save_label"]).click()  # create, save
-    page.wait_for_url("**/f/*")
-    url = page.url
-    mark_document(page)
-
-    page.get_by_role("combobox", name="Status").select_option(label="Planned")  # status
-    page.locator("#folder-print", has_text="Planned · Normal priority").wait_for()
-    page.get_by_role("combobox", name="Priority").select_option(label="High")
-    page.fill("input[name=reason]", "Office outreach week")
-    page.locator("input[name=reason]").press("Tab")
-    page.locator(
-        "#folder-print", has_text="Planned · High priority · Office outreach week"
-    ).wait_for()
-    page.locator("#folder-retention", has_text="deleted on").wait_for()
-
-    add_in_browser(page, "First outreach note.")  # add
-    today = date_label(datetime.now(UTC).date().isoformat())
-    page.locator("#folder-print", has_text=f"Notes: 1, newest dated {today}").wait_for()
-    note = page.locator(".note", has_text="First outreach note.")
-    note.get_by_role("link", name="Edit note").click()  # edit
-    page.get_by_role("textbox", name="Edit this note").fill("First note, edited.")
-    page.get_by_role("button", name="Update note").click()
-    page.get_by_role("button", name="Save note").click()
-    page.locator(".note-body", has_text="First note, edited.").wait_for()
-
-    page.locator("button.copy-link").click()  # copy
-    page.get_by_text("Link copied").wait_for()
-    assert page.evaluate("navigator.clipboard.readText()") == url
-    assert same_document(page) and page.url == url  # every write was an htmx partial
-    assert axe_problems(page) == []
-
-    page.get_by_role("link", name="Reopen this folder's link").click()  # reopen
-    page.wait_for_load_state("load")
-    assert printed_rows(page)[0].endswith(
-        f"Planned · High priority · Office outreach week Notes: 1, newest dated {today}."
-    )
-
-    page.emulate_media(media="print")  # print
-    assert page.locator("#folder-print").is_visible()
-    assert page.locator(".folder-card").first.is_hidden()
-    assert page.locator(".folder-notes").first.is_hidden()
-    assert page.locator("#folder-retention").is_visible()
-    assert pdf_pages(page) == 1
-    page.emulate_media(media="screen")
-    assert axe_problems(page) == []
 
 
 def test_browser_keyboard_alone_changes_status_and_the_summary_follows(
