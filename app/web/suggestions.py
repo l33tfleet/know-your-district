@@ -14,10 +14,12 @@ the demo; accepting saves the match as a card, the next step. No model writes a 
 email is sent: the outreach email is a `mailto:` link the office opens itself.
 """
 
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import get_args
+from typing import TYPE_CHECKING, get_args
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -41,8 +43,10 @@ from app.folders.service import client_ip
 from app.folders.store import Card, Folder
 from app.suggestions import Decision, SuggestionReference
 from app.tools.matches import MatchReference
-from app.tools.suggestions import Proposal, Source, propose
 from etl.boundaries import DistrictId
+
+if TYPE_CHECKING:
+    from app.tools.suggestions import Proposal
 
 FIELDS = ("population_id", "program_id", "source", "dated")
 ACTIONS: dict[str, Decision] = {"accept": "accepted", "dismiss": "dismissed"}
@@ -57,6 +61,13 @@ templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "tem
 class Offer:
     proposal: Proposal
     in_folder: bool
+
+
+def propose_now(district: DistrictId) -> tuple[Proposal, ...]:
+    """The tool's proposals, imported here: program cards load cases, which wait for startup."""
+    from app.tools.suggestions import propose
+
+    return propose(district)
 
 
 def live_card(folder: Folder, card_id: int) -> Card:
@@ -110,6 +121,8 @@ def read_reference(form: dict[str, str], proposals: tuple[Proposal, ...]) -> Sug
         )
     if any(UNSAFE.search(form[name]) for name in FIELDS):
         raise refused(words["bad_value"])
+    from app.tools.suggestions import Source  # local: see `propose_now`
+
     sources = get_args(Source)
     if form["source"] not in sources:
         valid = ", ".join(sources)
@@ -146,7 +159,7 @@ def show_suggestions(
         decisions = db.list_decisions(folder_id)
     card = live_card(folder, card_id_number)
     district = district_of(card)
-    proposals = propose(district)
+    proposals = propose_now(district)
     dismissed = [d.reference.match for d in decisions if d.decision == "dismissed"]
     held = in_folder(folder, district, proposals)
     offered = [Offer(p, p.match in held) for p in proposals if p.match not in dismissed]
@@ -175,7 +188,7 @@ async def decide(
     with known_folder():
         folder = folders.store.get_folder(folder_id)
     card = live_card(folder, card_id_number)
-    reference = read_reference(form, propose(district_of(card)))
+    reference = read_reference(form, propose_now(district_of(card)))
     with known_folder():
         folders.throttle_write(client_ip(request.scope, TRUSTED_PROXIES))
         with folders.store.visitor_write(folder_id) as write:
