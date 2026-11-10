@@ -467,7 +467,7 @@ folders:
 suggestions:
   heading: Suggested next steps
   intro: Each suggestion is a program connection the matching tool offers this district now, with its source and date. Accept one to add it to this folder as a next step; dismiss it to stop seeing it in this folder.
-  source: "Source: district matches over published tables; program record checked {dated}."
+  source: "Source: district matches over published tables. Program record checked {dated}."
   in_folder: Already in this folder as a next step.
   accept: Accept as next step
   dismiss: Dismiss

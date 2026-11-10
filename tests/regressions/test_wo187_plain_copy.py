@@ -338,3 +338,15 @@ def test_rendered_program_guidance_passes_and_keeps_its_referrals(brief: str) ->
         assert f'href="{program.official_url}"' in brief
         assert program.name in html.unescape(brief)
         assert program.agency in html.unescape(brief)
+
+
+def test_suggestion_source_keeps_its_basis_and_check_date_in_plain_words() -> None:
+    from app.copy import load_copy
+
+    template = load_copy()["suggestions"]["source"]
+    assert check_reading(template).ok, template
+    source = template.format(dated="2026-10-25")
+    assert "district matches" in source
+    assert "published tables" in source
+    assert "program record checked 2026-10-25" in source.lower()
+    assert check_reading(source).ok, source
