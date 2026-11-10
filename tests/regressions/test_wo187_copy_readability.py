@@ -5,6 +5,7 @@ exactly as before; fixed names become a placeholder; a 1–3 word label has no w
 over three syllables; every other string scores Flesch–Kincaid grade 8 or lower.
 """
 
+from html import escape, unescape
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -269,3 +270,178 @@ def test_match_copy_keeps_survey_and_agency_limits() -> None:
         "misses some past receipt",
     ):
         assert limit in unknown
+
+
+# --- Match permalinks, ranked preview cards and saved folder cards ---
+
+STORES = ("fixture:brief-store", "fixture:population-store")
+
+
+def _shipped() -> list[tuple[str, str]]:
+    from etl.programs.mappings import load_mappings
+
+    return [
+        (m.population_id, m.program_id) for m in load_mappings() if m.review_status != "rejected"
+    ]
+
+
+def test_corpus_renders_every_shipped_mapping_on_its_permalink(pages: dict[str, str]) -> None:
+    from scripts.readability_corpus import MATCH_DISTRICTS
+
+    shipped = _shipped()
+    assert {program for _, program in shipped} >= {"snap", "hawaii-able", "public-pre-k"}
+    assert {c for c, _ in MATCH_DISTRICTS} == {"house", "senate"}
+    for store in STORES:
+        for chamber, n in MATCH_DISTRICTS:
+            for population, program in shipped:
+                page = pages[f"{store}:/match/{chamber}/{n}/{program}/{population}?preview=1"]
+                assert f':{population}:{program}"' in page  # the rendered card itself
+        for chamber, n in MATCH_DISTRICTS[:2]:
+            page = pages[f"{store}:/brief/{chamber}/{n}?preview=1"]
+            for population, program in shipped:
+                assert f':{population}:{program}"' in page
+    for name in ("fixture:folder-all", "fixture:folder-populations-all"):
+        for population, program in shipped:
+            assert f'data-match="{population}:{program}"' in pages[name]
+
+
+def test_every_match_card_block_reads_at_grade_8_or_below(pages: dict[str, str]) -> None:
+    sources = [p for p in pages if p.startswith(STORES) or p.startswith("fixture:folder")]
+    assert len(sources) >= 2 * (6 * 3 + 2) + 8
+    blocks = [b for p in sources for b in rendered_blocks(pages[p], p)]
+    failed = [(b.id, r.grade, r.long_words, b.text) for b, r in hard_blocks(blocks)]
+    assert failed == []
+
+
+@pytest.mark.parametrize(
+    "old",
+    [
+        # Strings the reviewer reproduced on match pages, and their siblings.
+        "Households below poverty reporting no SNAP · Supplemental Nutrition Assistance "
+        "Program (SNAP)",
+        "Active-duty military and institutional residents are excluded.",
+        "Residents aged 5 and over are excluded from the numerator.",
+        "Hawaiʻi ABLE may help people with disabilities save for disability-related expenses. "
+        "This survey-defined population is a potential outreach audience, not an estimate of "
+        "eligibility or nonparticipation. Program-expert review is pending; the agency decides "
+        "eligibility.",
+        "Review the official program information; this savings program may help, and the "
+        "agency decides eligibility.",
+        "Review the dated official FAQ and linked application portal; the agency decides "
+        "eligibility.",
+        "Ranked population connections to programs",
+        "house:15:022:2022 · Civilian noninstitutionalized population · published estimate "
+        "and 90% margin of error",
+    ],
+)
+def test_restoring_old_match_prose_fails(old: str) -> None:
+    assert not check_reading(old).ok
+
+
+def _article(page: str, population: str, program: str) -> str:
+    return page.split(f':{population}:{program}"', 1)[1].split("</article>", 1)[0]
+
+
+def test_match_permalink_keeps_figures_citations_and_safeguards(pages: dict[str, str]) -> None:
+    from app.populations import load_populations
+    from etl.programs import load_catalog
+
+    populations = {p.id: p for p in load_populations().populations}
+    catalog = {p.id: p for p in load_catalog(ROOT / "data/programs.yaml")}
+    for population, program in _shipped():
+        p, record = populations[population], catalog[program]
+        for store in STORES:
+            page = pages[f"{store}:/match/house/22/{program}/{population}?preview=1"]
+            heading = f"Who to reach: {p.label}. What may help: {record.name}."
+            assert f"<h1>{escape(heading, quote=False)}</h1>" in page
+            article = _article(page, population, program)
+            text = unescape(article)
+            # The universe and geography code stay on the card; the code is a cited field.
+            assert f"Who is in the count: {p.universe}." in text
+            assert '<code data-field="geography">house:15:022:2022</code>' in article
+            assert "How we got this number:" in text
+            assert p.definition in text and all(e in text for e in p.exclusions)
+            assert "The agency decides eligibility." in text
+            assert str(record.official_url) in article
+            assert "https://www.auw211.org/" in article
+            # The card's count cites each numerator cell, as an input or as missing.
+            assert all(cell in text for cell in p.numerator)
+            if store == "fixture:population-store":
+                assert "2020–2024" in text and "±" in text
+            if len(p.numerator) > 1:
+                assert f"derived: sum of {len(p.numerator)} published estimates. MOE sqrt(" in text
+            assert "estimates; MOE" not in text
+
+
+def test_rewritten_match_records_keep_every_fact_and_limit() -> None:
+    from app.populations import load_populations
+    from etl.programs import load_catalog
+    from etl.programs.mappings import load_mappings
+
+    populations = {p.id: p for p in load_populations().populations}
+    disability, under5 = populations["disability"], populations["children_under_5"]
+    assert disability.universe == "Civilian noninstitutionalized population"
+    assert disability.numerator == ("S1810_C02_001E",)
+    assert disability.denominator == ("S1810_C01_001E",)
+    assert (disability.unit, disability.period) == ("persons", "survey_time")
+    limits = disability.definition + " " + " ".join(disability.exclusions)
+    for words in ("said they have a disability", "active", "prisons or nursing homes"):
+        assert words in limits
+    assert under5.universe == "Total population"
+    assert under5.numerator == ("B01001_003E", "B01001_027E")
+    assert under5.denominator == ("B01001_001E",)
+    assert under5.exclusions == (
+        "People age 5 and older are not in the count of children. They are in the total.",
+    )
+    mappings = {m.program_id: m for m in load_mappings()}
+    able, prek = mappings["hawaii-able"], mappings["public-pre-k"]
+    for mapping in (able, prek):
+        assert mapping.claim == "relevant_need" and mapping.review_status == "pending"
+        assert mapping.modeling_evidence is mapping.comparability_evidence is None
+        assert "The agency decides eligibility." in mapping.relevance
+        assert "who meets the rules" in mapping.relevance
+        for text in (
+            mapping.relevance,
+            *mapping.observed_conditions,
+            *mapping.unobserved_conditions,
+        ):
+            assert check_reading(text).ok, text
+    assert "who lacks aid" in able.relevance
+    unknown = " ".join(able.unobserved_conditions)
+    for limit in (
+        "Disability onset",
+        "age limit",
+        "certification",
+        "account",
+        "benefits affect",
+        "enrollment",
+        "fees",
+        "incentives",
+        "not checked",
+    ):
+        assert limit in unknown
+    assert "who is not enrolled" in prek.relevance and "Aloha United Way 211" in prek.relevance
+    unknown = " ".join(prek.unobserved_conditions)
+    for limit in (
+        "birth date",
+        "priority",
+        "schools take part",
+        "schedule",
+        "before or after school",
+        "seats are open",
+        "enrolled now",
+    ):
+        assert limit in unknown
+    # Three conditions, each its own string (a comma must not split one in two).
+    assert len(prek.unobserved_conditions) == 3
+    catalog = {p.id: p for p in load_catalog(ROOT / "data/programs.yaml")}
+    for program in ("hawaii-able", "public-pre-k"):
+        steps = catalog[program].next_steps
+        assert steps is not None and str(steps.contact.url) == "https://www.auw211.org/"
+        assert "The agency decides eligibility." in steps.instructions[0]
+        assert all(check_reading(step).ok for step in steps.instructions)
+    able_steps = catalog["hawaii-able"].next_steps
+    assert able_steps is not None
+    assert "Aloha United Way 211" in able_steps.instructions[1]
+    assert "not checked" in able_steps.instructions[1]
+    assert "before you plan outreach" in able_steps.instructions[2]

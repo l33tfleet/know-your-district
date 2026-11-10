@@ -298,6 +298,16 @@ def check_reading(
 
 
 _URL = re.compile(r"https?://\S+")
+POPULATION_FACTS = _ROOT / "data/populations/facts.db"
+# Districts whose match cards the corpus renders: each chamber's first, a middle, last.
+MATCH_DISTRICTS = (
+    ("house", 22),
+    ("senate", 1),
+    ("house", 1),
+    ("house", 51),
+    ("senate", 12),
+    ("senate", 25),
+)
 
 
 def page_blocks(pages: Mapping[str, str], root: Path = _ROOT) -> list[Block]:
@@ -329,6 +339,7 @@ def rendered_pages() -> dict[str, str]:
     from app.main import app, templates
     from app.page_state import PageState
     from etl.boundaries import DISTRICT_COUNTS, DistrictId
+    from etl.programs.mappings import load_mappings
 
     paths = ["/", "/not-found", *[f"/picker/numbers?chamber={c}" for c in DISTRICT_COUNTS]]
     paths.extend(
@@ -336,38 +347,74 @@ def rendered_pages() -> dict[str, str]:
     )
     with TestClient(app) as client:
         pages = {path: client.get(path).text for path in paths}
+    # Match cards: the ranked preview brief and every shipped mapping's permalink, in
+    # both chambers' first, a middle and last district, read from the brief store
+    # (missing inputs) and from the full population store (published inputs).
+    match_paths = [f"/brief/{c}/{n}?preview=1" for c, n in MATCH_DISTRICTS[:2]]
+    match_paths.extend(
+        f"/match/{c}/{n}/{m.program_id}/{m.population_id}?preview=1"
+        for m in load_mappings()
+        if m.review_status != "rejected"
+        for c, n in MATCH_DISTRICTS
+    )
+    for store, label in (
+        (None, "fixture:brief-store"),
+        (POPULATION_FACTS, "fixture:population-store"),
+    ):
+        env = {} if store is None else {"KYD_FACTS_DB": str(store)}
+        with patch.dict("os.environ", env), TestClient(app) as client:
+            for path in match_paths:
+                response = client.get(path)
+                assert response.status_code == 200, (path, response.text)
+                pages[f"{label}:{path}"] = response.text
     # Exercise real folder routes with a disposable store outside the checkout.
     with (
         TemporaryDirectory(prefix="kyd-reading-") as directory,
         patch.dict("os.environ", {"KYD_FOLDERS_DB": f"{directory}/folders.db"}),
         TestClient(app, follow_redirects=False) as client,
     ):
-        created = client.post(
-            "/folders",
-            data={"case_id": "snap_no_receipt", "chamber": "house", "district": "22"},
-        )
-        assert created.status_code == 303, created.text
-        folder = created.headers["location"]
-        saved = client.post(
-            "/folders?district=house-22",
-            data={
-                "population_id": "below_poverty_no_snap",
-                "program_id": "snap",
-                "folder": folder,
-            },
-        )
-        assert saved.status_code == 303, saved.text
-        for suffix in ("", "?matches=1"):
-            response = client.get(folder + suffix)
-            assert response.status_code == 200, response.text
-            pages["fixture:folder" + suffix] = response.text
-        # The full population store exercises the same saved match with published inputs,
-        # while the brief store above also covers missing match inputs.
-        with patch.dict("os.environ", {"KYD_FACTS_DB": str(_ROOT / "data/populations/facts.db")}):
-            for suffix in ("", "?matches=1"):
-                response = client.get(folder + suffix)
-                assert response.status_code == 200, response.text
-                pages["fixture:folder-populations" + suffix] = response.text
+
+        def make_folder(mappings: list[tuple[str, str]]) -> str:
+            created = client.post(
+                "/folders",
+                data={"case_id": "snap_no_receipt", "chamber": "house", "district": "22"},
+            )
+            assert created.status_code == 303, created.text
+            folder = created.headers["location"]
+            for population_id, program_id in mappings:
+                saved = client.post(
+                    "/folders?district=house-22",
+                    data={
+                        "population_id": population_id,
+                        "program_id": program_id,
+                        "folder": folder,
+                    },
+                )
+                assert saved.status_code == 303, saved.text
+            return folder
+
+        shipped = [
+            (m.population_id, m.program_id)
+            for m in load_mappings()
+            if m.review_status != "rejected"
+        ]
+        # One folder holds the case and SNAP, so ABLE and pre-K show as suggestions;
+        # the other saves every shipped mapping, so each one shows as a saved card.
+        folders = {
+            "fixture:folder": make_folder([("below_poverty_no_snap", "snap")]),
+            "fixture:folder-all": make_folder(shipped),
+        }
+        # The brief store also covers missing match inputs; the full population store
+        # shows the same saved matches with published inputs.
+        for store, kind in ((None, ""), (POPULATION_FACTS, "-populations")):
+            env = {} if store is None else {"KYD_FACTS_DB": str(store)}
+            with patch.dict("os.environ", env):
+                for label, folder in folders.items():
+                    for suffix in ("", "?matches=1"):
+                        response = client.get(folder + suffix)
+                        assert response.status_code == 200, response.text
+                        name = label.replace("fixture:folder", "fixture:folder" + kind, 1)
+                        pages[name + suffix] = response.text
     section = next(s for s in discover() if s.name == "figures")
     context = render_context(section, PageState(district=DistrictId(chamber="house", district=1)))
     content = cast(dict[str, object], context["section"])

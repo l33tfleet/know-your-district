@@ -50,6 +50,8 @@ class CardWording(BaseModel):
     unavailable: str = "no range given"
     missing: str = "Missing count"
     method: str = "Method"
+    universe: str = "Who is in the count"
+    how: str = "How we got this number"
     gap: str = "Kind of gap"
     action: str = "Action"
     review: str = "Program-expert review"

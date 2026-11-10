@@ -59,8 +59,11 @@ collector. Keep the original text unchanged when recording offsets.
 Every page string reads at grade 8 or below. "Page strings" are every block of
 every rendered page that `scripts/readability_corpus.py` collects (home, the
 not-found page, both picker lists, all 76 briefs, the multi-county fixture and
-the missing-figures fixture, and a folder holding a saved SNAP case and match,
-with and without the matches view), plus every leaf of `app/copy.yaml` except a bare
+the missing-figures fixture, a folder holding a saved SNAP case and match and a
+folder holding every shipped match, each with and without the matches view; and,
+from both the brief fact store and the population fact store, the ranked match
+preview brief and the match permalink of every shipped mapping (SNAP, ABLE,
+pre-K) in six districts across both chambers), plus every leaf of `app/copy.yaml` except a bare
 URL. `check_reading()` applies the rule; `tests/regressions/test_wo187_*.py`
 enforce it.
 

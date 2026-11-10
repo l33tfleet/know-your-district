@@ -16,11 +16,11 @@ FEATURE = "matches"
 PRINT = False
 # Keep the existing section wording contract; templates contain no literal prose.
 WORDS = {
-    "heading": "Ranked population connections to programs",
+    "heading": "Groups ranked for outreach, with programs that may help",
     "band": "Outreach band:",
     "reason": "Ranking reason and calculations",
-    "preview": "Preview: expert review pending. Bands rank outreach signals within this district; they are not eligibility probabilities. Weak evidence differs from insufficient evidence.",
-    "intro": "These connections support outreach planning. Survey populations do not establish individual eligibility or an enrollment gap.",
+    "preview": "Preview: expert review is pending. Bands rank groups to reach in this district. They are not the odds that a person meets the rules. Weak evidence is not the same as too little evidence.",
+    "intro": "This list helps plan outreach. A survey group does not show that a person can get help. It does not show a gap in sign-ups.",
     "review": "Program-expert review:",
     "survey": "Survey population:",
     "summary": "Measure, conditions and evidence",
