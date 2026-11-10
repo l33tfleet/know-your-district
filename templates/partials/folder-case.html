@@ -38,4 +38,10 @@
       </select>
     </div>
   </form>
+  {# Suggested next steps load when the card scrolls into view (app/web/suggestions.py), so a long
+     folder reads only what is seen; the link works without JavaScript. #}
+  <div class="folder-suggestions" id="suggestions-{{ card.id }}"
+       hx-get="{{ base }}/suggestions{{ query }}" hx-trigger="revealed" hx-swap="outerHTML">
+    <p><a href="{{ base }}/suggestions{{ query }}">{{ words.suggestions_link }}</a></p>
+  </div>
 </div>

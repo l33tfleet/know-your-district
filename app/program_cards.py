@@ -1,10 +1,13 @@
-"""Strong outreach cards, adapted from detached tools without changing their ranking.
+"""Outreach program cards, adapted from detached tools without changing their ranking.
+
+`program_cards` adapts any band (suggested next steps reuse it); the brief shows strong ones.
 
 County overlays select service areas only; neither area shares nor contact presence
 establish a physical office, eligibility, appointments or capacity. Expanded evidence
 is screen-only in the brief; the same partial can render an optional email excerpt.
 """
 
+from collections.abc import Sequence
 from datetime import date
 from urllib.parse import quote, urlencode
 
@@ -16,7 +19,7 @@ from app.copy import geography_name, load_copy
 from app.counties import load_mapping
 from app.match_cards import MatchCard, to_match_card
 from app.program_contacts import load_contacts
-from app.tools.matches import DistrictMatches
+from app.tools.matches import DistrictMatches, ProgramMatch
 from etl.boundaries import DistrictId
 from etl.programs.contracts import load_organisations
 
@@ -126,9 +129,14 @@ def _outreach_email(
     return "mailto:?" + urlencode({"subject": subject, "body": "\n".join(lines)}, quote_via=quote)
 
 
-def load_cards(district: DistrictId) -> tuple[ProgramCard, ...]:
-    """Read only when enabled, retaining tool order and every mapped county."""
-    ranked = DistrictMatches(district).get_matches()
+def program_cards(district: DistrictId, matches: Sequence[ProgramMatch]) -> tuple[ProgramCard, ...]:
+    """The #150 card for each given match of this district, in the given order, for every band.
+
+    A county with no documented contact keeps an empty list, which the partials word as the
+    official-program and 211 fallback.
+    """
+    if any(match.count.geography != district.fact_key for match in matches):
+        raise ValueError("Every program card's match must be in the card's district")
     counties = load_mapping()[district.fact_key]
     contacts = load_contacts()
     organisations = load_organisations()
@@ -160,6 +168,11 @@ def load_cards(district: DistrictId) -> tuple[ProgramCard, ...]:
                 for county in counties
             ),
         )
-        for match in ranked
-        if match.result.band == "strong"
+        for match in matches
     )
+
+
+def load_cards(district: DistrictId) -> tuple[ProgramCard, ...]:
+    """Read only when enabled: the strong matches, in tool order, with every mapped county."""
+    ranked = DistrictMatches(district).get_matches()
+    return program_cards(district, [match for match in ranked if match.result.band == "strong"])
