@@ -1,7 +1,7 @@
 """#395: schema-v1 match identities and atomic folder capacity."""
 
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
+from pathlib import Path  # noqa: F401  # pyright: ignore[reportUnusedImport] -- only the test #405 superseded used it
 
 import pytest
 from pydantic import ValidationError
@@ -18,28 +18,6 @@ REFERENCE = MatchReference(
     population_id="disability",
     program_id="hawaii-able",
 )
-
-
-def test_empty_folder_match_restart_and_legacy_state(db: store.FolderStore, db_path: Path) -> None:
-    folder = db.create_empty_folder("District outreach")
-    assert db.get_folder(folder).cards == ()
-    db.save_match(folder, REFERENCE)
-    db.save_case(folder, "legacy_case", "senate", 3)
-    match, legacy = db.get_folder(folder).cards
-    db.set_priority(folder, match.id, "high", "Plan outreach")
-    db.set_status(folder, match.id, "planned")
-    db.add_note(folder, match.id, "Ask the agency about access.", True)
-    db.save_match(folder, REFERENCE)
-    restarted = store.FolderStore(db_path, state())
-    saved = restarted.get_folder(folder)
-    assert len(saved.cards) == 2
-    assert saved.cards[0].id == match.id
-    assert (saved.cards[0].priority, saved.cards[0].status) == ("high", "planned")
-    assert saved.cards[0].reason == "Plan outreach"
-    assert decode_match(saved.cards[0].case_id, "house", 22) == REFERENCE
-    assert decode_match(legacy.case_id, "senate", 3) is None
-    assert restarted.list_notes(folder)[0].body == "Ask the agency about access."
-    assert len(store.MIGRATIONS) == 1
 
 
 @pytest.mark.parametrize(
