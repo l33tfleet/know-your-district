@@ -78,7 +78,9 @@ sections:
       age_65_share: Share of residents age 65 and over
       median_household_income: Median household income
     multi_county: This district lies in more than one county.
-    county_area: Share of the district's area in this county
+    # The denominator is the district's county-covered area, not its whole area:
+    # etl/boundaries/counties.py divides each overlap by the sum of county overlaps.
+    county_area: Share of the district's area covered by counties
     mapping_summary: County boundary sources and method
     mapping_source: State of Hawaiʻi official district boundaries and U.S. Census Bureau county boundaries
     state_label: "State of Hawaiʻi:"

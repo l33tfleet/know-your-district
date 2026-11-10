@@ -173,13 +173,35 @@ def test_county_values_moes_and_citations_in_each_sentence(
         assert "Maui County" in page.text
         assert "75.0%" in page.text and "25.0%" in page.text
         assert "area" in page.text
-        # Each county's percentage is labelled as a share of district area, beside it.
+        # Each county's percentage is labelled, beside it, as a share of the district's
+        # county-covered area (the denominator etl/boundaries/counties.py uses).
         items = [
             " ".join(li.text.split()) for li in page.one("section", class_="figures").find_all("li")
         ]
         for name, share in (("Honolulu County", "75.0%"), ("Maui County", "25.0%")):
             item = next(i for i in items if i.startswith(name))
-            assert f"{share} — Share of the district's area in this county" in item
+            assert f"{share} — Share of the district's area covered by counties" in item
+
+
+def test_county_share_label_keeps_the_county_covered_denominator() -> None:
+    """The label names the denominator the ETL divides by, never the whole district.
+
+    Two counties each covering a quarter of a district show 50% each, because
+    _shares divides by the sum of county overlaps; a label calling that a share of
+    the district's area would misstate it.
+    """
+    from etl.boundaries.counties import _shares  # pyright: ignore[reportPrivateUsage]
+    from etl.boundaries.overlay import Geometry
+
+    def box(x0: float, x1: float) -> Geometry:
+        return [[[(x0, 0.0), (x1, 0.0), (x1, 1.0), (x0, 1.0), (x0, 0.0)]]]
+
+    shares = _shares(box(0, 4), {"a": box(0, 1), "b": box(3, 4)})
+    assert shares == {"a": 0.5, "b": 0.5}  # each covers only a quarter of the district
+    label = section_copy("figures")["county_area"]
+    assert label == "Share of the district's area covered by counties"
+    # Never the whole district: the old label ended "area in this county".
+    assert label.endswith("covered by counties") and "in this county" not in label
 
 
 # Replaces test_wo129_figures_not_loaded.py::test_rows_present_show_no_notice_and_cards_as_before (wording only, #187).
