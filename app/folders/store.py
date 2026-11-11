@@ -19,7 +19,7 @@ import stat
 import time
 from collections.abc import Generator
 from contextlib import closing, contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -197,6 +197,19 @@ class DemoCard(BaseModel):
     dated: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
+class DemoMatch(BaseModel):
+    """A seeded match card with an outreach note; its decision cites the proposal's source."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    match: MatchReference
+    source: Literal["district_matches"]
+    checked: date
+    priority: Priority
+    status: Status
+    body: NoteBody
+    dated: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+
 class VisitorWrite(BaseModel):
     model_config = ConfigDict(frozen=True)
     folder_id: str = Field(repr=False)
@@ -323,6 +336,36 @@ def _update_card(
     _touch(db, folder_id)
 
 
+def _replace_demo(db: sqlite3.Connection) -> str:
+    """Drop the seed (its cards, notes and decisions cascade) and insert it afresh, empty."""
+    db.execute("DELETE FROM folders WHERE id = ?", (DEMO_ID,))
+    stamp = now()
+    db.execute(
+        "INSERT INTO folders (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+        (DEMO_ID, "Hawaiʻi outreach demo", stamp, stamp),
+    )
+    return stamp
+
+
+def _seed_card(
+    db: sqlite3.Connection, key: tuple[str, str, int], seed: DemoCard | DemoMatch, stamp: str
+) -> None:
+    """One seed card (key, chamber, district) with its office state and dated note."""
+    _insert_card(db, DEMO_ID, *key)
+    place = (DEMO_ID, *key)
+    db.execute(
+        "UPDATE cards SET priority = ?, status = ?, created_at = ?, updated_at = ?"
+        " WHERE folder_id = ? AND card_key = ? AND chamber = ? AND district = ?",
+        (seed.priority, seed.status, seed.dated, seed.dated, *place),
+    )
+    db.execute(
+        "INSERT INTO notes (card_id, dated, body, confirmed, created_at, updated_at)"
+        " SELECT id, ?, ?, 1, ?, ? FROM cards"
+        " WHERE folder_id = ? AND card_key = ? AND chamber = ? AND district = ?",
+        (seed.dated, seed.body, stamp, stamp, *place),
+    )
+
+
 def _require_note_capacity(db: sqlite3.Connection, folder_id: str) -> None:
     if (
         db.execute(
@@ -422,23 +465,25 @@ class FolderStore:
     def refresh_demo(self, cards: tuple[DemoCard, ...]) -> None:
         """Replace only the reserved seed atomically; ordinary folders retain their identities."""
         with self._write() as db:
-            db.execute("DELETE FROM folders WHERE id = ?", (DEMO_ID,))
-            stamp = now()
-            db.execute(
-                "INSERT INTO folders (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
-                (DEMO_ID, "Hawaiʻi outreach demo", stamp, stamp),
-            )
+            stamp = _replace_demo(db)
             for card in cards:
-                _insert_card(db, DEMO_ID, card.case_id, "house", 22)
+                _seed_card(db, (card.case_id, "house", 22), card, stamp)
+            _require_note_capacity(db, DEMO_ID)
+
+    @checked
+    def refresh_demo_matches(self, matches: tuple[DemoMatch, ...]) -> None:
+        """Atomically replace only the seed; unseeded proposals keep no decision, so stay pending."""
+        with self._write() as db:
+            stamp = _replace_demo(db)
+            for seed in matches:
+                district = seed.match.district
+                place = (encode_match(seed.match), district.chamber, int(district.district))
+                _seed_card(db, place, seed, stamp)
                 db.execute(
-                    "UPDATE cards SET priority = ?, status = ?, created_at = ?, updated_at = ?"
-                    " WHERE folder_id = ? AND card_key = ?",
-                    (card.priority, card.status, card.dated, card.dated, DEMO_ID, card.case_id),
-                )
-                db.execute(
-                    "INSERT INTO notes (card_id, dated, body, confirmed, created_at, updated_at)"
-                    " SELECT id, ?, ?, 1, ?, ? FROM cards WHERE folder_id = ? AND card_key = ?",
-                    (card.dated, card.body, stamp, stamp, DEMO_ID, card.case_id),
+                    "INSERT INTO suggestions (folder_id, suggestion_key, chamber, district, source,"
+                    " dated, decision, created_at, updated_at)"
+                    " VALUES (?, ?, ?, ?, ?, ?, 'accepted', ?, ?)",
+                    (DEMO_ID, *place, seed.source, seed.checked.isoformat(), *[seed.dated] * 2),
                 )
             _require_note_capacity(db, DEMO_ID)
 
@@ -474,6 +519,13 @@ class FolderStore:
                     (cards[note["card_id"]], note["dated"], note["body"], stamp, stamp),
                 ).fetchone()
                 notes[note["id"]] = saved[0]
+            db.execute(  # decisions follow by match key, so they land on the copied cards
+                "INSERT INTO suggestions (folder_id, suggestion_key, chamber, district, source,"
+                " dated, decision, created_at, updated_at) SELECT ?, suggestion_key, chamber,"
+                " district, source, dated, decision, created_at, updated_at FROM suggestions"
+                " WHERE folder_id = ? ORDER BY id",
+                (target, folder_id),
+            )
             self._transaction = db
             try:
                 yield VisitorWrite(folder_id=target, cards=cards, notes=notes)
