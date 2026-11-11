@@ -5,10 +5,13 @@ never leads to a 404. The committed systemd units run `--matches --commit` with 
 environment file every night; a run replaces only the seed, never a visitor's private copy.
 """
 
+import os
 import shlex
 import shutil
+import sqlite3
 import subprocess
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -17,7 +20,16 @@ from playwright.sync_api import Page
 
 from app.copy import load_copy
 from app.folders import store
-from tests.regressions.test_journey_folder_save import Flag, client, flag, folder_store, rows
+from app.folders.retention import RETENTION
+from app.folders.store import StoreConfigError
+from tests.regressions.test_journey_folder_save import (
+    Flag,
+    client,
+    create,
+    flag,
+    folder_store,
+    rows,
+)
 from tests.regressions.test_wo97_brief_page import parse
 from tests.regressions.test_wo122_browser_checks import base_url, browser, open_page
 from tests.regressions.test_wo122_browser_checks import page as page
@@ -166,6 +178,57 @@ def test_nightly_run_restores_the_seed_and_keeps_visitor_copies(
         assert snapshot(db, copy) == kept
         assert rows(db.path, f"SELECT * FROM folders WHERE id = '{copy}'") == kept_rows
     assert client.get(f"/f/{copy}").status_code == 200
+
+
+def test_home_hides_the_link_in_a_store_without_the_seed(
+    client: TestClient, tmp_path: Path
+) -> None:
+    visitor = create(client)  # the store now exists, holding only a visitor's folder
+    assert (tmp_path / "folders.db").is_file()
+    assert client.get(visitor).status_code == 200
+    assert demo_link(client.get("/").text) is None
+    assert client.get(SEED).status_code == 404
+
+
+def test_home_hides_the_link_once_the_seed_has_expired(client: TestClient, tmp_path: Path) -> None:
+    run_service()
+    assert demo_link(client.get("/").text) == SEED
+    stale = datetime.now(UTC) - RETENTION - timedelta(days=1)
+    cutoff = stale.isoformat(timespec="seconds")
+    with sqlite3.connect(tmp_path / "folders.db") as connection:
+        connection.execute(
+            "UPDATE folders SET updated_at = ? WHERE id = ?", (cutoff, store.DEMO_ID)
+        )
+    connection.close()
+    assert client.get(SEED).status_code == 404
+    assert demo_link(client.get("/").text) is None
+
+
+def test_home_fails_loudly_on_a_refused_store_file(client: TestClient, tmp_path: Path) -> None:
+    run_service()
+    os.chmod(tmp_path / "folders.db", 0o644)
+    with pytest.raises(StoreConfigError, match="must have mode 0600"):
+        client.get("/")
+
+
+def test_home_fails_loudly_on_a_store_of_another_version(
+    client: TestClient, tmp_path: Path
+) -> None:
+    run_service()
+    with sqlite3.connect(tmp_path / "folders.db") as connection:
+        connection.execute("PRAGMA user_version = 999")
+    connection.close()
+    with pytest.raises(StoreConfigError, match="version 999"):
+        client.get("/")
+
+
+def test_home_fails_loudly_on_a_corrupt_store(client: TestClient, tmp_path: Path) -> None:
+    run_service()
+    db = tmp_path / "folders.db"
+    db.write_bytes(b"not a sqlite database" * 100)
+    assert oct(db.stat().st_mode & 0o777) == "0o600"  # only SQLite can refuse it
+    with pytest.raises(sqlite3.DatabaseError):
+        client.get("/")
 
 
 @pytest.mark.parametrize(

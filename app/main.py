@@ -9,7 +9,6 @@ private headers and a capped request body (`FolderHttpGuard`, outermost, so a 50
 import asyncio
 import os
 import re
-import sqlite3
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
@@ -36,7 +35,6 @@ from app.folders.store import (
     FolderNotFoundError,
     FoldersDisabledError,
     FolderStore,
-    StoreConfigError,
 )
 from app.folders.store import FEATURE as FOLDERS
 from app.page_state import page_state
@@ -147,7 +145,9 @@ def demo_folder_href() -> str | None:
     """The demo folder's link, only once the nightly refresh has seeded it (#155).
 
     Never creates the store or its directory: the path mirrors `store.default_path()` without
-    its mkdir, and a missing file, an off flag or an absent or expired seed hide the link.
+    its mkdir. Only the unpublished states hide the link: no file yet, the flag off, or a seed
+    that is absent or expired. A refused file (`StoreConfigError`) or a SQLite failure raises,
+    so a broken store fails the page loudly instead of quietly dropping the link.
     """
     state = page_state("house", "22")
     assert state is not None
@@ -160,8 +160,8 @@ def demo_folder_href() -> str | None:
         return None
     try:
         FolderStore(path, state).get_folder(DEMO_ID)
-    except (FolderNotFoundError, FoldersDisabledError, StoreConfigError, sqlite3.Error):
-        return None  # the home page never fails on the folder store; folder routes report it
+    except FolderNotFoundError:
+        return None  # the seed is absent or expired: not published yet
     return f"/f/{DEMO_ID}"
 
 
