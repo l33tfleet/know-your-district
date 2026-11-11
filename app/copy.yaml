@@ -95,6 +95,13 @@ sections:
     state_label: "State of Hawaiʻi:"
     not_available: This figure is not available
     no_moe: no margin of error published
+    # A controlled total (MOE sentinel -555555555) reads "1,445,235 (controlled total, no
+    # sampling error)": `controlled_total` in the margin's place, `controlled` in place of the
+    # reliability word, and `controlled_moe` as the margin in its source details. Kept outside
+    # `reliability`, whose keys are the four stored flags (docs/data.md, Reliability).
+    controlled_total: controlled total
+    controlled: no sampling error
+    controlled_moe: None. This is a controlled total, with no sampling error.
     # Opens a SNAP count line ("The count is 773 households; ±172; reliable") on the case
     # card and in the outreach table, so the line reads as a sentence (WO187).
     count_lead: The count is

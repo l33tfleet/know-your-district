@@ -123,6 +123,16 @@ CV = (MOE / 1.645) / estimate
 | > 30% | use with caution |
 
 - An estimate of 0, or a missing MOE, has no CV: show it as "use with caution".
+- **Controlled totals (the one display exception).** Census publishes no sampling
+  margin for a figure it controls to the official population estimates, such as
+  county and state total population (MOE sentinel `-555555555`, annotation
+  `*****`). Such a row stores `moe` and `cv` as null and the flag `caution`, and
+  the method keeps the clause `MOE controlled`. When the estimate is published
+  and that exact clause is present, the brief shows "controlled total, no sampling
+  error" beside the value and in its source details instead of "use with
+  caution" (`controlled_moe` in `app/analysis/reliability.py`). The stored flag,
+  CV, schema and ETL output do not change. Any other missing MOE stays "use with
+  caution"; a missing estimate stays "not available".
 - A missing estimate has no flag: show it as "This figure is not available".
   These four display words live in `app/analysis/reliability.py` (`FLAG_WORDS`)
   and in `app/copy.yaml` (`sections.figures.reliability`); the flag values
@@ -169,7 +179,8 @@ CV = (MOE / 1.645) / estimate
    `-555555555` (MOE: controlled, not sampled), `-222222222` and `-333333333`
    (median in an open-ended interval, top- or bottom-coded). They are never
    figures; map each to "not available" (or "controlled") before anything
-   computes with it. For `-333333333`, preserve the open-ended-interval wording
+   computes with it. How a controlled MOE is shown is the controlled-totals
+   rule under Reliability. For `-333333333`, preserve the open-ended-interval wording
    (e.g. rent or income at the table's limit) in the method.
 
 ## WO59 fact contract: reconciliation of #23 and #24

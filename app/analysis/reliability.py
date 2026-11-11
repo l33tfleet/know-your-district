@@ -19,6 +19,25 @@ FLAG_WORDS: dict[Reliability, str] = {
 }
 
 
+# The method clause the ETL writes for the MOE sentinel -555555555 (annotation `*****`):
+# Census controls the figure to the official population estimates, so it has no sampling
+# error. Clauses are separated by etl/facts.py's METHOD_SEPARATOR (". ", since #187).
+CONTROLLED_CLAUSE = "MOE controlled"
+CLAUSE_SEPARATOR = ". "
+
+
+def controlled_moe(value: Decimal | float | None, moe: Decimal | float | None, method: str) -> bool:
+    """Whether an observed estimate's absent MOE is explicitly controlled, not unknown.
+
+    Display only: the stored flag stays `caution` (docs/data.md, Reliability). A missing
+    estimate takes precedence, and a missing MOE without the exact clause is unknown.
+    """
+    if value is None or moe is not None:
+        return False
+    clauses = method.removesuffix(".").split(CLAUSE_SEPARATOR)
+    return CONTROLLED_CLAUSE in clauses[1:]
+
+
 def flag_for_cv(cv: Decimal) -> Reliability:
     """Classify a coefficient of variation using the shared Decimal thresholds."""
     if cv <= RELIABLE_MAX:

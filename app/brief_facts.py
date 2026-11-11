@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from app.analysis.compare import compare
+from app.analysis.reliability import controlled_moe
 from app.copy import Copy, geography_name
 from app.counties import CountyShare, load_mapping
 from app.facts import FactStore, acs_config
@@ -57,10 +58,22 @@ def reading(
         "value": fact.value,
         "value_text": fmt(fact.value) if fact.value is not None else copy["not_available"],
         "moe": fact.moe,
-        "moe_text": "±" + fmt(fact.moe) if fact.moe is not None else copy["no_moe"],
+        "moe_text": moe_text(fact, fmt, copy, "controlled_total"),
         "reliability": fact.reliability,
-        "word": copy["reliability"][fact.reliability],
+        "word": copy["controlled"] if controlled(fact) else copy["reliability"][fact.reliability],
     }
+
+
+def controlled(fact: Fact) -> bool:
+    """A controlled total: worded apart from caution, its stored flag unchanged (docs/data.md)."""
+    return controlled_moe(fact.value, fact.moe, fact.method)
+
+
+def moe_text(fact: Fact, fmt: Callable[[float], str], copy: Copy, key: str) -> str:
+    """The margin in words; a controlled total says so (copy `key`), any other gap `no_moe`."""
+    if fact.moe is not None:
+        return "±" + fmt(fact.moe)
+    return copy[key] if controlled(fact) else copy["no_moe"]
 
 
 def comparison(
@@ -95,7 +108,7 @@ def citation(fact: Fact, fmt: Callable[[float], str], copy: Copy) -> dict[str, o
     return {
         "fact": fact,
         "geography_name": geography_name(fact.geography),
-        "moe_text": "±" + fmt(fact.moe) if fact.moe is not None else copy["no_moe"],
+        "moe_text": moe_text(fact, fmt, copy, "controlled_moe"),
         "cv_text": f"{fact.cv * 100:.1f}%" if fact.cv is not None else copy["no_cv"],
     }
 
