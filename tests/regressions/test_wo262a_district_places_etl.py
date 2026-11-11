@@ -45,6 +45,7 @@ class Fixture:
     # block GEOID → (House, Senate) number the Census files give, overriding the point
     census: dict[str, tuple[int, int]] = field(default_factory=lambda: {})
     house_source: str = STATE_SOURCES["house"]
+    counties_provenance: Path = COUNTIES_PROVENANCE
 
     def __post_init__(self) -> None:
         # One populated place per House district, wholly inside it.
@@ -58,6 +59,23 @@ class Fixture:
         return self.census.get(geoid, (int(x // 1) + 1, senate_for(x)))
 
     def build(self) -> Path:
+        return self.run(self.write())
+
+    def run(self, inputs: Inputs) -> Path:
+        output = self.root / "district_places.tsv"
+        build_places(
+            inputs,
+            output,
+            retrieved_on="2026-11-11",
+            spelling=self.root / "spelling.tsv",
+            review=self.root / "block_review.tsv",
+            counties_provenance=self.counties_provenance,
+            sources={"house": self.house_source, "senate": STATE_SOURCES["senate"]},
+        )
+        return output
+
+    def write(self) -> Inputs:
+        """Write every synthetic input; a test may alter a file before ``run``."""
         root = self.root
         blocks = root / "blocks.zip"
         shp, shx, dbf = io.BytesIO(), io.BytesIO(), io.BytesIO()
@@ -124,25 +142,15 @@ class Fixture:
             )
             writer.writeheader()
             writer.writerows(self.review)
-        output = root / "district_places.tsv"
-        build_places(
-            Inputs(
-                blocks=blocks,
-                place=place,
-                sldl=root / "sldl.zip",
-                sldu=root / "sldu.zip",
-                gazetteer=gazetteer,
-                house=root / "state-house.geojson",
-                senate=root / "state-senate.geojson",
-            ),
-            output,
-            retrieved_on="2026-11-11",
-            spelling=spelling,
-            review=review,
-            counties_provenance=COUNTIES_PROVENANCE,
-            sources={"house": self.house_source, "senate": STATE_SOURCES["senate"]},
+        return Inputs(
+            blocks=blocks,
+            place=place,
+            sldl=root / "sldl.zip",
+            sldu=root / "sldu.zip",
+            gazetteer=gazetteer,
+            house=root / "state-house.geojson",
+            senate=root / "state-senate.geojson",
         )
-        return output
 
 
 def rows(path: Path) -> list[dict[str, str]]:
@@ -372,3 +380,286 @@ def test_missing_state_district_fails(tmp_path: Path) -> None:
             counties_provenance=COUNTIES_PROVENANCE,
         )
     assert not (tmp_path / "district_places.tsv").exists()
+
+
+# Every rejection branch of the build, each driven through build_places in isolation.
+
+UNMATCHED = "150010002000009"
+
+
+def reviewed_unmatched(
+    tmp_path: Path, pop: int = 12, house: dict[str, str] | None = None
+) -> Fixture:
+    """One block off every State polygon, reviewed in both chambers; ``house`` overrides."""
+    fixture = Fixture(tmp_path)
+    fixture.blocks[UNMATCHED] = (pop, 2.5, 5.0, "00003")
+    for chamber, district in (("house", "house:15:003:2022"), ("senate", "senate:15:002:2022")):
+        row = {
+            "chamber": chamber,
+            "block": UNMATCHED,
+            "pop20": str(pop),
+            "kind": "unmatched",
+            "census_district": district,
+            "point_districts": "",
+            "resolution": "census",
+            "note": "Off the State coastline; the Census district is kept.",
+        }
+        fixture.review.append(row | (house or {}) if chamber == "house" else row)
+    return fixture
+
+
+def rezip(path: Path, members: dict[str, str]) -> None:
+    with ZipFile(path, "w") as archive:
+        for name, text in members.items():
+            archive.writestr(name, text)
+
+
+def read_member(path: Path, name: str) -> str:
+    with ZipFile(path) as archive:
+        return archive.read(name).decode("utf-8")
+
+
+def write_blocks(path: Path, records: list[tuple[str, str, int | None]], dbfs: int = 1) -> None:
+    """A tabblock20 archive with raw (STATEFP20, GEOID20, POP20) records at one point."""
+    shp, shx, dbf = io.BytesIO(), io.BytesIO(), io.BytesIO()
+    with shapefile.Writer(shp=shp, shx=shx, dbf=dbf, shapeType=1) as writer:
+        for name in ("STATEFP20", "GEOID20", "INTPTLAT20", "INTPTLON20"):
+            writer.field(name, "C")
+        writer.field("POP20", "N", 9, 0)
+        for state, geoid, pop in records:
+            writer.record(state, geoid, "+0.5000000", "+0.5000000", pop)
+            writer.point(0.5, 0.5)
+    with ZipFile(path, "w") as archive:
+        archive.writestr("tl.shp", shp.getvalue())
+        for i in range(dbfs):
+            archive.writestr(f"tl{i}.dbf", dbf.getvalue())
+
+
+def assert_fails(fixture: Fixture, inputs: Inputs, match: str) -> None:
+    with pytest.raises(ValueError, match=match):
+        fixture.run(inputs)
+    assert not (fixture.root / "district_places.tsv").exists()
+
+
+def test_reviewed_unmatched_fixture_builds(tmp_path: Path) -> None:
+    # The baseline for the review cases below: unchanged, it builds.
+    assert reviewed_unmatched(tmp_path).build().exists()
+
+
+@pytest.mark.parametrize(
+    ("column", "value"),
+    [
+        ("pop20", "13"),
+        ("kind", "split"),
+        ("census_district", "house:15:004:2022"),
+        ("point_districts", "house:15:003:2022"),
+    ],
+)
+def test_review_row_that_disagrees_with_inputs_fails(
+    tmp_path: Path, column: str, value: str
+) -> None:
+    fixture = reviewed_unmatched(tmp_path, house={column: value})
+    match = f"block review does not match the inputs: house:{UNMATCHED}"
+    assert_fails(fixture, fixture.write(), match)
+
+
+@pytest.mark.parametrize("note", ["", "   "])
+def test_review_row_without_note_fails(tmp_path: Path, note: str) -> None:
+    fixture = reviewed_unmatched(tmp_path, house={"note": note})
+    assert_fails(fixture, fixture.write(), f"block review needs a note: house:{UNMATCHED}")
+
+
+@pytest.mark.parametrize("resolution", ["maybe", "", "point"])
+def test_invalid_review_resolution_fails(tmp_path: Path, resolution: str) -> None:
+    # `point` is invalid here: an unmatched block's point lies in no district.
+    fixture = reviewed_unmatched(tmp_path, house={"resolution": resolution})
+    assert_fails(fixture, fixture.write(), f"invalid block resolution '{resolution}'")
+
+
+def test_empty_block_may_be_dropped(tmp_path: Path) -> None:
+    fixture = reviewed_unmatched(tmp_path, pop=0)
+    for row in fixture.review:
+        row["resolution"] = "none"
+    output = fixture.build()
+    sidecar = json.loads(output.with_suffix(".provenance.json").read_text())
+    assert sidecar["block_review"]["resolutions"] == {
+        "house unmatched none": 1,
+        "senate unmatched none": 1,
+    }
+
+
+BAF = ("baf.zip", "BlockAssign_ST15_HI_INCPLACE_CDP.txt")
+SLDL = ("sldl.zip", "15_HI_SLDL22.txt")
+SLDU = ("sldu.zip", "15_HI_SLDU22.txt")
+
+
+@pytest.mark.parametrize(
+    ("target", "edit", "match"),
+    [
+        (BAF, "drop", "block set mismatch: missing=1, extra=0"),
+        (BAF, "extra", "block set mismatch: missing=0, extra=1"),
+        (BAF, "header", "unexpected header"),
+        (BAF, "malformed", "malformed row"),
+        (BAF, "duplicate", "duplicate block in"),
+        (BAF, "rename", "baf.zip requires exactly one"),
+        (SLDL, "drop", "15_HI_SLDL22.txt block set mismatch"),
+        (SLDU, "extra", "15_HI_SLDU22.txt block set mismatch"),
+        (SLDU, "rename", "sldu.zip requires exactly one"),
+    ],
+)
+def test_bad_assignment_table_fails(
+    tmp_path: Path, target: tuple[str, str], edit: str, match: str
+) -> None:
+    archive, table = target
+    fixture = Fixture(tmp_path)
+    inputs = fixture.write()
+    path = tmp_path / archive
+    lines = read_member(path, table).splitlines()
+    delimiter = "|" if "|" in lines[0] else ","
+    if edit == "drop":
+        lines.pop()
+    elif edit == "extra":
+        lines.append(f"150019999999999{delimiter}001")
+    elif edit == "header":
+        lines[0] = f"BLOCK{delimiter}CODE"
+    elif edit == "malformed":
+        lines[1] += f"{delimiter}extra"
+    elif edit == "duplicate":
+        lines.append(lines[1])
+    text = "\n".join(lines) + "\n"
+    rezip(path, {"other.txt" if edit == "rename" else table: text})
+    assert_fails(fixture, inputs, match)
+
+
+@pytest.mark.parametrize(
+    ("records", "dbfs", "match"),
+    [
+        ([("15", "150010001000001", 1)], 0, "exactly one .dbf"),
+        ([("15", "150010001000001", 1)], 2, "exactly one .dbf"),
+        ([("06", "060010001000001", 1)], 1, "outside Hawaiʻi or malformed"),
+        ([("15", "1500100010", 1)], 1, "outside Hawaiʻi or malformed"),
+        ([("15", "150010001000001", -1)], 1, "must be a whole number"),
+        ([("15", "150010001000001", None)], 1, "must be a whole number"),
+        ([("15", "150010001000001", 1), ("15", "150010001000001", 2)], 1, "duplicate block"),
+        ([], 1, "no blocks"),
+    ],
+)
+def test_bad_block_file_fails(
+    tmp_path: Path, records: list[tuple[str, str, int | None]], dbfs: int, match: str
+) -> None:
+    fixture = Fixture(tmp_path)
+    inputs = fixture.write()
+    write_blocks(inputs.blocks, records, dbfs)
+    assert_fails(fixture, inputs, match)
+
+
+@pytest.mark.parametrize(
+    ("line", "match"),
+    [
+        ("CA\t1590000\tElsewhere CDP", "gazetteer place outside Hawaiʻi"),
+        ("HI\t0690000\tElsewhere CDP", "gazetteer place outside Hawaiʻi"),
+        ("HI\t159000\tShort CDP", "gazetteer place outside Hawaiʻi"),
+        ("HI\t1500001\tTown 1 CDP", "duplicate gazetteer place: 1500001"),
+    ],
+)
+def test_bad_gazetteer_fails(tmp_path: Path, line: str, match: str) -> None:
+    fixture = Fixture(tmp_path)
+    inputs = fixture.write()
+    inputs.gazetteer.write_text(inputs.gazetteer.read_text() + line + "\n", encoding="utf-8")
+    assert_fails(fixture, inputs, match)
+
+
+def lanai(tmp_path: Path) -> Fixture:
+    fixture = Fixture(tmp_path)
+    fixture.places["90000"] = "Lanai CDP"
+    fixture.spelling["Lanai CDP"] = "Lānaʻi"
+    fixture.blocks["150010002000001"] = (5, 0.25, 0.25, "90000")
+    return fixture
+
+
+def test_checked_kahako_and_okina_spelling_builds(tmp_path: Path) -> None:
+    # The baseline for the spelling cases below: the correct entry builds.
+    table = rows(lanai(tmp_path).build())
+    assert {r["name"] for r in table if r["place_geoid"] == "1590000"} == {"Lānaʻi"}
+
+
+@pytest.mark.parametrize(
+    ("line", "match"),
+    [
+        ("Town 1 CDP\tTown 1\tHBGN via GNIS 1", "duplicate spelling entry: Town 1 CDP"),
+        ("Lanai CDP\t\tHBGN via GNIS 1", "needs a display name and reference: Lanai CDP"),
+        ("Lanai CDP\tLānaʻi\t", "needs a display name and reference: Lanai CDP"),
+        ("Lanai CDP\tLānaʻi\tHBGN via GNIS 1", "must be NFC-normalized"),
+    ],
+)
+def test_bad_spelling_entry_fails(tmp_path: Path, line: str, match: str) -> None:
+    fixture = lanai(tmp_path)
+    inputs = fixture.write()
+    path = tmp_path / "spelling.tsv"
+    kept = [row for row in path.read_text().splitlines() if not row.startswith("Lanai CDP")]
+    path.write_text("\n".join([*kept, line]) + "\n", encoding="utf-8")
+    assert_fails(fixture, inputs, match)
+
+
+@pytest.mark.parametrize(
+    ("edit", "match"),
+    [
+        ("transfer_limit", "incomplete State export: house"),
+        ("transfer_limit_properties", "incomplete State export: house"),
+        ("duplicate", "duplicate State district: house:15:001:2022"),
+        ("point", "geometry must be polygonal: house:15:001:2022"),
+    ],
+)
+def test_bad_state_export_fails(tmp_path: Path, edit: str, match: str) -> None:
+    fixture = Fixture(tmp_path)
+    inputs = fixture.write()
+    document = json.loads(inputs.house.read_text())
+    features: list[dict[str, object]] = document["features"]
+    if edit == "transfer_limit":
+        document["exceededTransferLimit"] = True
+    elif edit == "transfer_limit_properties":
+        document["properties"] = {"exceededTransferLimit": True}
+    elif edit == "duplicate":
+        features.append(features[0])
+    elif edit == "point":
+        features[0]["geometry"] = {"type": "Point", "coordinates": [0.5, 0.5]}
+    inputs.house.write_text(json.dumps(document))
+    assert_fails(fixture, inputs, match)
+
+
+def test_multipolygon_state_district_is_read(tmp_path: Path) -> None:
+    fixture = Fixture(tmp_path)
+    inputs = fixture.write()
+    document = json.loads(inputs.house.read_text())
+    first: dict[str, object] = document["features"][0]
+    polygon: dict[str, object] = json.loads(json.dumps(first["geometry"]))
+    first["geometry"] = {"type": "MultiPolygon", "coordinates": [polygon["coordinates"]]}
+    inputs.house.write_text(json.dumps(document))
+    table = rows(fixture.run(inputs))
+    assert ("house:15:001:2022", "1500001") in {(r["district"], r["place_geoid"]) for r in table}
+
+
+def test_block_in_no_census_district_fails(tmp_path: Path) -> None:
+    fixture = Fixture(tmp_path)
+    fixture.census["150010001000001"] = (99, 1)
+    match = "block 150010001000001 has no 2022 house district: '099'"
+    assert_fails(fixture, fixture.write(), match)
+
+
+def test_state_source_not_in_counties_sidecar_fails(tmp_path: Path) -> None:
+    fixture = Fixture(tmp_path)
+    fixture.house_source = STATE_SOURCES["house"].replace("MapServer/33", "MapServer/35")
+    assert_fails(fixture, fixture.write(), "house source is not the counties State query")
+
+
+def test_block_place_missing_from_gazetteer_fails(tmp_path: Path) -> None:
+    fixture = Fixture(tmp_path)
+    fixture.blocks["150010002000001"] = (5, 0.25, 0.25, "77777")
+    assert_fails(fixture, fixture.write(), "block places missing from the gazetteer: 1577777")
+
+
+def test_district_with_no_listed_place_fails(tmp_path: Path) -> None:
+    fixture = Fixture(tmp_path)
+    pop, x, y, _ = fixture.blocks["150010001000005"]
+    fixture.blocks["150010001000005"] = (pop, x, y, "")
+    assert_fails(fixture, fixture.write(), r"districts with no listed place: house:15:005:2022$")
