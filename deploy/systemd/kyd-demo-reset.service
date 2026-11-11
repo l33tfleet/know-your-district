@@ -1,0 +1,22 @@
+# Refresh the demo outreach folder's immutable seed (#155). Install: docs/demo-folder.md.
+# Started by kyd-demo-reset.timer; replaces only the seed folder, never a visitor's copy.
+[Unit]
+Description=Know Your District: refresh the demo outreach folder
+Documentation=https://github.com/l33tfleet/know-your-district/blob/main/docs/demo-folder.md
+
+[Service]
+Type=oneshot
+User=kyd
+Group=kyd
+WorkingDirectory=/srv/know-your-district
+# The app's own environment file: the same KYD_FOLDERS_DB, so both open one store.
+EnvironmentFile=/etc/know-your-district/kyd.env
+ExecStart=/srv/know-your-district/.venv/bin/python -m app.folders.demo --matches --commit
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+ProtectSystem=strict
+ProtectHome=yes
+StateDirectory=know-your-district
+StateDirectoryMode=0700

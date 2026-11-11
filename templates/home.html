@@ -5,6 +5,10 @@
 <section class="intro">
   <h1>{{ copy.home.heading }}</h1>
   <p>{{ copy.home.intro }}</p>
+  {# Shown only once the demo seed exists (#155), so the link never leads to a 404. #}
+  {% if demo_href %}
+  <p class="demo-link"><a href="{{ demo_href }}">{{ copy.home.demo_link }}</a></p>
+  {% endif %}
 </section>
 <div class="finders">
 <form class="picker" action="/brief" method="get" hx-boost="true">
