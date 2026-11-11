@@ -611,10 +611,10 @@ def main() -> None:
         fetch(args.fetch)
         return
     names = " ".join(role.upper() for role, _, _ in FETCH_NAMES)
-    if len(args.paths) != len(FETCH_NAMES) + 1 or (
-        args.draft_review is None and not args.retrieved_on
-    ):
-        parser.error(f"give {names} OUTPUT and --retrieved-on")
+    if len(args.paths) != len(FETCH_NAMES) + 1:
+        parser.error(f"give {names} OUTPUT ({len(FETCH_NAMES) + 1} paths), not {len(args.paths)}")
+    if args.draft_review is None and not args.retrieved_on:
+        parser.error("give --retrieved-on YYYY-MM-DD, the date the inputs were fetched")
     inputs = Inputs(*args.paths[:-1])
     if args.draft_review is not None:
         _, problems = find_problems(inputs, load_blocks(inputs.blocks))

@@ -17,10 +17,12 @@ import pytest
 
 from etl.boundaries.overlay import shapefile
 from etl.district_places import (
+    FETCH_NAMES,
     STATE_SOURCES,
     Inputs,
     build_places,
     included,
+    main,
     qualifier,
     share,
 )
@@ -663,3 +665,30 @@ def test_district_with_no_listed_place_fails(tmp_path: Path) -> None:
     pop, x, y, _ = fixture.blocks["150010001000005"]
     fixture.blocks["150010001000005"] = (pop, x, y, "")
     assert_fails(fixture, fixture.write(), r"districts with no listed place: house:15:005:2022$")
+
+
+def run_cli(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], argv: list[str]
+) -> str:
+    """Run the CLI on paths that do not exist: a rejection must come before any read."""
+    monkeypatch.setattr("sys.argv", ["district_places", *argv])
+    with pytest.raises(SystemExit) as exit_info:
+        main()
+    assert exit_info.value.code == 2
+    return capsys.readouterr().err
+
+
+def test_cli_rejects_wrong_path_count(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    paths = [str(tmp_path / f"missing{i}") for i in range(len(FETCH_NAMES))]
+    err = run_cli(monkeypatch, capsys, ["--retrieved-on", "2026-11-11", *paths])
+    assert f"OUTPUT ({len(FETCH_NAMES) + 1} paths), not {len(FETCH_NAMES)}" in err
+
+
+def test_cli_rejects_missing_retrieved_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    paths = [str(tmp_path / f"missing{i}") for i in range(len(FETCH_NAMES) + 1)]
+    err = run_cli(monkeypatch, capsys, paths)
+    assert "give --retrieved-on YYYY-MM-DD" in err
