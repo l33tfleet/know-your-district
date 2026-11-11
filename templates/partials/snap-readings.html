@@ -15,8 +15,13 @@
         <th scope="row">{{ reading.geography_name }}</th>
         <td>
           <p>
-            {{ reading.value_text }}
+            {#- A missing count shows only its "not available" sentence (WO187). -#}
+            {% if reading.fact and reading.fact.value is not none %}
+            {{ labels.count_lead }} {{ reading.value_text }}
             {{ reading.units }}; {{ reading.moe_text }}; {{ reading.reliability_word }}
+            {% else %}
+            {{ reading.value_text }}
+            {% endif %}
           </p>
           {% if reading.fact %}
           {% set fact = reading.fact %}

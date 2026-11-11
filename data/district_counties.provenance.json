@@ -25,5 +25,5 @@
   ],
   "county_source": "https://www2.census.gov/geo/tiger/TIGER2022/COUNTY/tl_2022_us_county.zip",
   "county_sha256": "a48c6e018d80e5557720971831a37120450f02c6d934687ccb3c26314ae8bda6",
-  "method": "EPSG:6933 equal-area polygon intersection; share = county intersection area / sum of configured county intersection areas; Kalawao excluded; water/coastline differences excluded from denominator; no sliver threshold or repair."
+  "method": "EPSG:6933 equal-area polygon intersection. Each share is the area where the county and the district overlap, divided by the sum of those areas for all counties in the list. Kalawao is left out. Water and coastline gaps are left out of the total. No small slivers are dropped or fixed."
 }

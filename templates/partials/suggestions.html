@@ -14,7 +14,7 @@
   {% set wording = program.wording %}
   <div class="folder-suggestion" data-suggestion="{{ proposal.match.population_id }}:{{ proposal.match.program_id }}"
        data-source="{{ proposal.source }}" data-dated="{{ proposal.dated }}">
-    <h4 id="suggestion-{{ card_id }}-{{ number }}">{{ card.program_name }} · {{ card.population }}</h4>
+    <h4 id="suggestion-{{ card_id }}-{{ number }}">{{ card.wording.next_step }}: {{ card.program_name }}. {{ card.population }}</h4>
     <p>{{ card.agency }}. {{ card.claim_label }}.</p>
     <p class="suggestion-source">{{ words.source.format(dated=proposal.dated) }}</p>
     <p>{{ card.disclaimer }} {{ program.guidance }}</p>

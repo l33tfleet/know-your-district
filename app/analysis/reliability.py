@@ -13,7 +13,9 @@ FLAG_WORDS: dict[Reliability, str] = {
     "reliable": "reliable",
     "moderate": "moderate: use with care",
     "caution": "use with caution",
-    "unavailable": "not available",
+    # A short sentence, not a bare label: the page rule in docs/plain-language.md
+    # scores it at grade 8 or below, and app/copy.yaml shows the same words.
+    "unavailable": "This figure is not available",
 }
 
 

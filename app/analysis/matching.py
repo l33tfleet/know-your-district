@@ -53,8 +53,8 @@ def _citation(f: Fact) -> str:
 
 def _describe(d: Derived) -> str:
     return (
-        f"{d.kind}: {d.value}; MOE {d.moe}; {FLAG_WORDS[d.reliability]}; "
-        f"{d.geography}; {d.universe}; {d.method}; inputs: "
+        f"{d.kind}: {d.value}. MOE {d.moe}. {FLAG_WORDS[d.reliability]}. "
+        f"{d.geography}. {d.universe}. {d.method}. inputs: "
         + " | ".join(_citation(f) for f in d.inputs)
     )
 
@@ -109,7 +109,7 @@ def score_match(
             raise ValueError("population share mismatch")
     available = _available(district) and mapping.review_status != "rejected"
     prominence, reliability = 0.6, RELIABILITY[district.reliability]
-    comparison = "No comparable prominence evidence."
+    comparison = "No comparable prominence evidence. We lack shared counts to check the gap."
     if benchmark is not None:
         comparable = (
             _available(benchmark) and len({f.vintage for d in figures for f in d.inputs}) == 1
@@ -130,7 +130,10 @@ def score_match(
                 else:
                     comparison = "No evidence of a higher comparable population share."
     claim = "relevant_need" if mapping.claim == "relevant_need" else "modeled_eligibility"
-    multiplier, uptake_note = 1.0, "Comparable uptake unavailable."
+    multiplier, uptake_note = (
+        1.0,
+        "Comparable uptake unavailable. We lack shared counts of who meets the rules and gets aid.",
+    )
     if uptake is not None:
         problem = _uptake_problem(mapping, population, district, uptake)
         if problem is not None:
@@ -149,9 +152,9 @@ def score_match(
     )
     reason = (
         f"{comparison} {uptake_note} {mapping.relevance} "
-        f"Review: {mapping.review_status}. Unknown conditions: "
-        + "; ".join(mapping.unobserved_conditions)
-        + ". Program may help; the agency decides eligibility. "
+        f"Review: {mapping.review_status}. We still need to know: "
+        + " ".join(mapping.unobserved_conditions)
+        + ". The program may help. The agency decides eligibility. "
         + " || ".join(_describe(d) for d in figures)
     )
     if uptake is not None:

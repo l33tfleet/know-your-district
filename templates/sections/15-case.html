@@ -6,7 +6,7 @@
   {% if section.citation %}
   <div class="case-figure">
     <p class="case-reading">
-      {{ reading.value_text }}
+      {{ section.count_lead }} {{ reading.value_text }}
       {{ reading.units }}; {{ reading.moe_text }}; {{ reading.reliability_word }}
     </p>
     <p class="case-undercount">{{ section.result.undercount_note }}</p>

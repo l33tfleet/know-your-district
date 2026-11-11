@@ -29,7 +29,7 @@
     <ol class="folder-print-rows">
       {% for row in summary.rows %}
       <li class="folder-print-row">
-        <p class="folder-print-name"><strong>{{ row.name }}</strong> · {{ row.district }}</p>
+        <p class="folder-print-name"><strong>{{ row.name }}</strong>. {{ row.district }}</p>
         <p class="folder-print-state">{{ row.state }}{% if row.reason %} · <span class="folder-print-reason">{{ row.reason }}</span>{% endif %}</p>
         <p class="folder-print-notes">{{ row.notes }}</p>
       </li>

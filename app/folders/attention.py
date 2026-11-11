@@ -55,7 +55,7 @@ def needs_attention(cards: Sequence[Card], notes: Sequence[Note], today: date) -
             rank, step = 2, "Review next step"
             reason = (
                 f"{priority} priority, status {card.status}, "
-                f"changed {elapsed(changed)} ago; {activity}."
+                f"changed {elapsed(changed)} ago. {activity}."
             )
         if card.reason:
             reason += f" Saved priority reason: {card.reason}"

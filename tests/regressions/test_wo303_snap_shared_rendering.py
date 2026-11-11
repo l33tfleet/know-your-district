@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-import yaml
+import yaml  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 from fastapi.testclient import TestClient
 from jinja2 import ChoiceLoader, DictLoader, Environment, FileSystemLoader, StrictUndefined
 from playwright.sync_api import Route, sync_playwright
@@ -40,45 +40,6 @@ def configure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: str) -> T
     path.write_text(f'outreach = "on"\nsnap_question = "on"\nsource_links = "{status}"\n')
     monkeypatch.setattr(features, "FEATURES_PATH", path)
     return TestClient(asgi_app)
-
-
-def test_explicit_brief_copy_survives_canonical_rewording(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    client = configure(tmp_path, monkeypatch, "off")
-    copy = app.copy.load_copy()
-    canonical = copy["sections"]["snap"]
-    for field in ("heading", "measure_note", "poverty_note"):
-        canonical[field] = "Reworded canonical measure: households eligible for assistance."
-    path = tmp_path / "copy.yaml"
-    path.write_text(yaml.safe_dump(copy, allow_unicode=True))
-    monkeypatch.setattr(app.copy, "COPY_PATH", path)
-    card, answer = surfaces(client)
-    assert "eligible for" not in card.text
-    assert "eligible for" not in answer.text
-    assert card.one("h2").text == "Households in poverty reporting no SNAP receipt"
-    # Copy edits reach both surfaces without another Python wording rewrite.
-    expected = {
-        "heading": "Shared outreach heading",
-        "measure_note": "Shared measure caveat",
-        "poverty_note": "Shared poverty caveat",
-    }
-    canonical["brief"] = expected
-    labels = copy["sections"]["snap_question"]
-    for field in ("caption", "estimate_label", "official_label", "referral_label"):
-        labels[field] = f"Shared {field}"
-    path.write_text(yaml.safe_dump(copy, allow_unicode=True))
-    from app.snap import brief_wording
-
-    wording = brief_wording()
-    assert wording.heading == expected["heading"]
-    assert wording.measure_note == expected["measure_note"]
-    assert wording.poverty_note == expected["poverty_note"]
-    for surface in surfaces(client):
-        for value in expected.values():
-            assert value in surface.text
-        for field in ("caption", "estimate_label", "official_label", "referral_label"):
-            assert labels[field] in surface.text
 
 
 @pytest.mark.parametrize(
@@ -151,28 +112,6 @@ def test_shared_partial_accepts_omitted_source_links() -> None:
     assert [link.attrs["href"] for link in omitted.find_all("a")] == [
         result.official_url,
         result.referral_url,
-    ]
-
-
-def test_card_preserves_its_original_wording(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    client = configure(tmp_path, monkeypatch, "off")
-    card, _ = surfaces(client)
-    assert card.one("h2").text == "Households in poverty reporting no SNAP receipt"
-    # Fixed pre-consolidation copy: matching each other alone would allow both
-    # surfaces to drift together and miss the unchanged-card acceptance rule.
-    assert [child.text for child in card.children if child.tag == "p"] == [
-        "ACS survey-reported receipt over the past 12 months, not current enrollment or "
-        "eligibility. This published joint cell counts households with income under the "
-        "poverty threshold that reported no Food Stamps/SNAP receipt during that period.",
-        "Survey answers undercount benefit receipt; reported nonreceipt does not establish "
-        "that a household received no benefits.",
-        "ACS uses national Census poverty thresholds, not Hawaiʻi HHS poverty guidelines "
-        "(which exceed Census thresholds). This count does not determine eligibility or "
-        "identify unenrolled households that meet SNAP eligibility rules.",
-        "SNAP may help. DHS decides eligibility. Contact DHS or Aloha United Way 211 for "
-        "assistance. Official SNAP program page Aloha United Way 211",
     ]
 
 

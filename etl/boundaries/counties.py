@@ -35,10 +35,12 @@ from etl.boundaries.overlay import (
 )
 
 COUNTY_SOURCE = "https://www2.census.gov/geo/tiger/TIGER2022/COUNTY/tl_2022_us_county.zip"
+# Plain sentences (#187): the brief shows this method verbatim, at grade 8 or below.
 METHOD = (
-    "EPSG:6933 equal-area polygon intersection; share = county intersection area / "
-    "sum of configured county intersection areas; Kalawao excluded; "
-    "water/coastline differences excluded from denominator; no sliver threshold or repair."
+    "EPSG:6933 equal-area polygon intersection. Each share is the area where the county "
+    "and the district overlap, divided by the sum of those areas for all counties in the "
+    "list. Kalawao is left out. Water and coastline gaps are left out of the total. No "
+    "small slivers are dropped or fixed."
 )
 
 
