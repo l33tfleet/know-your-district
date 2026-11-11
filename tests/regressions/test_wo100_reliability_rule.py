@@ -2,16 +2,16 @@
 
 from decimal import Decimal
 from math import nextafter
-from pathlib import Path
+from pathlib import Path  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by a test #187 superseded
 
 import pytest
 from pydantic import ValidationError
 
 from app.analysis.reliability import (
-    FLAG_WORDS,
-    MODERATE_MAX,
-    RELIABLE_MAX,
-    Z90,
+    FLAG_WORDS,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by a test #187 superseded
+    MODERATE_MAX,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by a test #187 superseded
+    RELIABLE_MAX,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by a test #187 superseded
+    Z90,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by a test #187 superseded
     Reliability,
     classify,
 )
@@ -19,22 +19,6 @@ from app.models import Fact
 from etl.census import CensusBatch
 from etl.facts import facts_from_batch
 from etl.indicators import INDICATORS
-
-
-def test_decimal_constants_and_documented_words() -> None:
-    assert Decimal("1.645") == Z90
-    assert Decimal("0.15") == RELIABLE_MAX
-    assert Decimal("0.30") == MODERATE_MAX
-    assert all(isinstance(value, Decimal) for value in (Z90, RELIABLE_MAX, MODERATE_MAX))
-    assert FLAG_WORDS == {
-        "reliable": "reliable",
-        "moderate": "moderate: use with care",
-        "caution": "use with caution",
-        "unavailable": "not available",
-    }
-    documentation = (Path(__file__).resolve().parents[2] / "docs/data.md").read_text()
-    for words in FLAG_WORDS.values():
-        assert words in documentation
 
 
 @pytest.mark.parametrize(

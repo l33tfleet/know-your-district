@@ -3,17 +3,21 @@
 import argparse
 import json
 import re
+import unicodedata
 from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import asdict, dataclass
+from functools import cache
 from html.parser import HTMLParser
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Literal, cast
+from unittest.mock import patch
 
 import yaml
 from pydantic import BaseModel, ConfigDict, StrictInt
 
-from scripts.readability import score
+from scripts.readability import HAWAIIAN_NAMES, score, syllables
 
 
 @dataclass(frozen=True)
@@ -208,14 +212,134 @@ def recorded_blocks(path: Path) -> list[Block]:
     return result
 
 
+GRADE_LIMIT = 8.0
+LABEL_MAX_WORDS = 3
+LABEL_MAX_SYLLABLES = 3
+PLACEHOLDER = "Name"
+# The one fixed statement scored as a placeholder (docs/plain-language.md).
+AGENCY_STATEMENT = "The agency decides eligibility."
+REFERRAL_NAME = "Aloha United Way"
+_ROOT = Path(__file__).resolve().parents[1]
+_BRACES = re.compile(r"\{\{\s*[A-Za-z_][A-Za-z_0-9]*\s*\}\}|\{[A-Za-z_][A-Za-z_0-9]*\}")
+_WORD = re.compile(r"[A-Za-zĀĒĪŌŪāēīōū]+(?:[ʻ'\u2019][A-Za-zĀĒĪŌŪāēīōū]+)*|\d+(?:[.,]\d+)*")
+
+
+@cache
+def placeholder_names(root: Path = _ROOT) -> tuple[str, ...]:
+    """Fixed names read from the repo's own data, plus the agency statement.
+
+    Catalog program names and agencies (data/programs.yaml), county names
+    (app/copy.yaml `counties`), island names (data/geo/islands/islands.json),
+    Aloha United Way and the sentence "The agency decides eligibility." Longest
+    first, so a longer name is replaced before a name it contains.
+    """
+    names: set[str] = {REFERRAL_NAME, AGENCY_STATEMENT}
+    for record in cast(
+        list[dict[str, object]],
+        yaml.safe_load((root / "data/programs.yaml").read_text(encoding="utf-8")),
+    ):
+        names.update(str(record[key]) for key in ("name", "agency"))
+    copy = cast(dict[str, object], yaml.safe_load((root / "app/copy.yaml").read_text("utf-8")))
+    names.update(str(name) for name in cast(dict[str, object], copy["counties"]).values())
+    islands = cast(
+        dict[str, list[dict[str, object]]],
+        json.loads((root / "data/geo/islands/islands.json").read_text(encoding="utf-8")),
+    )
+    names.update(str(island["name"]) for island in islands["islands"])
+    return tuple(sorted(names, key=lambda name: (-len(name), name)))
+
+
+@dataclass(frozen=True)
+class Reading:
+    """How one page string reads after citation removal and name placeholders."""
+
+    text: str
+    label: bool
+    grade: float | None
+    long_words: tuple[str, ...]
+
+    @property
+    def ok(self) -> bool:
+        if self.label:
+            return not self.long_words
+        return self.grade is None or self.grade <= GRADE_LIMIT
+
+
+def check_reading(
+    text: str,
+    citation_spans: tuple[tuple[int, int], ...] = (),
+    names: tuple[str, ...] | None = None,
+) -> Reading:
+    """Score one string under the page rule in docs/plain-language.md.
+
+    Citation spans become a space; each exact fixed name becomes "Name". A string
+    of 1–3 words with no sentence-ending punctuation is a label: every word other
+    than a placeholder or an exempt Hawaiian name must have at most three
+    syllables. Every other string must score Flesch–Kincaid grade 8 or lower.
+    """
+    score(text, citation_spans)  # validate the spans
+    parts: list[str] = []
+    previous = 0
+    for start, end in citation_spans:
+        parts.extend((text[previous:start], " "))
+        previous = end
+    parts.append(text[previous:])
+    plain = unicodedata.normalize("NFC", "".join(parts))
+    plain = _BRACES.sub("one", plain)  # a copy placeholder is one short word, as in score()
+    for name in placeholder_names() if names is None else names:
+        plain = plain.replace(unicodedata.normalize("NFC", name), PLACEHOLDER)
+    # Exempt Hawaiian names count as no word, as in score().
+    words = [word for word in _WORD.findall(plain) if word not in HAWAIIAN_NAMES]
+    label = 1 <= len(words) <= LABEL_MAX_WORDS and not re.search(r"[.!?]", plain)
+    long_words = tuple(
+        word for word in words if word != PLACEHOLDER and syllables(word) > LABEL_MAX_SYLLABLES
+    )
+    return Reading(plain, label, score(plain).grade, long_words if label else ())
+
+
+_URL = re.compile(r"https?://\S+")
+POPULATION_FACTS = _ROOT / "data/populations/facts.db"
+# Districts whose match cards the corpus renders: each chamber's first, a middle, last.
+MATCH_DISTRICTS = (
+    ("house", 22),
+    ("senate", 1),
+    ("house", 1),
+    ("house", 51),
+    ("senate", 12),
+    ("senate", 25),
+)
+
+
+def page_blocks(pages: Mapping[str, str], root: Path = _ROOT) -> list[Block]:
+    """The page strings the rule covers: every rendered block, and every app/copy.yaml
+    leaf except a bare URL (a link target, not text a reader reads)."""
+    blocks = [b for source, html in pages.items() for b in rendered_blocks(html, source)]
+    blocks.extend(b for b in yaml_blocks(root / "app/copy.yaml") if not _URL.fullmatch(b.text))
+    return blocks
+
+
+def hard_blocks(blocks: list[Block]) -> list[tuple[Block, Reading]]:
+    """Each block that breaks the page rule, with how it read."""
+    failed: list[tuple[Block, Reading]] = []
+    for block in blocks:
+        reading = check_reading(block.text, block.citation_spans)
+        if not reading.ok:
+            failed.append((block, reading))
+    return failed
+
+
 def rendered_pages() -> dict[str, str]:
     """Render the real app offline, plus labelled missing-row and county fixtures."""
     from fastapi.testclient import TestClient
 
     from app.brief import discover, render_context
+    from app.brief_facts import FORMATS
+    from app.brief_facts import reading as figure_reading
+    from app.copy import section_copy
     from app.main import app, templates
     from app.page_state import PageState
     from etl.boundaries import DISTRICT_COUNTS, DistrictId
+    from etl.programs.mappings import load_mappings
 
     paths = ["/", "/not-found", *[f"/picker/numbers?chamber={c}" for c in DISTRICT_COUNTS]]
     paths.extend(
@@ -223,6 +347,74 @@ def rendered_pages() -> dict[str, str]:
     )
     with TestClient(app) as client:
         pages = {path: client.get(path).text for path in paths}
+    # Match cards: the ranked preview brief and every shipped mapping's permalink, in
+    # both chambers' first, a middle and last district, read from the brief store
+    # (missing inputs) and from the full population store (published inputs).
+    match_paths = [f"/brief/{c}/{n}?preview=1" for c, n in MATCH_DISTRICTS[:2]]
+    match_paths.extend(
+        f"/match/{c}/{n}/{m.program_id}/{m.population_id}?preview=1"
+        for m in load_mappings()
+        if m.review_status != "rejected"
+        for c, n in MATCH_DISTRICTS
+    )
+    for store, label in (
+        (None, "fixture:brief-store"),
+        (POPULATION_FACTS, "fixture:population-store"),
+    ):
+        env = {} if store is None else {"KYD_FACTS_DB": str(store)}
+        with patch.dict("os.environ", env), TestClient(app) as client:
+            for path in match_paths:
+                response = client.get(path)
+                assert response.status_code == 200, (path, response.text)
+                pages[f"{label}:{path}"] = response.text
+    # Exercise real folder routes with a disposable store outside the checkout.
+    with (
+        TemporaryDirectory(prefix="kyd-reading-") as directory,
+        patch.dict("os.environ", {"KYD_FOLDERS_DB": f"{directory}/folders.db"}),
+        TestClient(app, follow_redirects=False) as client,
+    ):
+
+        def make_folder(mappings: list[tuple[str, str]]) -> str:
+            created = client.post(
+                "/folders",
+                data={"case_id": "snap_no_receipt", "chamber": "house", "district": "22"},
+            )
+            assert created.status_code == 303, created.text
+            folder = created.headers["location"]
+            for population_id, program_id in mappings:
+                saved = client.post(
+                    "/folders?district=house-22",
+                    data={
+                        "population_id": population_id,
+                        "program_id": program_id,
+                        "folder": folder,
+                    },
+                )
+                assert saved.status_code == 303, saved.text
+            return folder
+
+        shipped = [
+            (m.population_id, m.program_id)
+            for m in load_mappings()
+            if m.review_status != "rejected"
+        ]
+        # One folder holds the case and SNAP, so ABLE and pre-K show as suggestions;
+        # the other saves every shipped mapping, so each one shows as a saved card.
+        folders = {
+            "fixture:folder": make_folder([("below_poverty_no_snap", "snap")]),
+            "fixture:folder-all": make_folder(shipped),
+        }
+        # The brief store also covers missing match inputs; the full population store
+        # shows the same saved matches with published inputs.
+        for store, kind in ((None, ""), (POPULATION_FACTS, "-populations")):
+            env = {} if store is None else {"KYD_FACTS_DB": str(store)}
+            with patch.dict("os.environ", env):
+                for label, folder in folders.items():
+                    for suffix in ("", "?matches=1"):
+                        response = client.get(folder + suffix)
+                        assert response.status_code == 200, response.text
+                        name = label.replace("fixture:folder", "fixture:folder" + kind, 1)
+                        pages[name + suffix] = response.text
     section = next(s for s in discover() if s.name == "figures")
     context = render_context(section, PageState(district=DistrictId(chamber="house", district=1)))
     content = cast(dict[str, object], context["section"])
@@ -238,17 +430,19 @@ def rendered_pages() -> dict[str, str]:
         ],
     )
     pages["fixture:multi-county"] = templates.get_template(section.template).render(multi)
+    # Every reading missing, worded by the app's own reading() (app/copy.yaml), and laid
+    # out as the app lays out a figure with no row at all: no sentence, no citation.
+    figures_copy = section_copy("figures")
     for figure in cast(list[dict[str, object]], content["figures"]):
         readings = [cast(dict[str, object], figure[k]) for k in ("district", "state")]
         readings.extend(cast(list[dict[str, object]], figure["counties"]))
         for reading in readings:
-            reading.update(
-                found=False,
-                value_text="not available",
-                word="not available",
-                reliability="unavailable",
-            )
-        figure.update(citations=[], intervals=[])
+            kept = {k: reading[k] for k in ("geography", "label") if k in reading}
+            reading.clear()
+            fmt = FORMATS[str(figure["key"])]
+            reading.update(figure_reading(str(kept["geography"]), None, fmt, figures_copy))
+            reading.update(kept)
+        figure.update(citations=[], intervals=[], sentence=[], count_sentence=[])
     pages["fixture:missing-figures"] = templates.get_template(section.template).render(context)
     return pages
 

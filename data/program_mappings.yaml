@@ -5,42 +5,52 @@
 - population_id: below_poverty_no_snap
   program_id: snap
   relevance: >-
-    SNAP may help with food costs. The published joint poverty/nonreceipt measure
-    is an outreach signal, not a count of eligible nonparticipants. The agency
-    decides eligibility; official information and Aloha United Way 211 are in the catalog.
+    SNAP may help with food costs. This joint survey count can guide outreach. It does
+    not count those who meet the rules but lack aid. The agency decides eligibility.
+    The catalog links to the official page and Aloha United Way 211.
   observed_conditions:
-    - Households below national Census poverty thresholds reporting no SNAP in the past 12 months.
+    - These households were below the national Census poverty line. They said they had no SNAP in the past 12 months.
   unobserved_conditions:
-    - Current income under applicable Hawaiʻi guidelines and allowed deductions.
-    - SNAP assistance-unit composition and nonfinancial conditions.
-    - Current receipt; self-reported past receipt is undercounted.
+    - Current income under Hawaiʻi rules. Costs the rules let households deduct.
+    - Who counts as part of the SNAP household. Rules beyond income.
+    - Who gets SNAP now. The survey misses some past receipt.
   claim: relevant_need
   review_status: pending
 
 - population_id: disability
   program_id: hawaii-able
   relevance: >-
-    Hawaiʻi ABLE may help people with disabilities save for disability-related
-    expenses. This survey-defined population is a potential outreach audience,
-    not an estimate of eligibility or nonparticipation. Program-expert review
-    is pending; the agency decides eligibility.
+    Hawaiʻi ABLE may help people with a disability save money for costs linked to that
+    disability. This survey group is people to reach. It does not count who meets the
+    rules or who lacks aid. Program-expert review is pending. The agency decides eligibility.
   observed_conditions:
-    - Self-reported disability among civilian noninstitutionalized residents.
+    - People told the survey they have a disability. The count leaves out people on active duty and people in places like prisons or nursing homes.
   unobserved_conditions:
-    - Disability onset under the applicable federal rules; current age is not onset age.
-    - Disability benefits meeting program rules, or disability certification and documentation.
-    - Current account ownership, ability to save and benefit interactions.
-    - Current Hawaiʻi enrollment availability, fees and incentives remain unverified.
+    - "Disability onset: the age when it began. Federal rules set an age limit. Current age is not the age it began."
+    - Who gets a disability benefit that meets the rules. Or who has a signed form, a certification, that shows it.
+    - Who has an account now, who can save, and how benefits affect each other.
+    - Current Hawaiʻi enrollment, fees and incentives. We have not checked these.
   claim: relevant_need
   review_status: pending
 
 # Connection based on the supplied EOEL FAQ verification of 2026-11-08; expert review pending.
 - population_id: children_under_5
   program_id: public-pre-k
-  relevance: Public pre-K may help with early learning. Under-five residents are a broader outreach audience, not an eligibility or nonparticipation estimate. The agency decides eligibility; consult the official FAQ and Aloha United Way 211.
+  relevance: Public pre-K may help with early learning. Children under five are a wider group to reach. This is not a count of who meets the rules or who is not enrolled. The agency decides eligibility. Read the official FAQ and call Aloha United Way 211.
   observed_conditions: [Residents under five, from published age cells.]
-  unobserved_conditions: [Exact birthday within the dated cohort and enrollment priority conditions.,
-    "Participating-school access, schedule fit and unavailable before/after-school care.",
-    Available seats and current enrollment.]
+  unobserved_conditions: ["Exact birth date within the dated school-year group, and enrollment priority rules.",
+    "Which schools take part, if the schedule fits, and that there is no care before or after school.",
+    How many seats are open and how many children are enrolled now.]
+  claim: relevant_need
+  review_status: pending
+
+# DHS GA page checked 2026-11-11 by work order #414, supplied to the offline writer; review pending.
+- population_id: disability
+  program_id: ga
+  relevance: General Assistance may help some adults who cannot work for a while pay for basic needs. This survey group is people to reach. It does not count who meets the rules or who lacks aid. We checked the DHS GA page (https://humanservices.hawaii.gov/bessd/ga/) on 2026-11-11. The program record was last checked on 2026-10-25. The agency decides eligibility. Call Aloha United Way 211 for help.
+  observed_conditions: [People told the survey they have a disability. The count leaves out people on active duty and people in places like prisons or nursing homes.]
+  unobserved_conditions: ["Age: GA is for adults. We do not know the age of each person in this count.", "Household: GA looks at who lives in the home. We do not see each household.", "Income: GA has an income limit. This count does not show income.",
+    "Assets: GA has a limit on money and things a person owns. We do not see them.", "Medical: a DHS medical board must find the person cannot work for a while. A survey answer is not that finding.",
+    "Other benefits: people who get or may get other aid may be sent to that aid instead."]
   claim: relevant_need
   review_status: pending

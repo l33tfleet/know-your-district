@@ -7,6 +7,7 @@ private headers and a capped request body (`FolderHttpGuard`, outermost, so a 50
 """
 
 import asyncio
+import re
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
@@ -136,13 +137,16 @@ def district_numbers(chamber: str, n: str | None) -> dict[str, object]:
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request) -> HTMLResponse:
-    context = page_context() | district_numbers("house", None)
+    context = page_context() | {"district_counts": DISTRICT_COUNTS}
     return templates.TemplateResponse(request, "home.html", context)
 
 
 @app.get("/picker/numbers", response_class=HTMLResponse)
 def picker_numbers(request: Request, chamber: str = "", n: str | None = None) -> HTMLResponse:
-    """htmx partial: the district-number select for the chosen chamber."""
+    """htmx partial: the district-number select for the chosen chamber.
+
+    The home picker no longer calls it (#257); find.html's older picker still does.
+    """
     if chamber not in DISTRICT_COUNTS:
         raise HTTPException(status_code=404)
     return templates.TemplateResponse(
@@ -150,9 +154,22 @@ def picker_numbers(request: Request, chamber: str = "", n: str | None = None) ->
     )
 
 
+# The home picker's one value, e.g. `senate-7` (#257). ASCII digits, no leading zero.
+PICK = re.compile(r"(house|senate)-([1-9][0-9]*)")
+
+
 @app.get("/brief")
-def pick(chamber: str = "", n: str = "") -> RedirectResponse:
-    """The picker form's no-JavaScript target: redirect to the canonical brief URL."""
+def pick(d: str | None = None, chamber: str = "", n: str = "") -> RedirectResponse:
+    """The picker form's no-JavaScript target: redirect to the canonical brief URL.
+
+    `d` is the home picker's combined choice and wins when present; a malformed `d` is a 404,
+    never a fall-back to the pair. Without `d`, the older `chamber` + `n` pair still works.
+    """
+    if d is not None:
+        found = PICK.fullmatch(d)
+        if found is None:
+            raise HTTPException(status_code=404)
+        chamber, n = found.groups()
     state = page_state(chamber, n)
     if state is None:
         raise HTTPException(status_code=404)

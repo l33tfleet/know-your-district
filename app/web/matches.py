@@ -18,6 +18,9 @@ from etl.programs.rules import resolve_program_id
 
 register_feature("matches")
 router = APIRouter()
+# Page heading labels: two short sentences read more plainly than a "·" run-on.
+WHO = "Who to reach"
+MAY_HELP = "What may help"
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[2] / "templates")
 
 
@@ -68,7 +71,7 @@ def match_page(
     # Local import shares the site's page shell without a module import cycle.
     from app.main import page_context
 
-    title = f"{selected_population.label} · {resolved.program.name}"
+    title = f"{WHO}: {selected_population.label}. {MAY_HELP}: {resolved.program.name}."
     context = (
         page_context()
         | {

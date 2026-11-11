@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-{# The picker form is mirrored in find.html; change both. #}
+{# find.html still carries the older two-select picker form; WO 257 changed only this one. #}
 {% set picker = copy.home.picker %}
 <section class="intro">
   <h1>{{ copy.home.heading }}</h1>
@@ -10,16 +10,17 @@
 <form class="picker" action="/brief" method="get" hx-boost="true">
   <fieldset>
     <legend>{{ picker.legend }}</legend>
-    <label for="chamber">{{ picker.chamber_label }}</label>
-    <select id="chamber" name="chamber"
-            hx-get="/picker/numbers" hx-trigger="change" hx-include="#district-number"
-            hx-target="#district-number" hx-swap="outerHTML">
-      {% for value, name in picker.chambers.items() %}
-      <option value="{{ value }}">{{ name }}</option>
+    {# One control holds chamber and number together (WO 257), so they can never disagree. #}
+    <label for="chamber">{{ picker.district_label }}</label>
+    <select id="chamber" name="d">
+      {% for chamber, count in district_counts.items() %}
+      <optgroup label="{{ picker.groups[chamber] }}">
+        {% for number in range(1, count + 1) %}
+        <option value="{{ chamber }}-{{ number }}">{{ picker.options[chamber].format(number=number) }}</option>
+        {% endfor %}
+      </optgroup>
       {% endfor %}
     </select>
-    <label for="district-number">{{ picker.number_label }}</label>
-    {% include "partials/district_number.html" %}
     <button type="submit">{{ picker.submit }}</button>
   </fieldset>
 </form>

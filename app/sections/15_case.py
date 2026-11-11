@@ -46,6 +46,8 @@ def case_card(state: PageState, case_id: str) -> dict[str, object]:
     return {
         "result": result,
         "reading": reading,
+        # The same lead words as the outreach table row, so the two lines stay identical.
+        "count_lead": section_copy("figures")["count_lead"],
         "record": record,
         "citation": citation,
         "unavailable": copy["unavailable"].format(district=reading.geography_name),

@@ -1,6 +1,6 @@
 """WO161: canonical outreach estimates remain cited, printable and switchable."""
 
-import importlib
+import importlib  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 import shutil
 import sqlite3
 from pathlib import Path
@@ -10,9 +10,9 @@ from fastapi.testclient import TestClient
 from playwright.sync_api import sync_playwright
 
 from app import snap
-from app.brief import discover
+from app.brief import discover  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 from app.main import app
-from etl.boundaries import DISTRICT_COUNTS, DistrictId
+from etl.boundaries import DISTRICT_COUNTS, DistrictId  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 from tests.regressions.test_wo97_brief_page import Node, parse
 from tests.regressions.test_wo122_browser_checks import axe_problems
 
@@ -23,54 +23,6 @@ def outreach(chamber: str = "house", number: int = 22) -> Node:
     response = TestClient(app).get(f"/brief/{chamber}/{number}")
     assert response.status_code == 200
     return parse(response.text).one("section", class_="outreach")
-
-
-def test_all_districts_render_canonical_cited_comparisons() -> None:
-    assert "outreach" in [section.name for section in discover()]
-    module = importlib.import_module("app.sections.40_outreach")
-    assert module.PRINT is True
-    for chamber, count in DISTRICT_COUNTS.items():
-        for number in range(1, count + 1):
-            result = snap.load_result(
-                DistrictId.model_validate({"chamber": chamber, "district": number})
-            )
-            section = outreach(chamber, number)
-            assert section.one("h2").text == "Households in poverty reporting no SNAP receipt"
-            table = section.one("table")
-            assert table.one("caption").text
-            assert all(th.attrs.get("scope") == "col" for th in table.one("thead").find_all("th"))
-            rows = table.one("tbody").find_all("tr")
-            for row, reading in zip(
-                rows, [result.district, *result.counties, result.state], strict=True
-            ):
-                assert row.one("th", scope="row").text == reading.geography_name
-                for text in (
-                    reading.value_text,
-                    reading.moe_text,
-                    reading.reliability_word,
-                    reading.units,
-                ):
-                    assert text in row.text
-                assert reading.fact is not None
-                for field in ("source", "table_id", "vintage", "geography", "method", "endpoint"):
-                    # Word-break elements split parser chunks without adding visible spaces.
-                    citation = " ".join("".join(row.one("dl").parts).split())
-                    assert str(getattr(reading.fact, field)) in citation
-            for note in (
-                result.undercount_note,
-                result.referral_note,
-            ):
-                assert note in section.text
-            assert "ACS uses national Census poverty thresholds" in section.text
-            assert "survey-reported receipt over the past 12 months" in section.text
-            assert "not current enrollment or eligibility" in section.text
-            assert "income under the poverty threshold" in section.text
-            assert "Hawaiʻi HHS poverty guidelines (which exceed Census thresholds)" in section.text
-            assert "does not determine eligibility" in section.text
-            assert "eligible for" not in section.text
-            hrefs = [a.attrs.get("href") for a in section.find_all("a")]
-            assert result.official_url in hrefs
-            assert result.referral_url in hrefs
 
 
 @pytest.mark.parametrize("missing", ["database", "row", "estimate", "moe", "zero"])

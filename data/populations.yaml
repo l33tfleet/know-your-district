@@ -13,7 +13,7 @@ populations:
     unit: persons
     universe: Total population
     exclusions:
-      - Residents aged 5 and over are excluded from the numerator.
+      - People age 5 and older are not in the count of children. They are in the total.
     definition: >-
       Residents of both sexes under 5 years old, including group quarters, as a share of
       total population.
@@ -167,9 +167,10 @@ populations:
     unit: persons
     universe: Civilian noninstitutionalized population
     exclusions:
-      - Active-duty military and institutional residents are excluded.
+      - The count leaves out people on active military duty. It also leaves out people who live in places like prisons or nursing homes.
     definition: >-
-      Civilian noninstitutionalized residents with a disability, as a share of that population.
+      This is the share of people who said they have a disability. It leaves out people on
+      active duty and people who live in places like prisons or nursing homes.
     numerator: [S1810_C02_001E]
     denominator: [S1810_C01_001E]
     period: survey_time
@@ -215,11 +216,11 @@ populations:
     unit: households
     universe: Households
     exclusions:
-      - Households at or above poverty are excluded from both terms.
+      - Both counts leave out households at or above the poverty line.
     definition: >-
-      Households below poverty that reported no SNAP in the past 12 months, as a share of
-      households below poverty. Self-reported receipt is undercounted; this does not establish
-      unmet need or eligibility.
+      This is the share of households below poverty that said they had no SNAP in the past
+      12 months. The survey misses some receipt. This does not prove unmet need or that
+      a household meets program rules.
     numerator: [B22003_006E]
     denominator: [B22003_003E, B22003_006E]
     period: past_12_months

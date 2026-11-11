@@ -84,11 +84,11 @@ def total(cells: Sequence[str], geography: str, facts: Mapping[tuple[str, str], 
         method = inputs[0].method if inputs else "published estimate and 90% margin of error"
     else:
         method = (
-            f"derived: sum of {len(cells)} published estimates; "
+            f"derived: sum of {len(cells)} published estimates. "
             "MOE sqrt(MOE₁² + MOE₂² + …) (Census approximation)"
         )
     if controlled:
-        method += "; a controlled MOE counts as 0"
+        method += ". A controlled MOE counts as 0"
     value = moe = None
     if not missing:
         value = math.fsum(f.value for f in inputs if f.value is not None)
@@ -129,7 +129,7 @@ def share(numerator: Derived, denominator: Derived) -> Derived:
             seen.add((f.variable, f.geography))
             inputs.append(f)
     missing = tuple(dict.fromkeys(numerator.missing + denominator.missing))
-    method = "derived: proportion of published estimates; MOE ACS handbook proportion formula"
+    method = "derived: proportion of published estimates. MOE ACS handbook proportion formula"
     value = moe = None
     x, y = numerator.value, denominator.value
     if x is not None and y is not None:
@@ -143,7 +143,7 @@ def share(numerator: Derived, denominator: Derived) -> Derived:
                 if radicand < 0:
                     radicand = numerator.moe**2 + p**2 * denominator.moe**2
                     method = (
-                        "derived: proportion of published estimates; MOE ACS handbook ratio "
+                        "derived: proportion of published estimates. MOE ACS handbook ratio "
                         "formula (the proportion formula's radicand is negative)"
                     )
                 moe = math.sqrt(radicand) / y * 100

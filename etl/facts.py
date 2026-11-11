@@ -12,6 +12,8 @@ from etl.indicators import Indicator
 
 HOUSE = "state legislative district (lower chamber)"
 SENATE = "state legislative district (upper chamber)"
+# Between the clauses of a stored method note: a sentence boundary, not a semicolon.
+METHOD_SEPARATOR = ". "
 SENTINELS: dict[Decimal, str] = {
     Decimal(-666666666): "not available",
     Decimal(-999999999): "not available",
@@ -94,14 +96,16 @@ def facts_from_batch(indicator: Indicator, batch: CensusBatch, geography: str) -
                 raise CensusError("Missing Census cell, annotation or label") from None
             cv, reliability = classify(value, moe)
             method = "published estimate and 90% margin of error"
+            # Clauses end as sentences (#187), so the method note reads at grade 8 or
+            # below; every word and annotation is kept, in the same order.
             for name, status, annotation in (
                 ("estimate", estimate_status, estimate_annotation),
                 ("MOE", moe_status, moe_annotation),
             ):
                 if status is not None:
-                    method += f"; {name} {status}"
+                    method += f"{METHOD_SEPARATOR}{name} {status}"
                 if annotation:
-                    method += f"; {name} annotation: {annotation}"
+                    method += f"{METHOD_SEPARATOR}{name} annotation: {annotation}"
             try:
                 facts.append(
                     Fact(

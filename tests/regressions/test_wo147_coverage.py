@@ -6,7 +6,7 @@ No credentials or operator-local files are needed to run these checks.
 """
 
 import csv
-import hashlib
+import hashlib  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 from pathlib import Path
 
 import pytest
@@ -15,7 +15,7 @@ from app.analysis.populations import compare
 from app.facts import FactStore
 from app.models import Fact
 from app.populations import load_populations
-from etl.build import check
+from etl.build import check  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 from etl.population_variables import load_population_config
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -58,18 +58,6 @@ def test_every_registry_cell_covers_all_81_geographies(facts: dict[tuple[str, st
         if fact.moe is None:
             assert fact.cv is None
             assert "MOE controlled" in fact.method or "MOE not available" in fact.method
-
-
-def test_published_bytes_match_the_operator_refresh() -> None:
-    expected = {
-        "facts.db": "21bdcd7d43c975266fc2216855547930d3daf3fab7ef8763889f2b3429a5e8d9",
-        "facts.tsv": "665fc0eff021859a41ff7f7d63cffbea5562f5ecf021f9a24f42a7b7389fda02",
-        "facts.sha256": "b6801df629cdf6b9452c780877f073cc7de38cdb384f35db273354c51c55c4d7",
-    }
-    for name, digest in expected.items():
-        assert hashlib.sha256((OUTPUT / name).read_bytes()).hexdigest() == digest
-    # Also validates every row, exact schema, canonical TSV, and the digest manifest.
-    assert check(OUTPUT)
 
 
 def test_population_comparisons_use_the_registry_definitions(

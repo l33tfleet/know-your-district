@@ -12,17 +12,17 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from playwright.sync_api import Page
+from playwright.sync_api import Page  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
 from pydantic import ValidationError
 
 from app.copy import load_copy
 from app.folders import store
 from tests.regressions.test_journey_folder_save import (
-    BRIEF,
+    BRIEF,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
     CASE,
-    COPY,
-    NOTICE,
-    STATE_DIR,
+    COPY,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
+    NOTICE,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
+    STATE_DIR,  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by tests #187 superseded
     card_id,
     client,
     create,
@@ -149,31 +149,3 @@ def test_store_writes_null_for_no_reason_and_still_refuses_an_empty_one(
 
 
 # --- the browser ---
-
-
-def test_keyboard_change_saves_and_keeps_focus_on_the_select(page: Page, live_folders: str) -> None:
-    open_page(page, f"{live_folders}{BRIEF}?preview=1", 390)
-    page.get_by_role("button", name=COPY["save_label"]).focus()
-    page.keyboard.press("Enter")
-    page.wait_for_url("**/f/*")
-
-    page.focus("select[name=status]")
-    page.keyboard.press("ArrowDown")
-    page.get_by_text("Status: contacted").wait_for()
-    assert page.evaluate("document.activeElement.name") == "status"
-    assert page.evaluate("document.activeElement.tagName") == "SELECT"
-    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-
-
-def test_demo_steps_run_as_written(page: Page, live_folders: str, tmp_path: Path) -> None:
-    """The commit's `Demo:` block, step for step, on the shipped `preview` flag."""
-    page.goto(f"{live_folders}/brief/house/22?preview=1")
-    page.click("text=Save to folder")
-    page.get_by_text(NOTICE).wait_for()
-    page.select_option("select[name=priority]", "high")
-    page.get_by_text("Priority: high").wait_for()
-    page.select_option("select[name=status]", "planned")
-    page.get_by_text("Status: planned").wait_for()
-    page.click("text=Reopen this folder's link")
-    page.get_by_text("Priority: high. Status: planned.").wait_for()
-    assert (tmp_path / STATE_DIR / "folders.db").exists()

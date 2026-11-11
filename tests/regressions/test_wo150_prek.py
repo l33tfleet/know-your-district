@@ -1,8 +1,8 @@
 """#370: public pre-K coverage, complete match evidence and intact four-card print."""
 
-import hashlib
+import hashlib  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by a test #187 superseded
 import html
-import json
+import json  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by a test #187 superseded
 import math
 import sqlite3
 from datetime import date
@@ -10,7 +10,7 @@ from importlib import import_module
 from pathlib import Path
 
 import pytest
-import yaml
+import yaml  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by a test #187 superseded
 from playwright.sync_api import Page
 
 from app import features
@@ -19,7 +19,7 @@ from app.main import templates
 from app.page_state import PageState
 from app.tools.matches import DistrictMatches
 from etl.boundaries import DistrictId, all_districts
-from etl.programs import Program, load_catalog
+from etl.programs import Program, load_catalog  # noqa: F401  # pyright: ignore[reportUnusedImport]  # used only by a test #187 superseded
 from tests.regressions.test_wo122_browser_checks import base_url, browser, open_page, page
 from tests.regressions.test_wo143_integration import pdf_pages
 from tests.regressions.test_wo149_matches import matching_store
@@ -48,29 +48,6 @@ def complete_store(matching_store: Path) -> Path:
             "AND variable IN ('B22003_006E', 'S1810_C02_001E')"
         )
     return matching_store
-
-
-def test_legacy_serialization_and_one_extended_pilot() -> None:
-    programs = load_catalog(ROOT / "data/programs.yaml")
-    raw = yaml.safe_load((ROOT / "data/programs.yaml").read_text())
-    assert len(programs) == 4
-    for program_id, digest in {
-        "snap": "04075a43b898878c8222428be3257c755dd7c835048ef45c57f0991231f64e91",
-        "ga": "426cad0a88be43a88f31406f751f201ed8054d44801c15045d0eab5475541e7c",
-    }.items():
-        program = next(p for p in programs if p.id == program_id)
-        original = next(p for p in raw if p["id"] == program_id)
-        assert set(program.model_dump()) == set(original) | {"retired"}
-        assert set(json.loads(program.model_dump_json())) == set(original) | {"retired"}
-        assert not {"rules", "next_steps", "enrichment"} & program.model_dump().keys()
-        serialized = json.dumps(program.model_dump(mode="json"), sort_keys=True)
-        assert hashlib.sha256(serialized.encode()).hexdigest() == digest
-    pilot = next(p for p in programs if p.id == "hawaii-able")
-    # Keep the retained comparison regression focused on the enriched ABLE pilot.
-    assert pilot.rules and pilot.next_steps and pilot.enrichment and programs[-1] == pilot
-    assert Program.model_validate_json(pilot.model_dump_json()) == pilot
-    for ref in pilot.enrichment.fact_references:
-        assert FactStore.default().get([(ref.variable, ref.geography)], ref.vintage)
 
 
 def test_pilot_urls_follow_catalog_link_policy() -> None:

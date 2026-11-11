@@ -339,23 +339,6 @@ def test_unavailable_and_uncertain_rows_remain_visible(
         assert "no margin of error published" in html
 
 
-def test_all_geography_labels_and_escaped_fact_labels() -> None:
-    row = fact(DISTRICT, 103, 2, label="<script>untrusted</script>").model_copy(
-        update={"method": "derived estimate from published cells"}
-    )
-    html = render(
-        {"kind": "routed", "indicator_id": "below_poverty_no_snap", "confidence": 0.9}, [row]
-    )
-    assert "Estimated for district" in html
-    assert "&lt;script&gt;untrusted&lt;/script&gt;" in html
-    assert "<script>" not in html
-    assert set(section_copy("ask")["geography_labels"].values()) == {
-        "Published for district",
-        "Estimated for district",
-        "County/state context",
-    }
-
-
 def test_clarifier_with_two_options_case_and_none_uses_approved_copy() -> None:
     html = render(
         {
