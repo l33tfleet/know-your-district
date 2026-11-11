@@ -82,6 +82,16 @@ Classify the observed failure before turning it into a product claim:
 
 **Next research:** obtain current Hawaiʻi account/incentive/outreach counts if public, verify the 2026 criteria and benefit interactions from official sources, and identify how newly eligible adults learn about the expansion. Treat current fees, limits and Medicaid/SSI interactions as fields requiring program-specific verification.
 
+<a id="general-assistance"></a>
+
+### General Assistance (GA)
+
+**Program:** state cash help from Hawaiʻi DHS (BESSD) for some adults who cannot work for a while. It is not an automatic benefit, and the agency decides eligibility. **Dated evidence:** the [DHS GA page](https://humanservices.hawaii.gov/bessd/ga/) was checked **2026-11-11** for work order #414 and supplied to the offline writer, who did not re-fetch it. The catalog's program record (`data/programs.yaml`, `id: ga`) was last checked 2026-10-25; the two dates are kept apart. DHS describes medical-board certification of a temporary inability to work, plus income, asset and household conditions.
+
+**Mapping:** `disability → ga` in `data/program_mappings.yaml` is a `relevant_need` connection with program-expert review pending. The ACS disability count (`disability` in `data/populations.yaml`) is a group to reach. It is not a count of who meets the rules, and no comparable GA participation figure is used. **Conditions we cannot observe in district tables:** **age** (GA serves adults; the count is not split by its age rules), **household** (who lives in the home and whether another program fits better), **income** (the program's limit; the count carries no income), **assets** (the limit on money and property), **medical certification** (a DHS medical-board finding; a survey answer about disability is not that finding) and **other benefits** (current or possible receipt of other aid may route a person elsewhere).
+
+**Referral:** cite the official DHS page, say the program may help and the agency decides eligibility, and point to [Aloha United Way 211](https://www.auw211.org/). Recheck the official page before shipping a referral. Next research: obtain current GA caseloads by island if public, confirm the medical-board process and timelines, and verify how GA interacts with SSI and other DHS programs from official sources.
+
 ### WIC
 
 **Program:** federal Special Supplemental Nutrition Program for Women, Infants, and Children, administered locally by Hawaiʻi DOH.

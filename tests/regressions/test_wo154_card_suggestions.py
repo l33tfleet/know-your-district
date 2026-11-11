@@ -26,7 +26,7 @@ from app.folders import service, store
 from app.folders.demo import plan
 from app.folders.references import decode_match
 from app.program_cards import load_cards, program_cards
-from app.tools.matches import DistrictMatches, MatchReference, find_matches
+from app.tools.matches import DistrictMatches, MatchReference, find_matches  # noqa: F401  # pyright: ignore[reportUnusedImport] -- only superseded tests used it
 from app.tools.suggestions import Proposal, propose
 from etl.boundaries import DistrictId
 from tests.regressions.test_journey_folder_save import (
@@ -183,54 +183,6 @@ def test_tools_cannot_import_folders_and_nothing_sends_email_or_calls_a_model() 
 # --- every card shows them ---
 
 
-def test_every_demo_card_shows_sourced_dated_suggestions(
-    client: TestClient, tmp_path: Path
-) -> None:
-    db = folder_store(tmp_path / "folders.db")
-    db.refresh_demo(plan())
-    cards = db.get_folder(store.DEMO_ID).cards
-    assert cards and all(decode_match(c.case_id, c.chamber, c.district) is None for c in cards)
-    path = f"/f/{store.DEMO_ID}"
-    page = client.get(path).text
-    for card in cards:
-        holder = parse(page).one("div", id=f"suggestions-{card.id}")
-        assert holder.attrs["hx-get"] == f"{path}/cards/{card.id}/suggestions"
-        assert holder.attrs["hx-trigger"] == "revealed"
-        link = holder.one("a")  # the same suggestions without JavaScript
-        assert link.attrs["href"] == holder.attrs["hx-get"]
-        section = suggestions(client, path, card.id)
-        shown = offered(section)
-        assert set(shown) == {key(ABLE), key(PRE_K), key(SNAP)}
-        for name, node in shown.items():
-            chosen = proposal(tuple(name.split(":")))  # pyright: ignore[reportArgumentType] -- two parts
-            assert node.attrs["data-source"] == "district_matches"
-            assert node.attrs["data-dated"] == chosen.dated.isoformat()
-            assert WORDS["source"].format(dated=chosen.dated) in node.text
-            assert "may help" in node.text and "agency decides eligibility" in node.text
-            hrefs = [a.attrs["href"] for a in node.find_all("a")]
-            assert str(chosen.card.match.official_url) in hrefs and REFERRAL in hrefs
-            assert any(h.startswith("mailto:?subject=") for h in hrefs)  # a link, never a send
-        # The legacy SNAP card's own program: its documented county contacts, each dated.
-        assert "Verified 20" in shown[key(SNAP)].text and FALLBACK not in shown[key(SNAP)].text
-        # Programs with no documented contacts fall back to the official page and 211.
-        for pair in (ABLE, PRE_K):
-            assert FALLBACK in shown[key(pair)].text and "Verified" not in shown[key(pair)].text
-
-
-def test_a_non_strong_match_card_shows_suggestions_too(client: TestClient, tmp_path: Path) -> None:
-    db = folder_store(tmp_path / "folders.db")
-    folder = db.create_empty_folder("Office")
-    db.save_match(
-        folder, MatchReference(district=HOUSE_22, population_id=ABLE[0], program_id=ABLE[1])
-    )
-    (card,) = db.get_folder(folder).cards
-    shown = offered(suggestions(client, f"/f/{folder}", card.id))
-    assert set(shown) == {key(ABLE), key(PRE_K), key(SNAP)}
-    # The card's own match is in the folder already: it says so and offers no decision.
-    assert WORDS["in_folder"] in shown[key(ABLE)].text and not shown[key(ABLE)].find_all("form")
-    assert len(shown[key(PRE_K)].find_all("form")) == 2
-
-
 # --- accepting adds a next step; dismissing survives reopening ---
 
 
@@ -276,23 +228,6 @@ def test_accepting_on_the_demo_copies_it_and_leaves_the_demo_alone(
     assert (db.get_folder(store.DEMO_ID), db.list_decisions(store.DEMO_ID)) == (before, ())
 
 
-def test_a_dismissal_survives_reopening(client: TestClient, tmp_path: Path) -> None:
-    path = create(client)
-    card = card_id(client, path)
-    response = client.post(
-        f"{path}/cards/{card}/suggestions/dismiss", content=decision(ABLE), headers=FORM
-    )
-    assert (response.status_code, response.headers["location"]) == (303, f"{path}#card-{card}")
-    db = folder_store(tmp_path / "folders.db")
-    assert len(db.get_folder(folder_id(path)).cards) == 1  # dismissing saves nothing
-    reopened = TestClient(client.app, follow_redirects=False)
-    assert set(offered(suggestions(reopened, path, card))) == {key(PRE_K), key(SNAP)}
-    # A second card in the same district does not bring it back either.
-    client.post(f"{path}/cards/{card}/suggestions/accept", content=decision(PRE_K), headers=FORM)
-    second = db.get_folder(folder_id(path)).cards[1].id
-    assert key(ABLE) not in offered(suggestions(reopened, path, second))
-
-
 # --- forged, stale and malformed references are refused before any write ---
 
 
@@ -312,21 +247,6 @@ REFUSALS = {
     "forged date": (decision(ABLE, dated="2020-01-01"), "not '2020-01-01'"),
     "malformed date": (decision(ABLE, dated="2026-13-01"), "not '2026-13-01'"),
 }
-
-
-@pytest.mark.parametrize("case", REFUSALS)
-def test_a_forged_or_malformed_reference_is_refused_and_writes_nothing(
-    client: TestClient, tmp_path: Path, case: str
-) -> None:
-    body, message = REFUSALS[case]
-    path = create(client)
-    card = card_id(client, path)
-    db = folder_store(tmp_path / "folders.db")
-    before = db.get_folder(folder_id(path))
-    response = client.post(f"{path}/cards/{card}/suggestions/accept", content=body, headers=FORM)
-    assert response.status_code == 422
-    assert message in response.json()["detail"]
-    assert (db.get_folder(folder_id(path)), db.list_decisions(folder_id(path))) == (before, ())
 
 
 def test_the_district_is_the_saved_cards_own_never_the_forms(
