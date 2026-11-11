@@ -1,0 +1,11 @@
+# Nightly refresh of the demo outreach folder (#155). Install: docs/demo-folder.md.
+[Unit]
+Description=Know Your District: refresh the demo outreach folder nightly
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 Pacific/Honolulu
+Persistent=true
+Unit=kyd-demo-reset.service
+
+[Install]
+WantedBy=timers.target

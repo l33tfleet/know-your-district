@@ -15,6 +15,8 @@ home:
     Pick a Hawaiʻi State House or Senate district. Get a one-page brief you can
     print, with sources. It shows who lives there, how sure the numbers are, and
     which public programs may help.
+  # The home link to the seeded demo folder (#155), shown only once the seed exists.
+  demo_link: See an example outreach folder
   picker:
     legend: Choose a district
     # The home picker's one select (#257): a group per chamber, an option per district.

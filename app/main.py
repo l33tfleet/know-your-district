@@ -7,6 +7,7 @@ private headers and a capped request body (`FolderHttpGuard`, outermost, so a 50
 """
 
 import asyncio
+import os
 import re
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
@@ -29,8 +30,13 @@ from app.features import enabled, validate_features
 from app.folders import retention
 from app.folders import routes as folders
 from app.folders.service import FolderHttpGuard, install_log_redaction
+from app.folders.store import (
+    DEMO_ID,
+    FolderNotFoundError,
+    FoldersDisabledError,
+    FolderStore,
+)
 from app.folders.store import FEATURE as FOLDERS
-from app.folders.store import FoldersDisabledError, FolderStore
 from app.page_state import page_state
 from app.web import ask, matches, snap, suggestions
 from etl.boundaries import DISTRICT_COUNTS
@@ -135,9 +141,33 @@ def district_numbers(chamber: str, n: str | None) -> dict[str, object]:
     return {"numbers": numbers, "selected": selected}
 
 
+def demo_folder_href() -> str | None:
+    """The demo folder's link, only once the nightly refresh has seeded it (#155).
+
+    Never creates the store or its directory: the path mirrors `store.default_path()` without
+    its mkdir. Only the unpublished states hide the link: no file yet, the flag off, or a seed
+    that is absent or expired. A refused file (`StoreConfigError`) or a SQLite failure raises,
+    so a broken store fails the page loudly instead of quietly dropping the link.
+    """
+    state = page_state("house", "22")
+    assert state is not None
+    if not enabled(FOLDERS, state):
+        return None
+    configured = os.environ.get("KYD_FOLDERS_DB")
+    state_home = os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state"
+    path = Path(configured) if configured else Path(state_home) / "know-your-district/folders.db"
+    if not path.is_file():
+        return None
+    try:
+        FolderStore(path, state).get_folder(DEMO_ID)
+    except FolderNotFoundError:
+        return None  # the seed is absent or expired: not published yet
+    return f"/f/{DEMO_ID}"
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request) -> HTMLResponse:
-    context = page_context() | {"district_counts": DISTRICT_COUNTS}
+    context = page_context() | {"district_counts": DISTRICT_COUNTS, "demo_href": demo_folder_href()}
     return templates.TemplateResponse(request, "home.html", context)
 
 
