@@ -198,10 +198,7 @@ class DemoCard(BaseModel):
 
 
 class DemoMatch(BaseModel):
-    """One seeded match card: the tool's selection, its accepted decision and an outreach note.
-
-    `source` and `checked` are the proposal's own, so the decision cites what was offered.
-    """
+    """A seeded match card with an outreach note; its decision cites the proposal's source."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
     match: MatchReference
@@ -351,16 +348,11 @@ def _replace_demo(db: sqlite3.Connection) -> str:
 
 
 def _seed_card(
-    db: sqlite3.Connection,
-    key: str,
-    chamber: str,
-    district: int,
-    seed: "DemoCard | DemoMatch",
-    stamp: str,
+    db: sqlite3.Connection, key: tuple[str, str, int], seed: DemoCard | DemoMatch, stamp: str
 ) -> None:
-    """One seed card with its office state and dated note."""
-    _insert_card(db, DEMO_ID, key, chamber, district)
-    place = (DEMO_ID, key, chamber, district)
+    """One seed card (key, chamber, district) with its office state and dated note."""
+    _insert_card(db, DEMO_ID, *key)
+    place = (DEMO_ID, *key)
     db.execute(
         "UPDATE cards SET priority = ?, status = ?, created_at = ?, updated_at = ?"
         " WHERE folder_id = ? AND card_key = ? AND chamber = ? AND district = ?",
@@ -475,33 +467,23 @@ class FolderStore:
         with self._write() as db:
             stamp = _replace_demo(db)
             for card in cards:
-                _seed_card(db, card.case_id, "house", 22, card, stamp)
+                _seed_card(db, (card.case_id, "house", 22), card, stamp)
             _require_note_capacity(db, DEMO_ID)
 
     @checked
     def refresh_demo_matches(self, matches: tuple[DemoMatch, ...]) -> None:
-        """Replace only the seed with match cards, notes and accepted decisions, atomically.
-
-        Proposals not seeded here keep no decision: they stay pending, computed on each render.
-        """
+        """Atomically replace only the seed; unseeded proposals keep no decision, so stay pending."""
         with self._write() as db:
             stamp = _replace_demo(db)
             for seed in matches:
                 district = seed.match.district
                 place = (encode_match(seed.match), district.chamber, int(district.district))
-                _seed_card(db, *place, seed, stamp)
+                _seed_card(db, place, seed, stamp)
                 db.execute(
                     "INSERT INTO suggestions (folder_id, suggestion_key, chamber, district, source,"
                     " dated, decision, created_at, updated_at)"
                     " VALUES (?, ?, ?, ?, ?, ?, 'accepted', ?, ?)",
-                    (
-                        DEMO_ID,
-                        *place,
-                        seed.source,
-                        seed.checked.isoformat(),
-                        seed.dated,
-                        seed.dated,
-                    ),
+                    (DEMO_ID, *place, seed.source, seed.checked.isoformat(), *[seed.dated] * 2),
                 )
             _require_note_capacity(db, DEMO_ID)
 

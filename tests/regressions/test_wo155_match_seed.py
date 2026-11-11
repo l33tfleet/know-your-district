@@ -1,10 +1,8 @@
 """#412 (step 1 of #155): the demo folder's match seed.
 
-`python -m app.folders.demo --matches` resolves three House 22 matches through the matching tool
-and seeds them as match cards with distinct statuses, dated outreach-only notes and accepted
-suggestion decisions; proposals beyond the seeded ones stay pending (no decision row). The seed
-replaces only the reserved demo id in one transaction, preview writes nothing, and a visitor's
-first edit copies the decisions with the cards and notes.
+`--matches` seeds the tool's first three House 22 matches with distinct statuses, dated outreach
+notes and accepted decisions; the fourth stays pending. Reset is atomic and touches only the seed;
+preview writes nothing; a visitor's first edit copies decisions with cards and notes.
 """
 
 import sqlite3
@@ -20,6 +18,7 @@ from pydantic import ValidationError
 from app.folders import demo, store
 from app.folders.references import decode_match, encode_match
 from app.suggestions import SuggestionReference
+from app.tools import matches
 from app.tools.suggestions import propose
 from etl.boundaries import DistrictId
 from tests.regressions.test_journey_folder_save import client, flag, folder_store, rows
@@ -59,17 +58,12 @@ def test_match_plan_resolves_three_house_22_matches_with_distinct_state(
     plan = demo.match_plan()
     proposals = {p.match: p for p in propose(HOUSE_22)}
     assert len(plan) == 3
-    assert all(seed.match in proposals for seed in plan)
     assert [seed.match for seed in plan] == list(proposals)[:3]  # the tool's ranked order
     for seed in plan:
-        assert (seed.source, seed.checked) == (
-            proposals[seed.match].source,
-            proposals[seed.match].dated,
-        )
-    assert len({seed.status for seed in plan}) == 3
-    assert len({seed.dated for seed in plan}) == 3
-    for seed in plan:
+        offered = proposals[seed.match]
+        assert (seed.source, seed.checked) == (offered.source, offered.dated)
         assert "211" in seed.body and "qualif" not in seed.body.lower()
+    assert len({seed.status for seed in plan}) == len({seed.dated for seed in plan}) == 3
     with pytest.raises(ValidationError):
         store.DemoMatch.model_validate(plan[0].model_dump() | {"body": "Call 808-555-0142"})
     with pytest.raises(ValidationError):
@@ -98,6 +92,7 @@ def test_direct_url_renders_three_sourced_match_cards_and_their_decisions(
         key = next(c.case_id for c in folder.cards if c.id == card)
         assert decode_match(key, "house", 22) == seed.match
     pending = [p for p in propose(HOUSE_22) if p.match not in decided]
+    assert len(pending) == 1  # the fourth proposal: offered, never decided
     for card in folder.cards:
         panel = client.get(f"{SEED}/cards/{card.id}/suggestions")
         assert panel.status_code == 200
@@ -110,15 +105,11 @@ def test_reset_is_repeatable_keeps_the_url_and_leaves_other_folders(
     seeded: store.FolderStore, client: TestClient
 ) -> None:
     other = seeded.create_folder("Other office", "snap_no_receipt", "house", 22)
-    seeded.decide(
-        other,
-        SuggestionReference(
-            match=(first := propose(HOUSE_22)[0]).match, source=first.source, dated=first.dated
-        ),
-        "dismissed",
-    )
-    kept = snapshot(seeded, other)
-    kept_rows = rows(seeded.path, f"SELECT * FROM folders WHERE id = '{other}'")
+    first = propose(HOUSE_22)[0]
+    reference = SuggestionReference(match=first.match, source=first.source, dated=first.dated)
+    seeded.decide(other, reference, "dismissed")
+    kept, query = snapshot(seeded, other), f"SELECT * FROM folders WHERE id = '{other}'"
+    kept_rows = rows(seeded.path, query)
     seed = snapshot(seeded, store.DEMO_ID)
     page = client.get(SEED).text.count('class="folder-card"')
     for _ in range(2):
@@ -126,7 +117,7 @@ def test_reset_is_repeatable_keeps_the_url_and_leaves_other_folders(
         assert snapshot(seeded, store.DEMO_ID) == seed
         assert client.get(SEED).text.count('class="folder-card"') == page == 3
         assert snapshot(seeded, other) == kept
-        assert rows(seeded.path, f"SELECT * FROM folders WHERE id = '{other}'") == kept_rows
+        assert rows(seeded.path, query) == kept_rows
     # The legacy reset still replaces the match seed, and the match seed replaces it again.
     seeded.refresh_demo(demo.plan())
     assert seeded.list_decisions(store.DEMO_ID) == ()
@@ -134,6 +125,39 @@ def test_reset_is_repeatable_keeps_the_url_and_leaves_other_folders(
     seeded.refresh_demo_matches(demo.match_plan())
     assert snapshot(seeded, store.DEMO_ID) == seed
     assert snapshot(seeded, other) == kept
+
+
+def test_accepting_the_pending_proposal_gives_a_visitor_a_fourth_card(
+    seeded: store.FolderStore, client: TestClient
+) -> None:
+    seed = snapshot(seeded, store.DEMO_ID)
+    card = seeded.get_folder(store.DEMO_ID).cards[0].id
+    panel = parse(client.get(f"{SEED}/cards/{card}/suggestions").text)
+    (form,) = (f for f in panel.find_all("form") if f.attrs["action"].endswith("/accept"))
+    fields = {field.attrs["name"]: field.attrs["value"] for field in form.find_all("input")}
+    response = client.post(form.attrs["action"], data=fields)
+    assert response.status_code == 303
+    copy = response.headers["location"].removeprefix("/f/").split("#")[0]
+    decisions = seeded.list_decisions(copy)
+    assert len(seeded.get_folder(copy).cards) == len(decisions) == 4
+    assert all(d.decision == "accepted" and d.card_id is not None for d in decisions)
+    assert sorted(encode_match(d.reference.match) for d in decisions) == sorted(
+        encode_match(p.match) for p in propose(HOUSE_22)
+    )
+    assert snapshot(seeded, store.DEMO_ID) == seed
+
+
+def test_an_otherwise_valid_two_match_district_cannot_seed_the_demo(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = matches.find_matches
+
+    def two(district: object) -> tuple[matches.MatchReference, ...]:
+        return real(district)[:2]
+
+    monkeypatch.setattr(matches, "find_matches", two)
+    with pytest.raises(ValueError, match=r"^House 22 offers 2 matches; the demo needs three$"):
+        demo.match_plan()
 
 
 @pytest.mark.parametrize("table", ["cards", "notes", "suggestions"])
