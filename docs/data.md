@@ -330,6 +330,103 @@ and output SHA-256 checksums, row counts, suppression/year/status checks,
 unmappable reasons and geometry/crosswalk review evidence. Keep code PRs below
 12 files and 400 changed lines. This step defines contracts, not that publisher.
 
+## Census places in each district (#424, step 1 of #262)
+
+`etl/district_places.py` writes `data/district_places.tsv` and
+`data/district_places.provenance.json`. It answers "which towns are in this
+district, and how much of each", from Census 2020 block counts, with the same
+population-weighted (2020 blocks) approach as the ZIP crosswalk above. It ships
+no display yet (step 2 reads it). These are decennial full counts, not ACS
+estimates: they carry no margin of error, but Census 2020 adds
+disclosure-avoidance noise to every block, so a small intersection made of few
+blocks is the least exact.
+
+**Inputs**, downloaded unchanged by `--fetch` into `data/cache/places/`
+(git-ignored), each recorded by URL and sha256 in the sidecar:
+
+| Role | Source |
+|---|---|
+| Block population | TIGER/Line 2020 `tl_2020_15_tabblock20.zip`: `POP20` and the internal point (`INTPTLAT20`, `INTPTLON20`) of each of the 14,732 blocks |
+| Block → district | Census Redistricting Data Office 2022 State legislative block equivalency files (`sldl_2022.zip`, `sldu_2022.zip`, released in 2023): 2020 blocks to the 2022 plan |
+| Block → place | 2020 Block Assignment File (`baf2020/BlockAssign_ST15_HI.zip`), `INCPLACE_CDP` |
+| Place names | 2023 Gazetteer place file (Census ASCII names) |
+| District check | The State's full-resolution House and Senate exports |
+
+The work order named "2023 Block Assignment Files" for place and district.
+Census publishes the 2022-plan district assignment as the 2023 block
+equivalency files above, and no 2023 place assignment: the 2023 Gazetteer lists
+the same 163 places, with the same GEOIDs and names, as the 2020 Gazetteer, so
+the 2020 place assignment stands. The build rejects any assignment table whose
+block set is not the 2020 blocks.
+
+**Same State export as counties.** The place crosswalk cites the same State
+export URLs and method as the county crosswalk
+(`data/district_counties.provenance.json`: the `source_url` strings verbatim, no
+`maxAllowableOffset`, `outSR=4326`), retrieved on a later date. The build fails
+if either query differs, and fails unless each chamber's features yield exactly
+the 76 district fact keys. The sha256 values in the two sidecars are of
+different files (the places sidecar hashes the raw response; the counties
+sidecar hashes a re-serialized export) and are not expected to match.
+
+**Block check.** Each block's internal point is tested against the State
+polygons of each chamber (even-odd rule; the NAD83 points and WGS84 polygons are
+compared without a datum shift, a difference of about a metre). A block whose
+point lands in no district is **unmatched**; one whose point lands in another
+district, or in two, is **split**. Every such block must have a row in
+`data/places/block_review.tsv` (`--draft-review` lists them), with a resolution
+and a note, or the build fails; a row for a block that needs no review also
+fails. Resolutions: `census` keeps the Census district, `point` uses the one
+district the point lands in, and `none` drops a block with no residents (a block
+with residents cannot be dropped). The published run has 1,736 unmatched and 50
+split block-chamber pairs. All but 25 have no residents. The 25 with residents
+all lie within 361 m of their Census district on the State map, mostly just off
+the State coastline, and keep the Census district, because the 2022 plan is
+drawn on 2020 blocks.
+
+**Rules.** These are the only statement of the thresholds; the brief does not
+restate them.
+
+- `share` = residents of the place who live in the district ÷ all residents of
+  the place (`intersection_pop` ÷ `place_pop`), both from 2020 blocks.
+- **Zero denominator.** A place whose whole 2020 population is zero is
+  unmappable, not a zero share: it gets no row and is listed in the sidecar
+  under `unmappable_places`. (None in the published run.)
+- **Inclusion threshold.** A place is listed for a district when at least 1/10
+  of the place's residents live in the district, or at least 1,000 of them do.
+  The 1,000 floor keeps a large place such as Urban Honolulu listed in the House
+  districts it fills, where each holds well under 1/10 of it.
+- **`part of` threshold.** `qualifier` is `most` when more than 1/2 of the
+  place's residents live in the district, else `part` (shown as "part of").
+- **Equality.** Exactly 1/10 is listed, and so is exactly 1,000 residents;
+  exactly 1/2 is `part`, not `most`.
+- Comparisons use whole numbers, never the rounded `share` column (six
+  decimals). The build fails unless all 76 districts have a listed place.
+
+**Spelling.** `data/places/spelling.tsv` maps each Census name (`source_name`)
+to its display spelling with the ʻokina (U+02BB) and kahakō, and a `reference`.
+The references are GNIS feature IDs: GNIS is the federal names record, and it
+carries the Hawaiʻi Board on Geographic Names (HBGN) spellings. A compound place
+cites one record per part, and a place whose GNIS records have no ʻokina or
+kahakō keeps the Census spelling. The build fails when a listed name is missing
+from the Census places, when a place to be written is missing from
+`spelling.tsv`, when a display name uses an apostrophe or turned quote for the
+ʻokina, or when it spells other letters than the Census name.
+
+**Localities (step 3).** GNIS populated-place points are names only: they have
+no population, so GNIS points carry no share and never get a `most` or `part`
+qualifier. They go in their own file with their own source and vintage.
+
+Replay from the cache (no network; output is byte-identical):
+
+```sh
+uv run python -m etl.district_places --fetch data/cache/places   # network, once
+C=data/cache/places
+uv run python -m etl.district_places $C/tl_2020_15_tabblock20.zip \
+  $C/BlockAssign_ST15_HI.zip $C/sldl_2022.zip $C/sldu_2022.zip \
+  $C/2023_gaz_place_15.txt $C/state-house.geojson $C/state-senate.geojson \
+  data/district_places.tsv --retrieved-on 2026-11-11
+```
+
 ## Supplemental population acquisition plan (#202, step 1 of #147)
 
 `etl/population_variables.py` inventories populations separately from the WO59 indicator contract. `POPULATION_VARIABLES` lists **all 70

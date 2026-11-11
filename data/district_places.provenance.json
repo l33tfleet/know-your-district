@@ -1,0 +1,82 @@
+{
+  "inputs": [
+    {
+      "role": "blocks",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/tl_2020_15_tabblock20.zip",
+      "sha256": "c29683118cd7eada4bd4672e30de6bdd5638a752c1d0f7f795b4dd580c02259e"
+    },
+    {
+      "role": "place",
+      "url": "https://www2.census.gov/geo/docs/maps-data/data/baf2020/BlockAssign_ST15_HI.zip",
+      "sha256": "99ff6595ad6566804cc4682c9e73b9d854ae127154bffb9b0f2e6e97a7fa8147"
+    },
+    {
+      "role": "sldl",
+      "url": "https://www2.census.gov/programs-surveys/decennial/rdo/mapping-files/2023/2022-state-legislative-bef/sldl_2022.zip",
+      "sha256": "531f7843f9d34d744f989ead86d7589f96ea8fa672f416a895f5a7283f5de36f"
+    },
+    {
+      "role": "sldu",
+      "url": "https://www2.census.gov/programs-surveys/decennial/rdo/mapping-files/2023/2022-state-legislative-bef/sldu_2022.zip",
+      "sha256": "3e1138aed2428f4766017c84bfa264295a520a2d0d4c6c94a768dd0b73f2c125"
+    },
+    {
+      "role": "gazetteer",
+      "url": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2023_Gazetteer/2023_gaz_place_15.txt",
+      "sha256": "96f4367e408da95e16493c9b3472472aa864d27315eba9b8442963de1d0be731"
+    },
+    {
+      "role": "house",
+      "url": "https://geodata.hawaii.gov/arcgis/rest/services/AdminBnd/MapServer/33/query?where=1%3D1&outFields=house_id&f=geojson&outSR=4326&returnGeometry=true",
+      "sha256": "ef0df1ee7f398618da49a10330125245a77f752d714f2d28216d28aa35fc059d"
+    },
+    {
+      "role": "senate",
+      "url": "https://geodata.hawaii.gov/arcgis/rest/services/AdminBnd/MapServer/34/query?where=1%3D1&outFields=senate_id&f=geojson&outSR=4326&returnGeometry=true",
+      "sha256": "af5a7811982c5f90cb412e6bee74e706d5910767fb3e5dced08066b417b0742d"
+    }
+  ],
+  "retrieved_on": "2026-11-11",
+  "roles": {
+    "blocks": "POP20 and internal point of each 2020 tabulation block",
+    "place": "2020 block to place (INCPLACE_CDP); the 2023 Gazetteer lists the same places",
+    "sldl": "2020 block to 2022 State House district (Census block equivalency file)",
+    "sldu": "2020 block to 2022 State Senate district (Census block equivalency file)",
+    "gazetteer": "2023 place names (Census ASCII); display spellings come from spelling.tsv",
+    "house": "State full-resolution House districts, for the block internal-point check",
+    "senate": "State full-resolution Senate districts, for the block internal-point check"
+  },
+  "state_geometry": "The House and Senate exports are fetched at the county crosswalk's State query URLs, verbatim, on a later date. Their sha256 values are of the raw responses read here and are not expected to match the county sidecar's, which hash a re-serialized file.",
+  "blocks": {
+    "count": 14732,
+    "pop20": 1455271
+  },
+  "block_review": {
+    "file": "block_review.tsv",
+    "sha256": "0b1fca8495bc81bfc2dea71e7cb8708481a08b9c12411b1fac2e6c524eec64ff",
+    "unmatched": 1736,
+    "split": 50,
+    "resolutions": {
+      "house split census": 2,
+      "house split none": 28,
+      "house unmatched census": 11,
+      "house unmatched none": 857,
+      "senate split census": 1,
+      "senate split none": 19,
+      "senate unmatched census": 11,
+      "senate unmatched none": 857
+    }
+  },
+  "spelling": {
+    "file": "spelling.tsv",
+    "sha256": "b2e23cb2a4703ee1f575f7e76060aa657bd85913597ec31d853d829a72239251"
+  },
+  "unmappable_places": [],
+  "rules": {
+    "include_share_at_least": "1/10",
+    "include_residents_at_least": 1000,
+    "most_share_above": "1/2"
+  },
+  "rows": 402,
+  "method": "Census 2020 block counts. Census files put each block in a place and in a 2022 district, and each block's center point was checked against the State district map. The share is the place's residents who live in the district, divided by all residents of the place."
+}
