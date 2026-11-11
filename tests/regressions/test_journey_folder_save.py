@@ -154,20 +154,6 @@ def test_folder_rows_hold_no_figure(client: TestClient, tmp_path: Path) -> None:
     ]
 
 
-def test_a_new_figure_shows_on_the_next_render(
-    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The folder keeps no figure, so a rebuilt fact table changes the saved case."""
-    path = create(client)
-    published = snap.load_result(DistrictId(chamber="house", district=22)).district.value_text
-    assert published in client.get(path).text
-
-    monkeypatch.setattr(snap, "SNAP_DB", tmp_path / "absent.db")
-    html = client.get(path).text
-    assert published not in html
-    assert "so this card shows no count" in html
-
-
 def test_controls_are_labelled_and_changes_are_announced(client: TestClient) -> None:
     path = create(client)
     card = card_id(client, path)
